@@ -6,14 +6,13 @@ export interface DemoConversation {
   messages: Message[];
 }
 
-const yesterday = new Date();
-yesterday.setDate(yesterday.getDate() - 1);
+const now = new Date();
 
 // Demo conversations (read-only)
 export const demoConversations: DemoConversation[] = [
   {
     name: "Project Setup",
-    lastUpdated: yesterday,
+    lastUpdated: now,
     messages: [
       {
         role: "assistant",
@@ -95,7 +94,7 @@ Would you like me to show you how to write tests for this scraper?`,
   },
   {
     name: "Debug Session",
-    lastUpdated: yesterday,
+    lastUpdated: now,
     messages: [
       {
         role: "assistant",
@@ -106,7 +105,7 @@ Would you like me to show you how to write tests for this scraper?`,
   },
   {
     name: "File Operations",
-    lastUpdated: yesterday,
+    lastUpdated: now,
     messages: [
       {
         role: "assistant",

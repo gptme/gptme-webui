@@ -1,6 +1,6 @@
 import type { Message } from "@/types/message";
 import type { FC } from "react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { useConversation } from "@/hooks/useConversation";
@@ -24,9 +24,17 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   }, [conversation.name]);
 
   // Memoize message processing to prevent unnecessary recalculations
+  // Log when conversation data changes
+  useEffect(() => {
+    console.log('ConversationContent: conversationData changed:', conversationData);
+  }, [conversationData]);
+
   const { currentMessages, firstNonSystemIndex, hasSystemMessages } =
     useMemo(() => {
+      console.log('ConversationContent: Processing messages, conversationData:', conversationData);
       const messages: Message[] = conversationData?.log || [];
+      console.log('ConversationContent: Messages:', messages);
+      
       const firstNonSystem = messages.findIndex((msg) => msg.role !== "system");
       const hasSystemMessages = messages.some((msg) => msg.role === "system");
 
@@ -36,6 +44,25 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         hasSystemMessages,
       };
     }, [conversationData]);
+
+  // Create a ref for the scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Single effect to handle all scrolling
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    };
+    
+    // Use requestAnimationFrame for smooth scrolling
+    requestAnimationFrame(scrollToBottom);
+  }, [
+    currentMessages.length, // Scroll on new messages
+    currentMessages.map(msg => msg.content).join(''), // Scroll on content changes (streaming)
+    conversation.name // Scroll when conversation changes
+  ]);
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden">
@@ -66,12 +93,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
           )}
         </div>
       )}
-      <div className="flex-1 overflow-y-auto relative">
-        {isLoading && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto relative" ref={scrollContainerRef}>
         {currentMessages.map((msg, index) => {
           // Hide all system messages before the first non-system message by default
           const isInitialSystem = msg.role === "system" && index < firstNonSystemIndex;
@@ -81,7 +103,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
 
           return (
             <ChatMessage
-              key={index}
+              key={`${index}-${msg.id}-${msg.content.length}`}
               message={msg}
               isInitialSystem={isInitialSystem}
             />

@@ -66,27 +66,27 @@
 }
 
 .chat-message h1 {
-  @apply text-3xl font-bold;
+  @apply text-3xl font-bold mt-8 border-b border-border pb-2;
 }
 
 .chat-message h2 {
-  @apply text-2xl font-bold;
+  @apply text-2xl font-bold mt-6;
 }
 
 .chat-message h3 {
-  @apply text-xl font-bold;
+  @apply text-xl font-bold mt-4;
 }
 
 .chat-message h4 {
-  @apply text-lg font-bold;
+  @apply text-lg font-bold mt-4;
 }
 
 .chat-message h5 {
-  @apply text-base font-bold;
+  @apply text-base font-bold mt-4;
 }
 
 .chat-message h6 {
-  @apply text-sm font-bold;
+  @apply text-sm font-bold mt-4;
 }
 
 .chat-message pre {

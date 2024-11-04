@@ -34,14 +34,31 @@ marked.use(
 export const ChatMessage: FC<Props> = ({ message }) => {
   const [parsedContent, setParsedContent] = useState("");
 
+  // Log when message changes
   useEffect(() => {
+    console.log('ChatMessage: Message updated:', {
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      contentLength: message.content?.length || 0,
+      timestamp: message.timestamp
+    });
+  }, [message]);
+
+  // Ensure content is never undefined
+  const content = message.content || '';
+
+  useEffect(() => {
+    let isMounted = true;
     const processContent = async () => {
+      console.log('Processing content for message:', message.id);
       try {
+        console.log('Raw content:', message.content);
         // Transform thinking tags before markdown parsing
-        const processedContent = message.content.replace(
+        const processedContent = content.replace(
           /<thinking>([\s\S]*?)<\/thinking>/g,
-          (_, content) =>
-            `<details><summary>Thinking</summary>\n\n${content}\n\n</details>`
+          (_, thinkingContent) =>
+            `<details><summary>Thinking</summary>\n\n${thinkingContent}\n\n</details>`
         );
 
         // Parse markdown to HTML
@@ -66,15 +83,23 @@ export const ChatMessage: FC<Props> = ({ message }) => {
           }
         );
 
-        setParsedContent(parsedResult);
+        if (isMounted) {
+          setParsedContent(parsedResult);
+        }
       } catch (error) {
         console.error("Error parsing markdown:", error);
-        setParsedContent(message.content);
+        if (isMounted) {
+          setParsedContent(message.content);
+        }
       }
     };
 
     processContent();
-  }, [message.content]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [message.content, message.id]); // Add message.id to dependencies
 
   // All messages (including system) are displayed in the same style
   return (

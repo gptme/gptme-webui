@@ -5,4 +5,5 @@ export interface Message {
   files?: string[];
   pinned?: boolean;
   hide?: boolean;
+  id?: string;  // Added for tracking streaming messages
 }
