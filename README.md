@@ -22,7 +22,7 @@ npm i
 npm run dev
 ```
 
-To connect to a local `gptme-server` instance, you need to start one with `gptme-server --cors-origins='https://gptme.gptengineer.run'` (or whatever the origin of your web UI is).
+To connect to a local `gptme-server` instance, you need to start one with `gptme-server --cors-origin='https://gptme.gptengineer.run'` (or whatever the origin of your web UI is).
 
 ## Tech stack
 
