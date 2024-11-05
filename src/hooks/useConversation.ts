@@ -161,11 +161,12 @@ export function useConversation(
 
       let currentContent = "";
 
-      // Generate response with streaming
-      await api.generateResponse(conversation.name, {
-        onToken: (token: string) => {
-          // console.log('Received token:', token);
-          currentContent += token;
+      try {
+        // Generate response with streaming
+        await api.generateResponse(conversation.name, {
+          onToken: (token: string) => {
+            // console.log('Received token:', token);
+            currentContent += token;
 
           // Update the assistant message content
           queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
@@ -207,15 +208,25 @@ export function useConversation(
           });
         },
         onError: (error) => {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: error,
-          });
+          // Don't show error toast if it was intentionally interrupted
+          if (error !== "AbortError") {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: error,
+            });
+          }
         },
       });
-
-      // No duplicate generateResponse needed - the first one handles everything
+      } catch (error) {
+        // Handle interruption
+        if (error instanceof DOMException && error.name === "AbortError") {
+          // Intentional interruption, don't show error
+          console.log("Generation interrupted by user");
+        } else {
+          throw error;  // Re-throw other errors to be handled by onError
+        }
+      }
     },
     onError: (error, variables, context) => {
       // Roll back to previous state on error

@@ -37,8 +37,8 @@ export const ConversationList: FC<Props> = ({
 
   const ConversationItem: FC<{ conv: Conversation }> = ({ conv }) => {
     // For demo conversations, get messages from demoConversations
-    const demoConv = demoConversations.find(dc => dc.name === conv.name);
-    
+    const demoConv = demoConversations.find((dc) => dc.name === conv.name);
+
     // For API conversations, fetch messages
     const { data: messages } = useQuery({
       queryKey: ["conversation", conv.name],
@@ -56,11 +56,13 @@ export const ConversationList: FC<Props> = ({
 
       if (!messages) return {};
 
-      const messageArray = Array.isArray(messages) ? messages : messages.log || [];
+      console.log(messages);
+      // Handle server response format
+      const messageArray = messages?.log || [];
       return messageArray.reduce((acc, msg) => {
-        if (msg && typeof msg === 'object' && 'role' in msg) {
-          acc[msg.role] = (acc[msg.role] || 0) + 1;
-        }
+        // Ensure we're accessing the role property correctly
+        const role = msg?.role || "unknown";
+        acc[role] = (acc[role] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
     };
@@ -68,7 +70,7 @@ export const ConversationList: FC<Props> = ({
     const formatBreakdown = (breakdown: Record<string, number>) => {
       return Object.entries(breakdown)
         .map(([role, count]) => `${role}: ${count}`)
-        .join('\n');
+        .join("\n");
     };
 
     return (
@@ -87,20 +89,26 @@ export const ConversationList: FC<Props> = ({
                 {getRelativeTimeString(conv.lastUpdated)}
               </span>
             </TooltipTrigger>
-            <TooltipContent>
-              {conv.lastUpdated.toLocaleString()}
-            </TooltipContent>
+            <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
           </Tooltip>
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <span className="flex items-center">
                 <MessageSquare className="w-4 h-4 mr-1" />
                 {conv.messageCount}
               </span>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent
+              onPointerEnterCapture={() => {
+                console.log("Tooltip shown for:", conv.name);
+                console.log("Has messages:", !!messages);
+                console.log("Messages data:", messages);
+              }}
+            >
               <div className="whitespace-pre">
-                {formatBreakdown(getMessageBreakdown())}
+                {demoConv || messages?.log
+                  ? formatBreakdown(getMessageBreakdown())
+                  : "Loading..."}
               </div>
             </TooltipContent>
           </Tooltip>
@@ -111,9 +119,7 @@ export const ConversationList: FC<Props> = ({
                   <Lock className="w-4 h-4" />
                 </span>
               </TooltipTrigger>
-              <TooltipContent>
-                This conversation is read-only
-              </TooltipContent>
+              <TooltipContent>This conversation is read-only</TooltipContent>
             </Tooltip>
           )}
         </div>

@@ -8,6 +8,8 @@ import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Loader2 } from "lucide-react";
 import type { Conversation } from "@/types/conversation";
+import { useApi } from "@/contexts/ApiContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   conversation: Conversation;
@@ -17,6 +19,8 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   const { conversationData, sendMessage, isLoading, isSending } =
     useConversation(conversation);
   const [showInitialSystem, setShowInitialSystem] = useState(false);
+  const api = useApi();
+  const queryClient = useQueryClient();
 
   // Reset checkbox state when conversation changes
   useEffect(() => {
@@ -121,6 +125,14 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
       </div>
       <ChatInput
         onSend={sendMessage}
+        onInterrupt={async () => {
+          console.log('Interrupting from ConversationContent...');
+          await api.cancelPendingRequests();
+          // Invalidate the query to ensure UI updates
+          queryClient.invalidateQueries({
+            queryKey: ["conversation", conversation.name],
+          });
+        }}
         isReadOnly={conversation.readonly}
         isSending={isSending}
       />

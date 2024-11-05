@@ -33,6 +33,7 @@ interface ApiContextType {
     },
     model?: string
   ) => Promise<void>;
+  cancelPendingRequests: () => Promise<void>;
 }
 
 interface ApiProviderProps {
@@ -93,6 +94,7 @@ export const ApiProvider: FC<ApiProviderProps> = ({ children, baseUrl }): JSX.El
       createConversation: client.createConversation.bind(client),
       sendMessage: client.sendMessage.bind(client),
       generateResponse: client.generateResponse.bind(client),
+      cancelPendingRequests: client.cancelPendingRequests.bind(client),
     }}>
       {children}
     </ApiContext.Provider>

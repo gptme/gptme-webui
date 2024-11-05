@@ -6,17 +6,22 @@ import { useApi } from "@/contexts/ApiContext";
 
 interface Props {
   onSend: (message: string) => void;
+  onInterrupt?: () => void;
   isReadOnly?: boolean;
   isSending?: boolean;
 }
 
-export const ChatInput: FC<Props> = ({ onSend, isReadOnly, isSending }) => {
+export const ChatInput: FC<Props> = ({ onSend, onInterrupt, isReadOnly, isSending }) => {
   const [message, setMessage] = useState("");
   const api = useApi();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
+    if (isSending && onInterrupt) {
+      console.log('Interrupting generation...');
+      await onInterrupt();
+      console.log('Generation interrupted');
+    } else if (message.trim()) {
       onSend(message);
       setMessage("");
     }
@@ -50,10 +55,13 @@ export const ChatInput: FC<Props> = ({ onSend, isReadOnly, isSending }) => {
         <Button 
           type="submit" 
           className="bg-gptme-600 hover:bg-gptme-700"
-          disabled={!api.isConnected || isReadOnly || isSending}
+          disabled={!api.isConnected || isReadOnly}
         >
           {isSending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="flex items-center gap-2">
+              <span>Stop</span>
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
           ) : (
             <Send className="w-4 h-4" />
           )}

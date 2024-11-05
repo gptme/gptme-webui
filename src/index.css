@@ -90,7 +90,15 @@
 }
 
 .chat-message pre {
-  @apply bg-black text-white rounded-lg overflow-x-auto;
+  @apply text-white bg-black rounded-lg overflow-x-auto;
+}
+
+.chat-message code {
+  @apply text-white bg-black text-sm;
+}
+
+.chat-message p > code {
+  @apply rounded-lg border-border text-sm px-2 py-1;
 }
 
 .chat-message details {
@@ -98,7 +106,7 @@
 }
 
 .chat-message details summary {
-  @apply px-4 py-2 bg-muted cursor-pointer hover:bg-accent transition-colors;
+  @apply px-4 py-2 bg-muted cursor-pointer hover:bg-ring transition-colors;
 }
 
 .chat-message details[open] {

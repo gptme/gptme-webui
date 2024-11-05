@@ -8,6 +8,7 @@ interface ApiMessage {
   role: string;
   content: string;
   timestamp?: string;
+  interrupted?: boolean;  // Optional to maintain compatibility with existing messages
 }
 
 interface ApiError extends Error {
@@ -51,13 +52,15 @@ export class ApiClient {
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
     });
 
     if (!response.ok) {
-      const error = new Error(`HTTP error! status: ${response.status}`) as ApiError;
+      const error = new Error(
+        `HTTP error! status: ${response.status}`
+      ) as ApiError;
       error.status = response.status;
       throw error;
     }
@@ -66,12 +69,24 @@ export class ApiClient {
   }
 
   // Changed to public so it can be accessed from ApiContext
-  public cancelPendingRequests() {
-    if (this.controller) {
-      this.controller.abort();
-      this.controller = null;
+  private isCleaningUp = false;
+
+  public async cancelPendingRequests() {
+    if (this.isCleaningUp) return;
+
+    try {
+      this.isCleaningUp = true;
+      if (this.controller) {
+        this.controller.abort();
+        // Wait a bit for abort event handlers to complete
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 50);
+        });
+        this.controller = null;
+      }
+    } finally {
+      this.isCleaningUp = false;
     }
-    this.controller = new AbortController();
   }
 
   get isConnected(): boolean {
@@ -107,7 +122,6 @@ export class ApiClient {
     if (!this._isConnected) {
       return [];
     }
-    this.cancelPendingRequests();
     try {
       return await this.fetchJson<unknown>(
         `${this.baseUrl}/api/conversations/${logfile}`,
@@ -116,7 +130,7 @@ export class ApiClient {
         }
       );
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if (error instanceof DOMException && error.name === "AbortError") {
         return [];
       }
       throw error;
@@ -134,12 +148,12 @@ export class ApiClient {
       return await this.fetchJson<unknown>(
         `${this.baseUrl}/api/conversations/${logfile}`,
         {
-          method: 'PUT',
+          method: "PUT",
           body: JSON.stringify({ messages }),
         }
       );
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if (error instanceof DOMException && error.name === "AbortError") {
         return null;
       }
       throw error;
@@ -154,12 +168,11 @@ export class ApiClient {
     if (!this._isConnected) {
       throw new Error("Not connected to API");
     }
-    this.cancelPendingRequests();
     try {
       return await this.fetchJson<unknown>(
         `${this.baseUrl}/api/conversations/${logfile}`,
         {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify({
             ...message,
             branch,
@@ -168,7 +181,7 @@ export class ApiClient {
         }
       );
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if (error instanceof DOMException && error.name === "AbortError") {
         return null;
       }
       throw error;
@@ -189,8 +202,12 @@ export class ApiClient {
     if (!this._isConnected) {
       throw new Error("Not connected to API");
     }
-    this.cancelPendingRequests();
+    await this.cancelPendingRequests();
 
+    // Create new controller for this request
+    this.controller = new AbortController();
+    let cleanup: (() => void) | undefined;
+    
     try {
       const response = await fetch(
         `${this.baseUrl}/api/conversations/${logfile}/generate`,
@@ -198,8 +215,10 @@ export class ApiClient {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Connection": "keep-alive",
           },
           body: JSON.stringify({ model, branch, stream: true }),
+          signal: this.controller?.signal,
         }
       );
 
@@ -207,68 +226,74 @@ export class ApiClient {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // console.log('Starting stream reading...');
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
 
+      cleanup = async () => {
+        try {
+          await reader.cancel();
+          if (response.body) {
+            await response.body.cancel();
+          }
+        } catch (e) {
+          console.error('Error during cleanup:', e);
+        }
+      };
+
+      this.controller?.signal.addEventListener('abort', async () => {
+        await cleanup?.();
+      }, { once: true });
+
       while (true) {
         const { value, done } = await reader.read();
-        if (done) {
-          // console.log('Stream complete');
-          break;
-        }
+        if (done) break;
 
         const chunk = decoder.decode(value);
-        // console.log('Raw chunk received:', chunk);
-        const lines = chunk.split("\n");
+        for (const line of chunk.split("\n")) {
+          if (!line.trim() || !line.startsWith("data: ")) continue;
 
-        for (const line of lines) {
-          if (!line.trim()) continue; // Skip empty lines
+          try {
+            const data = JSON.parse(line.slice(6));
+            console.log("Parsed data:", data);
 
-          if (line.startsWith("data: ")) {
-            try {
-              const jsonStr = line.slice(6);
-              // console.log('Processing SSE data:', jsonStr);
-              const data = JSON.parse(jsonStr);
-              // console.log('Parsed data:', data);
-
-              if (data.error) {
-                console.error("Error from SSE:", data.error);
-                callbacks.onError?.(data.error);
-                return;
-              }
-
-              if (data.stored === false) {
-                // Streaming token from assistant
-                // console.log('Streaming token:', data.content);
-                callbacks.onToken?.(data.content);
-              } else {
-                // Complete message or tool output
-                const message: ApiMessage = {
-                  role: data.role,
-                  content: data.content,
-                  timestamp: new Date().toISOString(),
-                };
-
-                if (data.role === "system") {
-                  // console.log("Tool output received:", message);
-                  callbacks.onToolOutput?.(message);
-                } else {
-                  // console.log("Complete message received:", message);
-                  callbacks.onComplete?.(message);
-                }
-              }
-            } catch (e) {
-              console.error("Error parsing SSE data:", e);
+            if (data.error) {
+              console.error("Error from SSE:", data.error);
+              callbacks.onError?.(data.error);
+              return;
             }
+
+            if (data.stored === false) {
+              callbacks.onToken?.(data.content);
+            } else {
+              const message: ApiMessage = {
+                role: data.role,
+                content: data.content,
+                timestamp: new Date().toISOString(),
+                interrupted: data.interrupted,
+              };
+
+              if (data.role === "system") {
+                callbacks.onToolOutput?.(message);
+              } else {
+                if (message.interrupted) {
+                  message.content = message.content.replace("\n[interrupted]", "");
+                }
+                callbacks.onComplete?.(message);
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing SSE data:", e);
           }
         }
       }
     } catch (error) {
       if (this.controller?.signal.aborted) {
+        console.log('Request/stream aborted');
         return;
       }
       throw error;
+    } finally {
+      await cleanup?.();
     }
   }
 }
