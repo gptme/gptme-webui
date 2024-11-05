@@ -223,60 +223,7 @@ export function useConversation(
         }
       );
 
-      // Generate response with streaming
-      await api.generateResponse(
-        conversation.name,
-        {
-          onToken: (token: string) => {
-            console.log('Received token:', token);
-            currentMessage.content += token;
-            
-            // Update the message content directly in the query cache
-            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-              if (!old) return null;
-              
-              return {
-                ...old,
-                log: old.log.map(msg => 
-                  msg.id === messageId 
-                    ? { ...msg, content: currentMessage.content }
-                    : msg
-                ),
-              };
-            });
-          },
-          onComplete: (message) => {
-            if (message.role !== 'system') {
-              queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-                if (!old) return null;
-                return {
-                  ...old,
-                  log: old.log.map(msg => 
-                    msg.id === messageId ? { ...message, id: messageId } : msg
-                  ),
-                };
-              });
-            }
-          },
-          onToolOutput: (message) => {
-            const toolMessageId = `tool-${Date.now()}`;
-            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-              if (!old) return null;
-              return {
-                ...old,
-                log: [...old.log, { ...message, id: toolMessageId }],
-              };
-            });
-          },
-          onError: (error) => {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: error,
-            });
-          },
-        }
-      );
+      // No duplicate generateResponse needed - the first one handles everything
     },
     onError: (error, variables, context) => {
       // Roll back to previous state on error
