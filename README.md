@@ -34,6 +34,16 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Development
+
+Available commands:
+
+- `npm run dev` - Start development server
+- `npm run typecheck` - Run type checking
+- `npm run typecheck:watch` - Run type checking in watch mode
+- `npm run build` - Build for production (includes type checking)
+- `npm run lint` - Run linting and type checking
+
 ## Project info
 
 **URL**: https://run.gptengineer.app/projects/b6f40770-f632-4741-8247-3d47b9beac4e/improve

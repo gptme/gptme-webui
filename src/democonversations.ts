@@ -1,9 +1,9 @@
-import type { Message } from "@/types/message";
+import type { ConversationMessage } from "@/types/conversation";
 
 export interface DemoConversation {
   name: string;
   lastUpdated: Date;
-  messages: Message[];
+  messages: ConversationMessage[];
 }
 
 const now = new Date();
@@ -18,11 +18,13 @@ export const demoConversations: DemoConversation[] = [
         role: "assistant",
         content:
           "Hello! I'm gptme, your coding assistant. I can help you set up and manage your Python projects. What kind of project would you like to create?",
+        timestamp: now.toISOString(),
       },
       {
         role: "user",
         content:
           "I want to create a new web scraping project with Python. Can you help me set it up?",
+        timestamp: now.toISOString(),
       },
       {
         role: "assistant",
@@ -49,11 +51,13 @@ pytest==7.4.0
 \`\`\`
 
 Would you like me to help you implement the scraper.py file next?`,
+        timestamp: now.toISOString(),
       },
       {
         role: "user",
         content:
           "Yes, please show me how to implement a basic scraper using BeautifulSoup.",
+        timestamp: now.toISOString(),
       },
       {
         role: "assistant",
@@ -89,6 +93,7 @@ class WebScraper:
 \`\`\`
 
 Would you like me to show you how to write tests for this scraper?`,
+        timestamp: now.toISOString(),
       },
     ],
   },
@@ -100,6 +105,7 @@ Would you like me to show you how to write tests for this scraper?`,
         role: "assistant",
         content:
           "Welcome to the Debug Session! How can I help you debug your code today?",
+        timestamp: now.toISOString(),
       },
     ],
   },
@@ -111,6 +117,7 @@ Would you like me to show you how to write tests for this scraper?`,
         role: "assistant",
         content:
           "Let's work on file operations. What would you like to do with your files?",
+        timestamp: now.toISOString(),
       },
     ],
   },

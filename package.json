@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck:watch": "tsc -p tsconfig.app.json --noEmit --watch",
+    "build": "tsc -p tsconfig.app.json --noEmit && vite build",
+    "build:dev": "tsc -p tsconfig.app.json --noEmit && vite build --mode development",
+    "lint": "eslint . && tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -6,14 +6,10 @@ import { LeftSidebar } from "@/components/LeftSidebar";
 import { RightSidebar } from "@/components/RightSidebar";
 import { ConversationContent } from "@/components/ConversationContent";
 import { useApi } from "@/contexts/ApiContext";
-import type { Conversation } from "@/types/conversation";
+import type { ConversationSummary } from "@/types/conversation";
+import type { ConversationItem } from "@/components/ConversationList";
+import { toConversationItems } from "@/utils/conversation";
 import { demoConversations, type DemoConversation } from "@/democonversations";
-
-interface ApiConversation {
-  name: string;
-  modified: number;
-  messages: number;
-}
 
 interface Props {
   className?: string;
@@ -29,7 +25,7 @@ const Index: FC<Props> = () => {
   const queryClient = useQueryClient();
 
   // Fetch conversations from API with proper caching
-  const { data: apiConversations = [] } = useQuery({
+  const { data: apiConversations = [] } = useQuery<ConversationSummary[]>({
     queryKey: ["conversations"],
     queryFn: () => api.getConversations(),
     enabled: api.isConnected,
@@ -38,18 +34,16 @@ const Index: FC<Props> = () => {
   });
 
   // Combine demo and API conversations
-  const allConversations: Conversation[] = [
+  const allConversations: ConversationItem[] = [
+    // Convert demo conversations to ConversationItems
     ...demoConversations.map((conv: DemoConversation) => ({
       name: conv.name,
       lastUpdated: conv.lastUpdated,
       messageCount: conv.messages.length,
       readonly: true,
     })),
-    ...apiConversations.map((conv: ApiConversation) => ({
-      name: conv.name,
-      lastUpdated: new Date(conv.modified * 1000),
-      messageCount: conv.messages,
-    })),
+    // Convert API conversations to ConversationItems
+    ...toConversationItems(apiConversations),
   ];
 
   const handleSelectConversation = useCallback(
@@ -68,7 +62,7 @@ const Index: FC<Props> = () => {
 
   const conversation = allConversations.find(
     (conv) => conv.name === selectedConversation
-  );
+  ) ?? allConversations[0];  // Fallback to first conversation if none selected
 
   return (
     <div className="h-screen flex flex-col">

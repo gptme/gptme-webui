@@ -4,7 +4,7 @@ import { ConversationList } from "./ConversationList";
 import { useApi } from "@/contexts/ApiContext";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
-import type { Conversation } from "@/types/conversation";
+import type { ConversationItem } from "./ConversationList";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Tooltip,
@@ -16,7 +16,7 @@ import {
 interface Props {
   isOpen: boolean;
   onToggle: () => void;
-  conversations: Conversation[];
+  conversations: ConversationItem[];
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
 }

@@ -1,17 +1,36 @@
+import type { 
+  ConversationResponse, 
+  GenerateResponse, 
+  ApiError, 
+  SendMessageRequest,
+  CreateConversationRequest 
+} from "@/types/api";
+import type { ConversationMessage } from "@/types/conversation";
+
 const DEFAULT_API_URL = "http://127.0.0.1:5000";
 
 // Add DOM types
 type RequestInit = globalThis.RequestInit;
 type Response = globalThis.Response;
 
-interface ApiMessage {
-  role: string;
-  content: string;
-  timestamp?: string;
+// Error type for API client
+class ApiClientError extends Error {
+  status?: number;
+  
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+    this.name = "ApiClientError";
+  }
+
+  static isApiError(error: unknown): error is ApiClientError {
+    return error instanceof ApiClientError;
+  }
 }
 
-interface ApiError extends Error {
-  status?: number;
+// Type guard for API error responses
+function isApiErrorResponse(response: unknown): response is ApiError {
+  return typeof response === 'object' && response !== null && 'error' in response;
 }
 
 export class ApiClient {
@@ -57,11 +76,10 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const error = new Error(
-        `HTTP error! status: ${response.status}`
-      ) as ApiError;
-      error.status = response.status;
-      throw error;
+      throw new ApiClientError(
+        `HTTP error! status: ${response.status}`,
+        response.status
+      );
     }
 
     return response.json();
@@ -107,30 +125,39 @@ export class ApiClient {
     }
   }
 
-  async getConversations(limit: number = 100): Promise<unknown[]> {
+  async getConversations(
+    limit: number = 100
+  ): Promise<{ name: string; modified: number; messages: number }[]> {
     if (!this._isConnected) {
-      console.warn("ApiClient: Not connected, cannot fetch conversations");
-      return [];
-    }
-    return this.fetchJson<unknown[]>(
-      `${this.baseUrl}/api/conversations?limit=${limit}`
-    );
-  }
-
-  async getConversation(logfile: string): Promise<unknown> {
-    if (!this._isConnected) {
-      return [];
+      throw new ApiClientError("Not connected to API");
     }
     try {
-      return await this.fetchJson<unknown>(
+      return await this.fetchJson<{ name: string; modified: number; messages: number }[]>(
+        `${this.baseUrl}/api/conversations?limit=${limit}`
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ApiClientError("Request aborted", 499);
+      }
+      throw error;
+    }
+  }
+
+  async getConversation(logfile: string): Promise<ConversationResponse> {
+    if (!this._isConnected) {
+      throw new ApiClientError("Not connected to API");
+    }
+    try {
+      const response = await this.fetchJson<ConversationResponse>(
         `${this.baseUrl}/api/conversations/${logfile}`,
         {
           signal: this.controller?.signal,
         }
       );
+      return response;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        return [];
+        throw new ApiClientError("Request aborted", 499);
       }
       throw error;
     }
@@ -138,22 +165,23 @@ export class ApiClient {
 
   async createConversation(
     logfile: string,
-    messages: ApiMessage[]
-  ): Promise<unknown> {
+    messages: ConversationMessage[]
+  ): Promise<{ status: string }> {
     if (!this._isConnected) {
-      throw new Error("Not connected to API");
+      throw new ApiClientError("Not connected to API");
     }
     try {
-      return await this.fetchJson<unknown>(
+      const request: CreateConversationRequest = { messages };
+      return await this.fetchJson<{ status: string }>(
         `${this.baseUrl}/api/conversations/${logfile}`,
         {
           method: "PUT",
-          body: JSON.stringify({ messages }),
+          body: JSON.stringify(request),
         }
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        return null;
+        throw new ApiClientError("Request aborted", 499);
       }
       throw error;
     }
@@ -161,27 +189,25 @@ export class ApiClient {
 
   async sendMessage(
     logfile: string,
-    message: ApiMessage,
+    message: ConversationMessage,
     branch: string = "main"
-  ): Promise<unknown> {
+  ): Promise<void> {
     if (!this._isConnected) {
-      throw new Error("Not connected to API");
+      throw new ApiClientError("Not connected to API");
     }
     try {
-      return await this.fetchJson<unknown>(
+      const request: SendMessageRequest = { ...message, branch };
+      await this.fetchJson<{ status: string }>(
         `${this.baseUrl}/api/conversations/${logfile}`,
         {
           method: "POST",
-          body: JSON.stringify({
-            ...message,
-            branch,
-          }),
+          body: JSON.stringify(request),
           signal: this.controller?.signal,
         }
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        return null;
+        throw new ApiClientError("Request aborted", 499);
       }
       throw error;
     }
@@ -191,8 +217,8 @@ export class ApiClient {
     logfile: string,
     callbacks: {
       onToken?: (token: string) => void;
-      onComplete?: (message: ApiMessage) => void;
-      onToolOutput?: (message: ApiMessage) => void;
+      onComplete?: (message: ConversationMessage) => void;
+      onToolOutput?: (message: ConversationMessage) => void;
       onError?: (error: string) => void;
     },
     model?: string,
@@ -214,7 +240,7 @@ export class ApiClient {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Connection": "keep-alive",
+            Connection: "keep-alive",
           },
           body: JSON.stringify({ model, branch, stream: true }),
           signal: this.controller?.signal,
@@ -235,13 +261,17 @@ export class ApiClient {
             await response.body.cancel();
           }
         } catch (e) {
-          console.error('Error during cleanup:', e);
+          console.error("Error during cleanup:", e);
         }
       };
 
-      this.controller?.signal.addEventListener('abort', async () => {
-        await cleanup?.();
-      }, { once: true });
+      this.controller?.signal.addEventListener(
+        "abort",
+        async () => {
+          await cleanup?.();
+        },
+        { once: true }
+      );
 
       while (true) {
         const { value, done } = await reader.read();
@@ -252,10 +282,9 @@ export class ApiClient {
           if (!line.trim() || !line.startsWith("data: ")) continue;
 
           try {
-            const data = JSON.parse(line.slice(6));
-            console.log("Parsed data:", data);
+            const data = JSON.parse(line.slice(6)) as GenerateResponse;
 
-            if (data.error) {
+            if (isApiErrorResponse(data)) {
               console.error("Error from SSE:", data.error);
               callbacks.onError?.(data.error);
               return;
@@ -264,7 +293,7 @@ export class ApiClient {
             if (data.stored === false) {
               callbacks.onToken?.(data.content);
             } else {
-              const message: ApiMessage = {
+              const message: ConversationMessage = {
                 role: data.role,
                 content: data.content,
                 timestamp: new Date().toISOString(),
@@ -283,7 +312,7 @@ export class ApiClient {
       }
     } catch (error) {
       if (this.controller?.signal.aborted) {
-        console.log('Request/stream aborted');
+        console.log("Request/stream aborted");
         return;
       }
       throw error;

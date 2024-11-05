@@ -1,17 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useApi } from "@/contexts/ApiContext";
-import type { Message } from "@/types/message";
 import { useToast } from "@/components/ui/use-toast";
-import type { Conversation } from "@/types/conversation";
+import type { ConversationResponse } from "@/types/api";
+import type { ConversationMessage } from "@/types/conversation";
+import type { ConversationItem } from "@/components/ConversationList";
 import { demoConversations } from "@/democonversations";
 import type { DemoConversation } from "@/democonversations";
-
-interface ConversationResponse {
-  log: Message[];
-  logfile: string;
-  branches?: Record<string, Message[]>;
-}
 
 interface UseConversationResult {
   conversationData: ConversationResponse | undefined;
@@ -25,7 +20,7 @@ function getDemo(name: string): DemoConversation | undefined {
 }
 
 export function useConversation(
-  conversation: Conversation
+  conversation: ConversationItem
 ): UseConversationResult {
   const api = useApi();
   const queryClient = useQueryClient();
@@ -64,23 +59,12 @@ export function useConversation(
           throw new Error("Query was cancelled");
         }
 
-        // Transform the response to match ConversationResponse type
-        if (Array.isArray(response)) {
-          return {
-            log: response,
-            logfile: conversation.name,
-            branches: {},
-          } as ConversationResponse;
-        }
-
         // If response is already in correct format, use it directly
-        const typedResponse = response as ConversationResponse;
-
-        if (!typedResponse?.log || !typedResponse?.logfile) {
+        if (!response?.log || !response?.branches) {
           throw new Error("Invalid conversation data received");
         }
 
-        return typedResponse;
+        return response;
       } catch (error) {
         throw new Error(
           `Failed to fetch conversation: ${(error as Error).message}`
@@ -99,23 +83,18 @@ export function useConversation(
 
   const { mutateAsync: sendMessage, isPending: isSending } = useMutation({
     mutationFn: async (message: string) => {
-      // console.log('Starting mutation for message:', message);
-
       // Create user message
-      const userMessage = {
-        role: "user" as const,
+      const userMessage: ConversationMessage = {
+        role: "user",
         content: message,
         timestamp: new Date().toISOString(),
-        id: `user-${Date.now()}`,
       };
 
       // Send the user message first
       await api.sendMessage(conversation.name, userMessage);
 
-      return {
-        userMessage,
-        assistantMessageId: `assistant-${Date.now()}`,
-      };
+      // Return void to match the expected type
+      return;
     },
     onMutate: async (message: string) => {
       // Cancel any outgoing refetches
@@ -125,27 +104,24 @@ export function useConversation(
       const previousData =
         queryClient.getQueryData<ConversationResponse>(queryKey);
 
+      const timestamp = new Date().toISOString();
+      
       // Create both messages
-      const userMessage = {
-        role: "user" as const,
+      const userMessage: ConversationMessage = {
+        role: "user",
         content: message,
-        timestamp: new Date().toISOString(),
-        id: `user-${Date.now()}`,
+        timestamp,
       };
 
-      const assistantMessage = {
-        role: "assistant" as const,
+      const assistantMessage: ConversationMessage = {
+        role: "assistant",
         content: "",
-        timestamp: new Date().toISOString(),
-        id: `assistant-${Date.now()}`,
+        timestamp,
       };
-
-      // console.log('Adding messages:', { userMessage, assistantMessage });
 
       // Optimistically update to the new value
       queryClient.setQueryData<ConversationResponse>(queryKey, (old) => ({
-        ...(old || { branches: {} }),
-        logfile: conversation.name,
+        ...(old || { logfile: conversation.name, branches: {} }),
         log: [...(old?.log || []), userMessage, assistantMessage],
       }));
 
@@ -156,7 +132,7 @@ export function useConversation(
         assistantMessage,
       };
     },
-    onSuccess: async (_, variables, context) => {
+    onSuccess: async (_, _variables, context) => {
       if (!context) return;
 
       let currentContent = "";
@@ -164,71 +140,64 @@ export function useConversation(
       try {
         // Generate response with streaming
         await api.generateResponse(conversation.name, {
-          onToken: (token: string) => {
-            // console.log('Received token:', token);
+          onToken(token: string) {
             currentContent += token;
-
-          // Update the assistant message content
-          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-            if (!old) return null;
-
-            return {
-              ...old,
-              log: old.log.map((msg) =>
-                msg.id === context.assistantMessage.id
-                  ? { ...msg, content: currentContent }
-                  : msg
-              ),
-            };
-          });
-        },
-        onComplete: (message) => {
-          if (message.role !== "system") {
             queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-              if (!old) return null;
+              if (!old) return undefined;
               return {
                 ...old,
                 log: old.log.map((msg) =>
-                  msg.id === context.assistantMessage.id
-                    ? { ...message, id: context.assistantMessage.id }
+                  msg === context.assistantMessage
+                    ? { ...msg, content: currentContent }
                     : msg
                 ),
               };
             });
-          }
-        },
-        onToolOutput: (message) => {
-          const toolMessageId = `tool-${Date.now()}`;
-          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-            if (!old) return null;
-            return {
-              ...old,
-              log: [...old.log, { ...message, id: toolMessageId }],
-            };
-          });
-        },
-        onError: (error) => {
-          // Don't show error toast if it was intentionally interrupted
-          if (error !== "AbortError") {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: error,
+          },
+          onComplete(message) {
+            if (message.role !== "system") {
+              queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+                if (!old) return undefined;
+                return {
+                  ...old,
+                  log: old.log.map((msg) =>
+                    msg === context.assistantMessage
+                      ? { ...message }
+                      : msg
+                  ),
+                };
+              });
+            }
+          },
+          onToolOutput(message) {
+            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+              if (!old) return undefined;
+              return {
+                ...old,
+                log: [...old.log, message],
+              };
             });
+          },
+          onError(error) {
+            if (error !== "AbortError") {
+              toast({
+                variant: "destructive",
+                title: "Error",
+                description: error,
+              });
+            }
           }
-        },
-      });
+        });
       } catch (error) {
         // Handle interruption
         if (error instanceof DOMException && error.name === "AbortError") {
-          // Intentional interruption, don't show error
           console.log("Generation interrupted by user");
         } else {
           throw error;  // Re-throw other errors to be handled by onError
         }
       }
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       // Roll back to previous state on error
       if (context?.previousData) {
         queryClient.setQueryData(queryKey, context.previousData);

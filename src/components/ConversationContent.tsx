@@ -1,4 +1,3 @@
-import type { Message } from "@/types/message";
 import type { FC } from "react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
@@ -7,12 +6,12 @@ import { useConversation } from "@/hooks/useConversation";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Loader2 } from "lucide-react";
-import type { Conversation } from "@/types/conversation";
+import type { ConversationItem } from "./ConversationList";
 import { useApi } from "@/contexts/ApiContext";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
-  conversation: Conversation;
+  conversation: ConversationItem;
 }
 
 export const ConversationContent: FC<Props> = ({ conversation }) => {
@@ -27,16 +26,17 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
     setShowInitialSystem(false);
   }, [conversation.name]);
 
-  // Memoize message processing to prevent unnecessary recalculations
-  // Log when conversation data changes
-  useEffect(() => {
-    // console.log('ConversationContent: conversationData changed:', conversationData);
-  }, [conversationData]);
-
   const { currentMessages, firstNonSystemIndex, hasSystemMessages } =
     useMemo(() => {
-      // console.log('ConversationContent: Processing messages, conversationData:', conversationData);
-      const messages: Message[] = conversationData?.log || [];
+      if (!conversationData?.log) {
+        return {
+          currentMessages: [],
+          firstNonSystemIndex: 0,
+          hasSystemMessages: false,
+        };
+      }
+
+      const messages = conversationData.log;
       // console.log('ConversationContent: Messages:', messages);
 
       const firstNonSystem = messages.findIndex((msg) => msg.role !== "system");
@@ -116,7 +116,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
 
           return (
             <ChatMessage
-              key={`${index}-${msg.id}-${msg.content.length}`}
+              key={`${index}-${msg.timestamp}-${msg.content.length}`}
               message={msg}
               isInitialSystem={isInitialSystem}
             />
@@ -126,7 +126,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
       <ChatInput
         onSend={sendMessage}
         onInterrupt={async () => {
-          console.log('Interrupting from ConversationContent...');
+          console.log("Interrupting from ConversationContent...");
           await api.cancelPendingRequests();
           // Invalidate the query to ensure UI updates
           queryClient.invalidateQueries({

@@ -4,10 +4,10 @@ import { markedHighlight } from "marked-highlight";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import hljs from "highlight.js";
-import type { Message } from "@/types/message";
+import type { ConversationMessage } from "@/types/conversation";
 
 interface Props {
-  message: Message;
+  message: ConversationMessage;
   isInitialSystem?: boolean;
 }
 
@@ -46,7 +46,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
         // Transform thinking tags before markdown parsing
         const processedContent = content.replace(
           /<thinking>([\s\S]*?)<\/thinking>/g,
-          (_, thinkingContent) =>
+          (_match: string, thinkingContent: string) =>
             `<details><summary>Thinking</summary>\n\n${thinkingContent}\n\n</details>`
         );
 
@@ -88,7 +88,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
     return () => {
       isMounted = false;
     };
-  }, [content, message.id]);
+  }, [content]);
 
   // All messages (including system) are displayed in the same style
   return (

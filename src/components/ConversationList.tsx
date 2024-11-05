@@ -1,5 +1,4 @@
 import { Clock, MessageSquare, Lock } from "lucide-react";
-import type { Conversation } from "@/types/conversation";
 import {
   Tooltip,
   TooltipContent,
@@ -9,14 +8,27 @@ import { getRelativeTimeString } from "@/utils/time";
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/contexts/ApiContext";
 import { demoConversations } from "@/democonversations";
+import type { ConversationResponse } from "@/types/api";
+import type { MessageRole } from "@/types/conversation";
+
+import type { FC } from "react";
+
+type MessageBreakdown = Partial<Record<MessageRole, number>>;
+
+// UI-specific type for rendering conversations
+export interface ConversationItem {
+  name: string;
+  lastUpdated: Date;  // Converted from modified timestamp
+  messageCount: number;  // From messages count
+  readonly?: boolean;
+  // Matches Conversation from API but with converted date
+}
 
 interface Props {
-  conversations: Conversation[];
+  conversations: ConversationItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }
-
-import type { FC } from "react";
 
 export const ConversationList: FC<Props> = ({
   conversations,
@@ -35,40 +47,45 @@ export const ConversationList: FC<Props> = ({
     return match ? match[1] : name;
   }
 
-  const ConversationItem: FC<{ conv: Conversation }> = ({ conv }) => {
+  const ConversationItem: FC<{ conv: ConversationItem }> = ({ conv }) => {
     // For demo conversations, get messages from demoConversations
     const demoConv = demoConversations.find((dc) => dc.name === conv.name);
 
     // For API conversations, fetch messages
-    const { data: messages } = useQuery({
+    const { data: messages } = useQuery<ConversationResponse>({
       queryKey: ["conversation", conv.name],
       queryFn: () => api.getConversation(conv.name),
       enabled: api.isConnected && !demoConv,
     });
 
-    const getMessageBreakdown = () => {
+    const getMessageBreakdown = (): MessageBreakdown => {
       if (demoConv) {
-        return demoConv.messages.reduce((acc, msg) => {
+        return demoConv.messages.reduce((acc: MessageBreakdown, msg) => {
           acc[msg.role] = (acc[msg.role] || 0) + 1;
           return acc;
-        }, {} as Record<string, number>);
+        }, {});
       }
 
-      if (!messages) return {};
+      if (!messages?.log) return {};
 
-      console.log(messages);
-      // Handle server response format
-      const messageArray = messages?.log || [];
-      return messageArray.reduce((acc, msg) => {
-        // Ensure we're accessing the role property correctly
-        const role = msg?.role || "unknown";
-        acc[role] = (acc[role] || 0) + 1;
+      return messages.log.reduce((acc: MessageBreakdown, msg) => {
+        acc[msg.role] = (acc[msg.role] || 0) + 1;
         return acc;
-      }, {} as Record<string, number>);
+      }, {});
     };
 
-    const formatBreakdown = (breakdown: Record<string, number>) => {
+    const formatBreakdown = (breakdown: MessageBreakdown) => {
+      const order: MessageRole[] = ["user", "assistant", "system", "tool"];
       return Object.entries(breakdown)
+        .sort(([a], [b]) => {
+          const aIndex = order.indexOf(a as MessageRole);
+          const bIndex = order.indexOf(b as MessageRole);
+          // Put known roles first in specified order, unknown roles after
+          if (aIndex === -1 && bIndex === -1) return 0;
+          if (aIndex === -1) return 1;
+          if (bIndex === -1) return -1;
+          return aIndex - bIndex;
+        })
         .map(([role, count]) => `${role}: ${count}`)
         .join("\n");
     };
@@ -98,13 +115,7 @@ export const ConversationList: FC<Props> = ({
                 {conv.messageCount}
               </span>
             </TooltipTrigger>
-            <TooltipContent
-              onPointerEnterCapture={() => {
-                console.log("Tooltip shown for:", conv.name);
-                console.log("Has messages:", !!messages);
-                console.log("Messages data:", messages);
-              }}
-            >
+            <TooltipContent>
               <div className="whitespace-pre">
                 {demoConv || messages?.log
                   ? formatBreakdown(getMessageBreakdown())
