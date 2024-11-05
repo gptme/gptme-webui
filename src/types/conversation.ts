@@ -5,6 +5,7 @@ export interface ConversationMessage {
   content: string;
   timestamp?: string;
   files?: string[];
+  id?: string;  // Add back message ID
 }
 
 export interface ConversationSummary {

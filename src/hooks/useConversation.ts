@@ -111,12 +111,14 @@ export function useConversation(
         role: "user",
         content: message,
         timestamp,
+        id: `user-${Date.now()}`,
       };
 
       const assistantMessage: ConversationMessage = {
         role: "assistant",
         content: "",
         timestamp,
+        id: `assistant-${Date.now()}`,
       };
 
       // Optimistically update to the new value
@@ -147,7 +149,7 @@ export function useConversation(
               return {
                 ...old,
                 log: old.log.map((msg) =>
-                  msg === context.assistantMessage
+                  msg.id === context.assistantMessage.id
                     ? { ...msg, content: currentContent }
                     : msg
                 ),
@@ -161,8 +163,8 @@ export function useConversation(
                 return {
                   ...old,
                   log: old.log.map((msg) =>
-                    msg === context.assistantMessage
-                      ? { ...message }
+                    msg.id === context.assistantMessage.id
+                      ? { ...message, id: context.assistantMessage.id }
                       : msg
                   ),
                 };
