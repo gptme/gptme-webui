@@ -7,7 +7,7 @@ import { useConversation } from "@/hooks/useConversation";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Loader2 } from "lucide-react";
-import { Conversation } from "@/types/conversation";
+import type { Conversation } from "@/types/conversation";
 
 interface Props {
   conversation: Conversation;
@@ -26,21 +26,22 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   // Memoize message processing to prevent unnecessary recalculations
   // Log when conversation data changes
   useEffect(() => {
-    console.log('ConversationContent: conversationData changed:', conversationData);
+    // console.log('ConversationContent: conversationData changed:', conversationData);
   }, [conversationData]);
 
   const { currentMessages, firstNonSystemIndex, hasSystemMessages } =
     useMemo(() => {
-      console.log('ConversationContent: Processing messages, conversationData:', conversationData);
+      // console.log('ConversationContent: Processing messages, conversationData:', conversationData);
       const messages: Message[] = conversationData?.log || [];
-      console.log('ConversationContent: Messages:', messages);
-      
+      // console.log('ConversationContent: Messages:', messages);
+
       const firstNonSystem = messages.findIndex((msg) => msg.role !== "system");
       const hasSystemMessages = messages.some((msg) => msg.role === "system");
 
       return {
         currentMessages: messages,
-        firstNonSystemIndex: firstNonSystem === -1 ? messages.length : firstNonSystem,
+        firstNonSystemIndex:
+          firstNonSystem === -1 ? messages.length : firstNonSystem,
         hasSystemMessages,
       };
     }, [conversationData]);
@@ -48,20 +49,27 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   // Create a ref for the scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Memoize the messages content string
+  const messagesContent = useMemo(
+    () => currentMessages.map((msg) => msg.content).join(""),
+    [currentMessages]
+  );
+
   // Single effect to handle all scrolling
   useEffect(() => {
     const scrollToBottom = () => {
       if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        scrollContainerRef.current.scrollTop =
+          scrollContainerRef.current.scrollHeight;
       }
     };
-    
+
     // Use requestAnimationFrame for smooth scrolling
     requestAnimationFrame(scrollToBottom);
   }, [
     currentMessages.length, // Scroll on new messages
-    currentMessages.map(msg => msg.content).join(''), // Scroll on content changes (streaming)
-    conversation.name // Scroll when conversation changes
+    messagesContent, // Scroll on content changes (streaming)
+    conversation.name, // Scroll when conversation changes
   ]);
 
   return (
@@ -96,7 +104,8 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
       <div className="flex-1 overflow-y-auto relative" ref={scrollContainerRef}>
         {currentMessages.map((msg, index) => {
           // Hide all system messages before the first non-system message by default
-          const isInitialSystem = msg.role === "system" && index < firstNonSystemIndex;
+          const isInitialSystem =
+            msg.role === "system" && index < firstNonSystemIndex;
           if (isInitialSystem && !showInitialSystem) {
             return null;
           }

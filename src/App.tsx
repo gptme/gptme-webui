@@ -33,20 +33,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Add debug logging
-if (process.env.NODE_ENV === 'development') {
-  queryClient.setDefaultOptions({
-    queries: {
-      onSuccess: (data) => {
-        console.log('Query success:', data);
-      },
-      onError: (error) => {
-        console.error('Query error:', error);
-      },
-    },
-  });
-}
-
 const AppContent: FC = () => {
   const { toast } = useToast();
   const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
@@ -55,7 +41,7 @@ const AppContent: FC = () => {
     const attemptInitialConnection = async () => {
       const api = createApiClient(apiUrl);
       const connected = await api.checkConnection();
-      
+
       if (connected) {
         toast({
           title: "Connected",

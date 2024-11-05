@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useApi } from "@/contexts/ApiContext";
 import type { Message } from "@/types/message";
 import { useToast } from "@/components/ui/use-toast";
-import { Conversation } from "@/types/conversation";
+import type { Conversation } from "@/types/conversation";
 import { demoConversations } from "@/democonversations";
 import type { DemoConversation } from "@/democonversations";
 
@@ -40,7 +40,7 @@ export function useConversation(
   }, [conversation.name, queryClient]);
 
   const queryKey = ["conversation", conversation.name, conversation.readonly];
-  
+
   const {
     data: conversationData,
     isLoading,
@@ -53,13 +53,13 @@ export function useConversation(
         return {
           log: demo?.messages || [],
           logfile: conversation.name,
-          branches: {}
+          branches: {},
         } as ConversationResponse;
       }
 
       try {
         const response = await api.getConversation(conversation.name);
-        
+
         if (signal.aborted) {
           throw new Error("Query was cancelled");
         }
@@ -69,13 +69,13 @@ export function useConversation(
           return {
             log: response,
             logfile: conversation.name,
-            branches: {}
+            branches: {},
           } as ConversationResponse;
         }
 
         // If response is already in correct format, use it directly
         const typedResponse = response as ConversationResponse;
-        
+
         if (!typedResponse?.log || !typedResponse?.logfile) {
           throw new Error("Invalid conversation data received");
         }
@@ -90,28 +90,28 @@ export function useConversation(
     enabled: Boolean(
       conversation.name && (conversation.readonly || api.isConnected)
     ),
-    staleTime: 0,  // Always treat data as stale
+    staleTime: 0, // Always treat data as stale
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
-    refetchInterval: 0,  // Disable automatic refetching
+    refetchInterval: 0, // Disable automatic refetching
   });
 
   const { mutateAsync: sendMessage, isPending: isSending } = useMutation({
     mutationFn: async (message: string) => {
-      console.log('Starting mutation for message:', message);
-      
+      // console.log('Starting mutation for message:', message);
+
       // Create user message
       const userMessage = {
         role: "user" as const,
         content: message,
         timestamp: new Date().toISOString(),
-        id: `user-${Date.now()}`
+        id: `user-${Date.now()}`,
       };
 
       // Send the user message first
       await api.sendMessage(conversation.name, userMessage);
-      
+
       return {
         userMessage,
         assistantMessageId: `assistant-${Date.now()}`,
@@ -120,108 +120,100 @@ export function useConversation(
     onMutate: async (message: string) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey });
-      
+
       // Snapshot the previous value
-      const previousData = queryClient.getQueryData<ConversationResponse>(queryKey);
-      
+      const previousData =
+        queryClient.getQueryData<ConversationResponse>(queryKey);
+
       // Create both messages
       const userMessage = {
         role: "user" as const,
         content: message,
         timestamp: new Date().toISOString(),
-        id: `user-${Date.now()}`
+        id: `user-${Date.now()}`,
       };
-      
+
       const assistantMessage = {
         role: "assistant" as const,
         content: "",
         timestamp: new Date().toISOString(),
-        id: `assistant-${Date.now()}`
+        id: `assistant-${Date.now()}`,
       };
-      
-      console.log('Adding messages:', { userMessage, assistantMessage });
-      
+
+      // console.log('Adding messages:', { userMessage, assistantMessage });
+
       // Optimistically update to the new value
-      queryClient.setQueryData<ConversationResponse>(queryKey, old => ({
+      queryClient.setQueryData<ConversationResponse>(queryKey, (old) => ({
         ...(old || { branches: {} }),
         logfile: conversation.name,
         log: [...(old?.log || []), userMessage, assistantMessage],
       }));
-      
+
       // Return context
-      return { 
+      return {
         previousData,
         userMessage,
-        assistantMessage
+        assistantMessage,
       };
     },
-    onError: (err, variables, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKey, context.previousData);
-      }
-    },
-    onSuccess: async ({ userMessage, assistantMessageId }, variables, context) => {
+    onSuccess: async (_, variables, context) => {
       if (!context) return;
-      
+
       let currentContent = "";
-      
+
       // Generate response with streaming
-      await api.generateResponse(
-        conversation.name,
-        {
-          onToken: (token: string) => {
-            console.log('Received token:', token);
-            currentContent += token;
-            
-            // Update the assistant message content
+      await api.generateResponse(conversation.name, {
+        onToken: (token: string) => {
+          // console.log('Received token:', token);
+          currentContent += token;
+
+          // Update the assistant message content
+          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+            if (!old) return null;
+
+            return {
+              ...old,
+              log: old.log.map((msg) =>
+                msg.id === context.assistantMessage.id
+                  ? { ...msg, content: currentContent }
+                  : msg
+              ),
+            };
+          });
+        },
+        onComplete: (message) => {
+          if (message.role !== "system") {
             queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
               if (!old) return null;
-              
               return {
                 ...old,
-                log: old.log.map(msg => 
+                log: old.log.map((msg) =>
                   msg.id === context.assistantMessage.id
-                    ? { ...msg, content: currentContent }
+                    ? { ...message, id: context.assistantMessage.id }
                     : msg
                 ),
               };
             });
-          },
-          onComplete: (message) => {
-            if (message.role !== 'system') {
-              queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-                if (!old) return null;
-                return {
-                  ...old,
-                  log: old.log.map(msg => 
-                    msg.id === context.assistantMessage.id
-                      ? { ...message, id: context.assistantMessage.id }
-                      : msg
-                  ),
-                };
-              });
-            }
-          },
-          onToolOutput: (message) => {
-            const toolMessageId = `tool-${Date.now()}`;
-            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-              if (!old) return null;
-              return {
-                ...old,
-                log: [...old.log, { ...message, id: toolMessageId }],
-              };
-            });
-          },
-          onError: (error) => {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: error,
-            });
-          },
-        }
-      );
+          }
+        },
+        onToolOutput: (message) => {
+          const toolMessageId = `tool-${Date.now()}`;
+          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+            if (!old) return null;
+            return {
+              ...old,
+              log: [...old.log, { ...message, id: toolMessageId }],
+            };
+          });
+        },
+        onError: (error) => {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error,
+          });
+        },
+      });
 
       // No duplicate generateResponse needed - the first one handles everything
     },
@@ -230,7 +222,7 @@ export function useConversation(
       if (context?.previousData) {
         queryClient.setQueryData(queryKey, context.previousData);
       }
-      
+
       // Show error toast
       toast({
         variant: "destructive",

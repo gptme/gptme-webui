@@ -64,7 +64,7 @@ export const ApiProvider: FC<ApiProviderProps> = ({ children, baseUrl }): JSX.El
             timeoutId = window.setTimeout(checkConnection, 60000); // Reduced frequency to 1 minute
           }
         }
-      } catch (error) {
+      } catch {
         if (mounted) {
           timeoutId = window.setTimeout(checkConnection, 60000);
         }

@@ -6,7 +6,6 @@ import { LeftSidebar } from "@/components/LeftSidebar";
 import { RightSidebar } from "@/components/RightSidebar";
 import { ConversationContent } from "@/components/ConversationContent";
 import { useApi } from "@/contexts/ApiContext";
-import type { Message } from "@/types/message";
 import type { Conversation } from "@/types/conversation";
 import { demoConversations, type DemoConversation } from "@/democonversations";
 
