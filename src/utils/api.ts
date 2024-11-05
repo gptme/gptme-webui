@@ -8,7 +8,6 @@ interface ApiMessage {
   role: string;
   content: string;
   timestamp?: string;
-  interrupted?: boolean;  // Optional to maintain compatibility with existing messages
 }
 
 interface ApiError extends Error {
@@ -207,7 +206,7 @@ export class ApiClient {
     // Create new controller for this request
     this.controller = new AbortController();
     let cleanup: (() => void) | undefined;
-    
+
     try {
       const response = await fetch(
         `${this.baseUrl}/api/conversations/${logfile}/generate`,
@@ -269,15 +268,11 @@ export class ApiClient {
                 role: data.role,
                 content: data.content,
                 timestamp: new Date().toISOString(),
-                interrupted: data.interrupted,
               };
 
               if (data.role === "system") {
                 callbacks.onToolOutput?.(message);
               } else {
-                if (message.interrupted) {
-                  message.content = message.content.replace("\n[interrupted]", "");
-                }
                 callbacks.onComplete?.(message);
               }
             }
