@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useApi } from "@/contexts/ApiContext";
 import { useToast } from "@/components/ui/use-toast";
 import type { ConversationResponse } from "@/types/api";
-import type { ConversationMessage } from "@/types/conversation";
+import type { Message } from "@/types/conversation";
 import type { ConversationItem } from "@/components/ConversationList";
 import { demoConversations } from "@/democonversations";
 import type { DemoConversation } from "@/democonversations";
@@ -84,7 +84,7 @@ export function useConversation(
   const { mutateAsync: sendMessage, isPending: isSending } = useMutation({
     mutationFn: async (message: string) => {
       // Create user message
-      const userMessage: ConversationMessage = {
+      const userMessage: Message = {
         role: "user",
         content: message,
         timestamp: new Date().toISOString(),
@@ -105,16 +105,16 @@ export function useConversation(
         queryClient.getQueryData<ConversationResponse>(queryKey);
 
       const timestamp = new Date().toISOString();
-      
+
       // Create both messages
-      const userMessage: ConversationMessage = {
+      const userMessage: Message = {
         role: "user",
         content: message,
         timestamp,
         id: `user-${Date.now()}`,
       };
 
-      const assistantMessage: ConversationMessage = {
+      const assistantMessage: Message = {
         role: "assistant",
         content: "",
         timestamp,
@@ -158,17 +158,20 @@ export function useConversation(
           },
           onComplete(message) {
             if (message.role !== "system") {
-              queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-                if (!old) return undefined;
-                return {
-                  ...old,
-                  log: old.log.map((msg) =>
-                    msg.id === context.assistantMessage.id
-                      ? { ...message, id: context.assistantMessage.id }
-                      : msg
-                  ),
-                };
-              });
+              queryClient.setQueryData<ConversationResponse>(
+                queryKey,
+                (old) => {
+                  if (!old) return undefined;
+                  return {
+                    ...old,
+                    log: old.log.map((msg) =>
+                      msg.id === context.assistantMessage.id
+                        ? { ...message, id: context.assistantMessage.id }
+                        : msg
+                    ),
+                  };
+                }
+              );
             }
           },
           onToolOutput(message) {
@@ -188,14 +191,14 @@ export function useConversation(
                 description: error,
               });
             }
-          }
+          },
         });
       } catch (error) {
         // Handle interruption
         if (error instanceof DOMException && error.name === "AbortError") {
           console.log("Generation interrupted by user");
         } else {
-          throw error;  // Re-throw other errors to be handled by onError
+          throw error; // Re-throw other errors to be handled by onError
         }
       }
     },

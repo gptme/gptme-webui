@@ -4,10 +4,10 @@ import { markedHighlight } from "marked-highlight";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import hljs from "highlight.js";
-import type { ConversationMessage } from "@/types/conversation";
+import type { Message } from "@/types/conversation";
 
 interface Props {
-  message: ConversationMessage;
+  message: Message;
   isInitialSystem?: boolean;
 }
 

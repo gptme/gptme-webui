@@ -1,9 +1,9 @@
-import type { ConversationMessage } from "@/types/conversation";
+import type { Message } from "@/types/conversation";
 
 export interface DemoConversation {
   name: string;
   lastUpdated: Date;
-  messages: ConversationMessage[];
+  messages: Message[];
 }
 
 const now = new Date();

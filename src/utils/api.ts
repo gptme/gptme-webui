@@ -1,11 +1,11 @@
-import type { 
-  ConversationResponse, 
-  GenerateResponse, 
-  ApiError, 
+import type {
+  ConversationResponse,
+  GenerateResponse,
+  ApiError,
   SendMessageRequest,
-  CreateConversationRequest 
+  CreateConversationRequest,
 } from "@/types/api";
-import type { ConversationMessage } from "@/types/conversation";
+import type { Message } from "@/types/conversation";
 
 const DEFAULT_API_URL = "http://127.0.0.1:5000";
 
@@ -16,7 +16,7 @@ type Response = globalThis.Response;
 // Error type for API client
 class ApiClientError extends Error {
   status?: number;
-  
+
   constructor(message: string, status?: number) {
     super(message);
     this.status = status;
@@ -30,7 +30,9 @@ class ApiClientError extends Error {
 
 // Type guard for API error responses
 function isApiErrorResponse(response: unknown): response is ApiError {
-  return typeof response === 'object' && response !== null && 'error' in response;
+  return (
+    typeof response === "object" && response !== null && "error" in response
+  );
 }
 
 export class ApiClient {
@@ -132,9 +134,9 @@ export class ApiClient {
       throw new ApiClientError("Not connected to API");
     }
     try {
-      return await this.fetchJson<{ name: string; modified: number; messages: number }[]>(
-        `${this.baseUrl}/api/conversations?limit=${limit}`
-      );
+      return await this.fetchJson<
+        { name: string; modified: number; messages: number }[]
+      >(`${this.baseUrl}/api/conversations?limit=${limit}`);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new ApiClientError("Request aborted", 499);
@@ -165,7 +167,7 @@ export class ApiClient {
 
   async createConversation(
     logfile: string,
-    messages: ConversationMessage[]
+    messages: Message[]
   ): Promise<{ status: string }> {
     if (!this._isConnected) {
       throw new ApiClientError("Not connected to API");
@@ -189,7 +191,7 @@ export class ApiClient {
 
   async sendMessage(
     logfile: string,
-    message: ConversationMessage,
+    message: Message,
     branch: string = "main"
   ): Promise<void> {
     if (!this._isConnected) {
@@ -217,8 +219,8 @@ export class ApiClient {
     logfile: string,
     callbacks: {
       onToken?: (token: string) => void;
-      onComplete?: (message: ConversationMessage) => void;
-      onToolOutput?: (message: ConversationMessage) => void;
+      onComplete?: (message: Message) => void;
+      onToolOutput?: (message: Message) => void;
       onError?: (error: string) => void;
     },
     model?: string,
@@ -293,7 +295,7 @@ export class ApiClient {
             if (data.stored === false) {
               callbacks.onToken?.(data.content);
             } else {
-              const message: ConversationMessage = {
+              const message: Message = {
                 role: data.role,
                 content: data.content,
                 timestamp: new Date().toISOString(),

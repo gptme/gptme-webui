@@ -1,11 +1,11 @@
 export type MessageRole = "user" | "assistant" | "system" | "tool";
 
-export interface ConversationMessage {
+export interface Message {
   role: MessageRole;
   content: string;
   timestamp?: string;
   files?: string[];
-  id?: string;  // Add back message ID
+  id?: string; // Add back message ID
 }
 
 export interface ConversationSummary {
@@ -18,13 +18,13 @@ export interface ConversationSummary {
 export interface ConversationDetails {
   name: string;
   modified: number;
-  messages: ConversationMessage[];
+  messages: Message[];
   branch?: string;
 }
 
 export interface GenerateCallbacks {
   onToken?: (token: string) => void;
-  onComplete?: (message: ConversationMessage) => void;
-  onToolOutput?: (message: ConversationMessage) => void;
+  onComplete?: (message: Message) => void;
+  onToolOutput?: (message: Message) => void;
   onError?: (error: string) => void;
 }

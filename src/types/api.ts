@@ -1,4 +1,4 @@
-import type { ConversationMessage, MessageRole } from './conversation';
+import type { Message, MessageRole } from "./conversation";
 
 // Response from /api/conversations/<logfile>/generate
 export interface GenerateResponse {
@@ -16,11 +16,11 @@ export interface ApiError {
 
 // Request to create a conversation
 export interface CreateConversationRequest {
-  messages: ConversationMessage[];
+  messages: Message[];
 }
 
 // Request to send a message
-export interface SendMessageRequest extends ConversationMessage {
+export interface SendMessageRequest extends Message {
   branch?: string;
 }
 
@@ -33,7 +33,7 @@ export interface GenerateRequest {
 
 // Response from /api/conversations/<logfile>
 export interface ConversationResponse {
-  log: ConversationMessage[];
+  log: Message[];
   logfile: string;
-  branches: Record<string, ConversationMessage[]>;
+  branches: Record<string, Message[]>;
 }

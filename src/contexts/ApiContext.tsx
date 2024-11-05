@@ -9,10 +9,10 @@ import {
 } from "react";
 import { createApiClient } from "../utils/api";
 import type { ApiClient } from "../utils/api";
-import type { 
-  ConversationSummary, 
-  ConversationMessage, 
-  GenerateCallbacks 
+import type {
+  ConversationSummary,
+  Message,
+  GenerateCallbacks,
 } from "../types/conversation";
 import type { ConversationResponse } from "../types/api";
 
@@ -25,9 +25,9 @@ interface ApiContextType {
   getConversation: (logname: string) => Promise<ConversationResponse>;
   createConversation: (
     logname: string,
-    messages: ConversationMessage[]
+    messages: Message[]
   ) => Promise<{ status: string }>;
-  sendMessage: (logname: string, message: ConversationMessage) => Promise<void>;
+  sendMessage: (logname: string, message: Message) => Promise<void>;
   generateResponse: (
     logname: string,
     callbacks: GenerateCallbacks,
