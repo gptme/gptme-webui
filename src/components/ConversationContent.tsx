@@ -78,34 +78,34 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden">
-      {hasSystemMessages && (
-        <div className="flex items-center gap-2 p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center gap-2 flex-1">
-            <Checkbox
-              id="showInitialSystem"
-              checked={showInitialSystem}
-              onCheckedChange={(checked) => {
-                if (!isLoading) {
-                  setShowInitialSystem(checked as boolean);
-                }
-              }}
-              disabled={isLoading}
-            />
-            <Label
-              htmlFor="showInitialSystem"
-              className={`text-sm text-muted-foreground hover:text-foreground ${
-                isLoading ? "opacity-50" : "cursor-pointer"
-              }`}
-            >
-              Show initial system messages
-            </Label>
-          </div>
-          {isLoading && (
-            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-          )}
-        </div>
-      )}
       <div className="flex-1 overflow-y-auto relative" ref={scrollContainerRef}>
+        {hasSystemMessages && (
+          <div className="flex items-center w-full bg-accent/50">
+            <div className="flex items-center gap-2 flex-1 p-4 max-w-3xl mx-auto">
+              <Checkbox
+                id="showInitialSystem"
+                checked={showInitialSystem}
+                onCheckedChange={(checked) => {
+                  if (!isLoading) {
+                    setShowInitialSystem(checked as boolean);
+                  }
+                }}
+                disabled={isLoading}
+              />
+              <Label
+                htmlFor="showInitialSystem"
+                className={`text-sm text-muted-foreground hover:text-foreground ${
+                  isLoading ? "opacity-50" : "cursor-pointer"
+                }`}
+              >
+                Show initial system messages
+              </Label>
+            </div>
+            {isLoading && (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+        )}
         {currentMessages.map((msg, index) => {
           // Hide all system messages before the first non-system message by default
           const isInitialSystem =

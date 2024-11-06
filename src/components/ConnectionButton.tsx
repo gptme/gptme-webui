@@ -17,9 +17,9 @@ import { cn } from "@/lib/utils";
 
 export const ConnectionButton: FC = () => {
   const [open, setOpen] = useState(false);
-  const [url, setUrl] = useState(import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000');
   const { toast } = useToast();
-  const api = useApi();
+  const { baseUrl, setBaseUrl, isConnected } = useApi();
+  const [url, setUrl] = useState(baseUrl);
 
   const features = [
     "Create new conversations",
@@ -39,18 +39,12 @@ export const ConnectionButton: FC = () => {
 
   const handleConnect = async () => {
     try {
-      const result = await api.checkConnection();
-      
-      if (result) {
-        api.setBaseUrl(url);
-        toast({
-          title: "Connected",
-          description: "Successfully connected to gptme instance",
-        });
-        setOpen(false);
-      } else {
-        throw new Error("Connection check failed - server may not be responding correctly");
-      }
+      await setBaseUrl(url);
+      toast({
+        title: "Connected",
+        description: "Successfully connected to gptme instance",
+      });
+      setOpen(false);
     } catch (error) {
       let errorMessage = "Could not connect to gptme instance.";
       if (error instanceof Error) {
@@ -61,6 +55,7 @@ export const ConnectionButton: FC = () => {
         }
       }
       
+      console.error("Connection error:", error);
       toast({
         variant: "destructive",
         title: "Connection failed",
@@ -75,10 +70,10 @@ export const ConnectionButton: FC = () => {
         <Button 
           variant="outline" 
           size="sm"
-          className={api.isConnected ? "text-green-600" : "text-muted-foreground"}
+          className={isConnected ? "text-green-600" : "text-muted-foreground"}
         >
           <Network className="w-4 h-4 mr-2" />
-          {api.isConnected ? "Connected" : "Connect"}
+          {isConnected ? "Connected" : "Connect"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -122,7 +117,7 @@ export const ConnectionButton: FC = () => {
                 <li key={index} className="flex items-center text-sm">
                   <Check className={cn(
                     "w-4 h-4 mr-2",
-                    api.isConnected ? "text-green-500" : "text-gray-300"
+                    isConnected ? "text-green-500" : "text-gray-300"
                   )} />
                   <span className="text-foreground">{feature}</span>
                 </li>
@@ -134,10 +129,10 @@ export const ConnectionButton: FC = () => {
             onClick={handleConnect} 
             className={cn(
               "w-full",
-              api.isConnected && "bg-green-600 hover:bg-green-700"
+              isConnected && "bg-green-600 hover:bg-green-700"
             )}
           >
-            {api.isConnected ? "Reconnect" : "Connect"}
+            {isConnected ? "Reconnect" : "Connect"}
           </Button>
         </div>
       </DialogContent>

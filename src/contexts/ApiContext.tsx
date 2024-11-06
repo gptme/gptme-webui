@@ -1,120 +1,107 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  type FC,
-  type ReactNode,
-} from "react";
-import { createApiClient } from "../utils/api";
-import type { ApiClient } from "../utils/api";
-import type {
-  ConversationSummary,
-  Message,
-  GenerateCallbacks,
-} from "../types/conversation";
-import type { ConversationResponse } from "../types/api";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { ApiClient, createApiClient } from "@/utils/api";
+import { QueryClient } from "@tanstack/react-query";
 
 interface ApiContextType {
-  baseUrl: string;
+  api: ApiClient;
   isConnected: boolean;
-  setBaseUrl: (url: string) => Promise<void>;
-  checkConnection: () => Promise<boolean>;
-  getConversations: () => Promise<ConversationSummary[]>;
-  getConversation: (logname: string) => Promise<ConversationResponse>;
-  createConversation: (
-    logname: string,
-    messages: Message[]
-  ) => Promise<{ status: string }>;
-  sendMessage: (logname: string, message: Message) => Promise<void>;
-  generateResponse: (
-    logname: string,
-    callbacks: GenerateCallbacks,
-    model?: string
-  ) => Promise<void>;
-  cancelPendingRequests: () => Promise<void>;
-}
-
-interface ApiProviderProps {
-  children: ReactNode;
-  baseUrl?: string;
+  baseUrl: string;
+  setBaseUrl: (url: string) => void;
+  // Add methods from ApiClient that are used in components
+  getConversation: ApiClient['getConversation'];
+  sendMessage: ApiClient['sendMessage'];
+  generateResponse: ApiClient['generateResponse'];
+  cancelPendingRequests: ApiClient['cancelPendingRequests'];
 }
 
 const ApiContext = createContext<ApiContextType | null>(null);
 
-export const ApiProvider: FC<ApiProviderProps> = ({ children, baseUrl }) => {
-  const [client, setClient] = useState<ApiClient>(() =>
-    createApiClient(baseUrl)
-  );
+export function ApiProvider({
+  children,
+  initialBaseUrl,
+  queryClient,
+}: {
+  children: ReactNode;
+  initialBaseUrl: string;
+  queryClient: QueryClient;
+}) {
+  const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
+  const [api, setApi] = useState(() => createApiClient(initialBaseUrl));
+  const [isConnected, setIsConnected] = useState(false);
 
-  const setBaseUrl = useCallback(async (url: string) => {
-    const newClient = createApiClient(url);
-    try {
-      await newClient.checkConnection();
-      setClient(newClient);
-    } catch (error) {
-      console.error("Failed to connect to new API URL:", error);
-      throw error;
-    }
-  }, []);
-
+  // Attempt initial connection
   useEffect(() => {
-    let mounted = true;
-    let timeoutId: NodeJS.Timeout | undefined;
-
-    const checkConnection = async () => {
+    const attemptInitialConnection = async () => {
       try {
-        if (mounted) {
-          const isConnected = await client.checkConnection();
-          // Only schedule next check if still mounted and not connected
-          if (mounted && !isConnected) {
-            timeoutId = setTimeout(checkConnection, 60000); // Reduced frequency to 1 minute
-          }
+        console.log("Attempting initial connection to:", baseUrl);
+        const connected = await api.checkConnection();
+        console.log("Initial connection result:", connected);
+        if (connected) {
+          setIsConnected(true);
+          console.log("Successfully connected to API");
+        } else {
+          console.log("Failed to connect to API - server may be down");
         }
       } catch (error) {
-        console.error("Connection check failed:", error);
-        if (mounted) {
-          timeoutId = setTimeout(checkConnection, 60000);
-        }
+        console.error("Initial connection attempt failed:", error);
+        setIsConnected(false);
       }
     };
 
-    void checkConnection();
+    void attemptInitialConnection();
+  }, [api, baseUrl]);
 
-    return () => {
-      mounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+  const updateBaseUrl = async (newUrl: string) => {
+    try {
+      setBaseUrl(newUrl);
+      const newApi = createApiClient(newUrl);
+      
+      // Update connection status
+      const connected = await newApi.checkConnection();
+      if (!connected) {
+        throw new Error("Failed to connect to API");
       }
-      void client.cancelPendingRequests?.();
-    };
-  }, [client]);
+      
+      newApi.setConnected(true);  // Explicitly set connection state
+      setApi(newApi);
+      setIsConnected(true);
+      
+      // Invalidate and refetch all queries
+      await queryClient.invalidateQueries();
+      await queryClient.refetchQueries({
+        queryKey: ["conversations"],
+        type: "active",
+      });
+    } catch (error) {
+      console.error("Failed to update API connection:", error);
+      setIsConnected(false);
+      throw error;  // Re-throw to handle in the UI
+    }
+  };
 
   return (
     <ApiContext.Provider
       value={{
-        baseUrl: client.baseUrl,
-        isConnected: client.isConnected,
-        setBaseUrl,
-        checkConnection: client.checkConnection.bind(client),
-        getConversations: client.getConversations.bind(client),
-        getConversation: client.getConversation.bind(client),
-        createConversation: client.createConversation.bind(client),
-        sendMessage: client.sendMessage.bind(client),
-        generateResponse: client.generateResponse.bind(client),
-        cancelPendingRequests: client.cancelPendingRequests.bind(client),
+        api,
+        isConnected,
+        baseUrl,
+        setBaseUrl: updateBaseUrl,
+        // Forward methods from the API client
+        getConversation: api.getConversation.bind(api),
+        sendMessage: api.sendMessage.bind(api),
+        generateResponse: api.generateResponse.bind(api),
+        cancelPendingRequests: api.cancelPendingRequests.bind(api),
       }}
     >
       {children}
     </ApiContext.Provider>
   );
-};
+}
 
-export const useApi = (): ApiContextType => {
+export function useApi() {
   const context = useContext(ApiContext);
   if (!context) {
     throw new Error("useApi must be used within an ApiProvider");
   }
   return context;
-};
+}

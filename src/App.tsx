@@ -6,9 +6,6 @@ import { BrowserRouter } from "react-router-dom";
 import { ApiProvider } from "./contexts/ApiContext";
 import Index from "./pages/Index";
 import type { FC } from "react";
-import { useEffect } from "react";
-import { useToast } from "@/components/ui/use-toast";
-import { createApiClient } from "./utils/api";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,27 +31,10 @@ const queryClient = new QueryClient({
 });
 
 const AppContent: FC = () => {
-  const { toast } = useToast();
   const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
-
-  useEffect(() => {
-    const attemptInitialConnection = async () => {
-      const api = createApiClient(apiUrl);
-      const connected = await api.checkConnection();
-
-      if (connected) {
-        toast({
-          title: "Connected",
-          description: "Successfully connected to gptme instance",
-        });
-      }
-    };
-
-    attemptInitialConnection();
-  }, [toast, apiUrl]);
-
+  
   return (
-    <ApiProvider baseUrl={apiUrl}>
+    <ApiProvider initialBaseUrl={apiUrl} queryClient={queryClient}>
       <BrowserRouter>
         <Index />
         <Toaster />

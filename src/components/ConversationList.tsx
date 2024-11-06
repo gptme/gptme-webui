@@ -1,4 +1,5 @@
-import { Clock, MessageSquare, Lock } from "lucide-react";
+import { Clock, MessageSquare, Lock, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -28,14 +29,22 @@ interface Props {
   conversations: ConversationItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  isLoading?: boolean;
+  isError?: boolean;
+  error?: Error;
+  onRetry?: () => void;
 }
 
 export const ConversationList: FC<Props> = ({
   conversations,
   selectedId,
   onSelect,
+  isLoading = false,
+  isError = false,
+  error,
+  onRetry,
 }) => {
-  const api = useApi();
+  const { api, isConnected } = useApi();
 
   if (!conversations) {
     return null;
@@ -55,7 +64,7 @@ export const ConversationList: FC<Props> = ({
     const { data: messages } = useQuery<ConversationResponse>({
       queryKey: ["conversation", conv.name],
       queryFn: () => api.getConversation(conv.name),
-      enabled: api.isConnected && !demoConv,
+      enabled: isConnected && !demoConv,
     });
 
     const getMessageBreakdown = (): MessageBreakdown => {
@@ -140,7 +149,35 @@ export const ConversationList: FC<Props> = ({
 
   return (
     <div className="space-y-2 p-4 h-full overflow-y-auto">
-      {conversations.map((conv) => (
+      {isLoading && (
+        <div className="flex items-center justify-center text-sm text-muted-foreground p-4">
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Loading conversations...
+        </div>
+      )}
+      {!isLoading && isError && (
+        <div className="text-sm text-destructive p-4 space-y-2">
+          <div className="font-medium">Failed to load conversations</div>
+          <div className="text-muted-foreground">{error?.message}</div>
+          {onRetry && (
+            <Button variant="outline" size="sm" onClick={onRetry} className="w-full">
+              <Loader2 className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          )}
+        </div>
+      )}
+      {!isLoading && !isError && !isConnected && conversations.length === 0 && (
+        <div className="text-sm text-muted-foreground p-2">
+          Not connected to API. Use the connect button to load conversations.
+        </div>
+      )}
+      {!isLoading && !isError && isConnected && conversations.length === 0 && (
+        <div className="text-sm text-muted-foreground p-2">
+          No conversations found. Start a new conversation to get started.
+        </div>
+      )}
+      {!isLoading && !isError && conversations.map((conv) => (
         <ConversationItem key={conv.name} conv={conv} />
       ))}
     </div>

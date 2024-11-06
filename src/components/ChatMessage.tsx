@@ -35,7 +35,8 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   const [parsedContent, setParsedContent] = useState("");
 
   // Ensure content is never undefined
-  const content = message.content || "";
+  const content =
+    message.content || (message.role == "assistant" ? "Thinking..." : "");
 
   useEffect(() => {
     let isMounted = true;
@@ -45,7 +46,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
         // console.log('Raw content:', content);
         // Transform thinking tags before markdown parsing
         const processedContent = content.replace(
-          /<thinking>([\s\S]*?)<\/thinking>/g,
+          /(?:[^`])<thinking>([\s\S]*?)(?:<\/thinking>|$)/g,
           (_match: string, thinkingContent: string) =>
             `<details><summary>Thinking</summary>\n\n${thinkingContent}\n\n</details>`
         );
@@ -97,14 +98,14 @@ export const ChatMessage: FC<Props> = ({ message }) => {
         message.role === "assistant"
           ? "bg-accent/50"
           : message.role === "system"
-          ? "bg-muted/50"
+          ? "bg-slate/100 text-sm"
           : ""
       }`}
     >
       <div className="max-w-3xl mx-auto px-4">
         <div className="flex items-start space-x-4">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            className={`w-6 h-6 rounded-full flex items-center justify-center ${
               message.role === "assistant"
                 ? "bg-gptme-600 text-white"
                 : message.role === "system"
@@ -113,15 +114,15 @@ export const ChatMessage: FC<Props> = ({ message }) => {
             }`}
           >
             {message.role === "assistant" ? (
-              <Bot className="w-5 h-5" />
+              <Bot className="w-4 h-4" />
             ) : message.role === "system" ? (
-              <Terminal className="w-5 h-5" />
+              <Terminal className="w-4 h-4" />
             ) : (
-              <User className="w-5 h-5" />
+              <User className="w-4 h-4" />
             )}
           </div>
           <div
-            className={`flex-1 chat-message prose prose-sm dark:prose-invert ${
+            className={`flex-1 chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)] ${
               message.role === "system" ? "text-muted-foreground" : ""
             }`}
             dangerouslySetInnerHTML={{ __html: parsedContent }}

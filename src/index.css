@@ -25,6 +25,9 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 142.1 76.2% 36.3%;
+    --code-background: 0 0% 0%;
+    --codesnip: 0 0% 0%;
+    --codesnip-background: 0 0% 90%;
     --radius: 0.75rem;
   }
 
@@ -48,6 +51,9 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 142.4 71.8% 29.2%;
+    --code-background: 0 0% 7%;
+    --codesnip: 0 0% 100%;
+    --codesnip-background: 0 0% 15%;
   }
 }
 
@@ -61,8 +67,7 @@
   }
 }
 
-.chat-message > * {
-  @apply my-2;
+.chat-message > p {
 }
 
 .chat-message h1 {
@@ -70,55 +75,71 @@
 }
 
 .chat-message h2 {
-  @apply text-2xl font-bold mt-6;
+  @apply text-2xl font-bold mt-6 pb-1 mb-2 border-b border-border;
 }
 
 .chat-message h3 {
-  @apply text-xl font-bold mt-4;
+  @apply text-xl font-bold mt-4 pb-1 mb-2;
 }
 
 .chat-message h4 {
-  @apply text-lg font-bold mt-4;
+  @apply text-lg font-bold mt-4 pb-2;
 }
 
 .chat-message h5 {
-  @apply text-base font-bold mt-4;
+  @apply text-base font-bold mt-4 pb-2;
 }
 
 .chat-message h6 {
-  @apply text-sm font-bold mt-4;
+  @apply text-sm font-bold mt-4 pb-2;
+}
+
+.chat-message details > pre {
+  @apply rounded-b-lg;
 }
 
 .chat-message pre {
-  @apply text-white bg-black rounded-lg overflow-x-auto;
+  @apply text-white overflow-x-auto;
+  background-color: hsl(var(--code-background));
 }
 
 .chat-message code {
-  @apply text-white bg-black text-sm;
+  @apply text-white text-xs rounded-lg;
+  background-color: hsl(var(--code-background));
 }
 
-.chat-message p > code {
-  @apply rounded-lg border-border text-sm px-2 py-1;
+.chat-message *:not(pre) > code {
+  @apply rounded-md border-border p-1 px-2 text-gray-900;
+  color: hsl(var(--codesnip));
+  background-color: hsl(var(--codesnip-background));
 }
 
 .chat-message details {
-  @apply my-2 rounded-lg overflow-hidden;
+  @apply my-2 rounded-lg overflow-hidden border border-border text-sm;
 }
 
 .chat-message details summary {
-  @apply px-4 py-2 bg-muted cursor-pointer hover:bg-ring transition-colors;
+  @apply px-4 py-2 bg-muted cursor-pointer hover:ring hover:ring-inset hover:ring-ring transition-colors rounded-lg;
 }
 
 .chat-message details[open] {
   @apply border border-border rounded-lg;
 }
 
-.chat-message details[open] > *:not(summary) {
-  @apply p-4;
+.chat-message details[open] > summary {
+  @apply rounded-b-none;
 }
 
-.chat-message > pre {
-  @apply p-4 block;
+details > details {
+  @apply mx-4 my-2;
+}
+
+.chat-message details[open] > *:not(summary):not(pre):not(details) {
+  @apply px-4 py-2;
+}
+
+.chat-message pre {
+  @apply p-3 block;
 }
 
 .chat-message ul {

@@ -13,15 +13,19 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import type { FC } from "react";
+
 interface Props {
   isOpen: boolean;
   onToggle: () => void;
   conversations: ConversationItem[];
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
+  isLoading?: boolean;
+  isError?: boolean;
+  error?: Error;
+  onRetry?: () => void;
 }
-
-import type { FC } from "react";
 
 export const LeftSidebar: FC<Props> = ({
   isOpen,
@@ -29,8 +33,12 @@ export const LeftSidebar: FC<Props> = ({
   conversations,
   selectedConversationId,
   onSelectConversation,
+  isLoading = false,
+  isError = false,
+  error,
+  onRetry,
 }) => {
-  const api = useApi();
+  const { api, isConnected } = useApi();
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -72,14 +80,14 @@ export const LeftSidebar: FC<Props> = ({
                       variant="ghost"
                       size="icon"
                       onClick={handleNewConversation}
-                      disabled={!api.isConnected}
+                      disabled={!isConnected}
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {!api.isConnected
+                  {!isConnected
                     ? "Connect to create new conversations"
                     : "Create new conversation"}
                 </TooltipContent>
@@ -95,6 +103,10 @@ export const LeftSidebar: FC<Props> = ({
             conversations={conversations}
             selectedId={selectedConversationId}
             onSelect={onSelectConversation}
+            isLoading={isLoading}
+            isError={isError}
+            error={error}
+            onRetry={onRetry}
           />
           <div className="border-t p-2 text-xs text-muted-foreground">
             <div className="flex items-center justify-center space-x-4">

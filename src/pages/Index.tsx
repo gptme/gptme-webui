@@ -21,17 +21,42 @@ const Index: FC<Props> = () => {
   const [selectedConversation, setSelectedConversation] = useState<string>(
     demoConversations[0].name
   );
-  const api = useApi();
+  const { api, isConnected, baseUrl } = useApi();
   const queryClient = useQueryClient();
 
   // Fetch conversations from API with proper caching
-  const { data: apiConversations = [] } = useQuery<ConversationSummary[]>({
-    queryKey: ["conversations"],
-    queryFn: () => api.getConversations(),
-    enabled: api.isConnected,
-    staleTime: 30000,
+  const { 
+    data: apiConversations = [], 
+    isError, 
+    error, 
+    isLoading,
+    refetch 
+  } = useQuery<ConversationSummary[]>({
+    queryKey: ["conversations", baseUrl, isConnected],
+    queryFn: async () => {
+      console.log("Fetching conversations, connection state:", isConnected);
+      if (!isConnected) {
+        console.warn("Attempting to fetch conversations while disconnected");
+        return [];
+      }
+      try {
+        const conversations = await api.getConversations();
+        console.log("Fetched conversations:", conversations);
+        return conversations;
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err);
+        throw err;
+      }
+    },
+    enabled: isConnected,
+    staleTime: 0, // Always refetch when query is invalidated
     gcTime: 5 * 60 * 1000,
   });
+
+  // Log any query errors
+  if (isError) {
+    console.error("Conversation query error:", error);
+  }
 
   // Combine demo and API conversations
   const allConversations: ConversationItem[] = [
@@ -74,6 +99,10 @@ const Index: FC<Props> = () => {
           conversations={allConversations}
           selectedConversationId={selectedConversation}
           onSelectConversation={handleSelectConversation}
+          isLoading={isLoading}
+          isError={isError}
+          error={error as Error}
+          onRetry={() => refetch()}
         />
         <ConversationContent conversation={conversation} />
         <RightSidebar

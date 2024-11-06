@@ -11,16 +11,21 @@ interface Props {
   isSending?: boolean;
 }
 
-export const ChatInput: FC<Props> = ({ onSend, onInterrupt, isReadOnly, isSending }) => {
+export const ChatInput: FC<Props> = ({
+  onSend,
+  onInterrupt,
+  isReadOnly,
+  isSending,
+}) => {
   const [message, setMessage] = useState("");
   const api = useApi();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isSending && onInterrupt) {
-      console.log('Interrupting generation...');
+      console.log("Interrupting generation...");
       await onInterrupt();
-      console.log('Generation interrupted');
+      console.log("Generation interrupted");
     } else if (message.trim()) {
       onSend(message);
       setMessage("");
@@ -34,27 +39,26 @@ export const ChatInput: FC<Props> = ({ onSend, onInterrupt, isReadOnly, isSendin
     }
   };
 
-
-  const placeholder = isReadOnly 
-    ? "This is a demo conversation (read-only)" 
-    : api.isConnected 
-      ? "Send a message..." 
-      : "Connect to gptme to send messages";
+  const placeholder = isReadOnly
+    ? "This is a demo conversation (read-only)"
+    : api.isConnected
+    ? "Send a message..."
+    : "Connect to gptme to send messages";
 
   return (
     <form onSubmit={handleSubmit} className="p-4 border-t">
-      <div className="max-w-3xl mx-auto flex space-x-4">
+      <div className="max-w-3xl mx-auto flex">
         <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={isSending ? "Sending message..." : placeholder}
-          className="min-h-[60px]"
+          className="min-h-[60px] rounded-r-none"
           disabled={!api.isConnected || isReadOnly || isSending}
         />
-        <Button 
-          type="submit" 
-          className="bg-gptme-600 hover:bg-gptme-700"
+        <Button
+          type="submit"
+          className="min-h-[60px] min-w-[60px] bg-green-600 hover:bg-green-700 rounded-l-none rounded-r-lg"
           disabled={!api.isConnected || isReadOnly}
         >
           {isSending ? (
@@ -70,4 +74,3 @@ export const ChatInput: FC<Props> = ({ onSend, onInterrupt, isReadOnly, isSendin
     </form>
   );
 };
-

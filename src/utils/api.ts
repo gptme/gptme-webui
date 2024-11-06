@@ -114,17 +114,47 @@ export class ApiClient {
 
   async checkConnection(): Promise<boolean> {
     try {
+      // First try a basic connection check
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/api`,
         {},
         3000
       );
-      this._isConnected = response.ok;
-      return this._isConnected;
-    } catch {
+      
+      if (!response.ok) {
+        console.error("API endpoint returned non-OK status:", response.status);
+        this._isConnected = false;
+        return false;
+      }
+
+      // Try to parse the response to ensure it's valid JSON
+      try {
+        await response.json();
+      } catch (parseError) {
+        console.error("Failed to parse API response:", parseError);
+        this._isConnected = false;
+        return false;
+      }
+
+      this._isConnected = true;
+      return true;
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error("Network error - server may be down or CORS not configured");
+      } else {
+        console.error("Connection check failed:", error);
+      }
       this._isConnected = false;
       return false;
     }
+  }
+
+  // Add method to explicitly set connection state
+  setConnected(connected: boolean) {
+    if (connected && !this._isConnected) {
+      console.warn("Manually setting connected state without verification");
+    }
+    this._isConnected = connected;
   }
 
   async getConversations(
@@ -170,6 +200,7 @@ export class ApiClient {
     messages: Message[]
   ): Promise<{ status: string }> {
     if (!this._isConnected) {
+      console.error("Attempted to create conversation while disconnected");
       throw new ApiClientError("Not connected to API");
     }
     try {
@@ -185,6 +216,7 @@ export class ApiClient {
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new ApiClientError("Request aborted", 499);
       }
+      console.error("Create conversation error:", error);
       throw error;
     }
   }

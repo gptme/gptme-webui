@@ -156,7 +156,7 @@ export function useConversation(
               };
             });
           },
-          onComplete(message) {
+          onComplete(message: Message) {
             if (message.role !== "system") {
               queryClient.setQueryData<ConversationResponse>(
                 queryKey,
@@ -174,7 +174,7 @@ export function useConversation(
               );
             }
           },
-          onToolOutput(message) {
+          onToolOutput(message: Message) {
             queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
               if (!old) return undefined;
               return {
@@ -183,7 +183,7 @@ export function useConversation(
               };
             });
           },
-          onError(error) {
+          onError(error: string) {
             if (error !== "AbortError") {
               toast({
                 variant: "destructive",
