@@ -8,21 +8,21 @@ interface Props {
   onSend: (message: string) => void;
   onInterrupt?: () => void;
   isReadOnly?: boolean;
-  isSending?: boolean;
+  isGenerating?: boolean;
 }
 
 export const ChatInput: FC<Props> = ({
   onSend,
   onInterrupt,
   isReadOnly,
-  isSending,
+  isGenerating,
 }) => {
   const [message, setMessage] = useState("");
   const api = useApi();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (isSending && onInterrupt) {
+    if (isGenerating && onInterrupt) {
       console.log("Interrupting generation...");
       await onInterrupt();
       console.log("Generation interrupted");
@@ -52,16 +52,16 @@ export const ChatInput: FC<Props> = ({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isSending ? "Sending message..." : placeholder}
+          placeholder={isGenerating ? "Generating response..." : placeholder}
           className="min-h-[60px] rounded-r-none"
-          disabled={!api.isConnected || isReadOnly || isSending}
+          disabled={!api.isConnected || isReadOnly || isGenerating}
         />
         <Button
           type="submit"
           className="min-h-[60px] min-w-[60px] bg-green-600 hover:bg-green-700 rounded-l-none rounded-r-lg"
           disabled={!api.isConnected || isReadOnly}
         >
-          {isSending ? (
+          {isGenerating ? (
             <div className="flex items-center gap-2">
               <span>Stop</span>
               <Loader2 className="w-4 h-4 animate-spin" />

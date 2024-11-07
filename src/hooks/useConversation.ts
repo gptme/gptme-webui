@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "@/contexts/ApiContext";
 import { useToast } from "@/components/ui/use-toast";
 import type { ConversationResponse } from "@/types/api";
@@ -12,7 +12,7 @@ interface UseConversationResult {
   conversationData: ConversationResponse | undefined;
   sendMessage: (message: string) => Promise<void>;
   isLoading: boolean;
-  isSending: boolean;
+  isGenerating: boolean;
 }
 
 function getDemo(name: string): DemoConversation | undefined {
@@ -81,20 +81,31 @@ export function useConversation(
     refetchInterval: 0, // Disable automatic refetching
   });
 
-  const { mutateAsync: sendMessage, isPending: isSending } = useMutation({
+  interface MutationContext {
+    previousData: ConversationResponse | undefined;
+    userMessage: Message;
+    assistantMessage: Message;
+  }
+
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const { mutateAsync: sendMessage } = useMutation<void, Error, string, MutationContext>({
     mutationFn: async (message: string) => {
-      // Create user message
-      const userMessage: Message = {
-        role: "user",
-        content: message,
-        timestamp: new Date().toISOString(),
-      };
+      setIsGenerating(true);
+      try {
+        // Create user message
+        const userMessage: Message = {
+          role: "user",
+          content: message,
+          timestamp: new Date().toISOString(),
+        };
 
-      // Send the user message first
-      await api.sendMessage(conversation.name, userMessage);
-
-      // Return void to match the expected type
-      return;
+        // Send the user message first
+        await api.sendMessage(conversation.name, userMessage);
+      } catch (error) {
+        setIsGenerating(false);
+        throw error;
+      }
     },
     onMutate: async (message: string) => {
       // Cancel any outgoing refetches
@@ -138,67 +149,156 @@ export function useConversation(
       if (!context) return;
 
       let currentContent = "";
+      let currentMessageId = context.assistantMessage.id;
+      setIsGenerating(true);
 
-      try {
-        // Generate response with streaming
-        await api.generateResponse(conversation.name, {
-          onToken(token: string) {
-            currentContent += token;
-            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+      const handleToken = (token: string) => {
+        currentContent += token;
+        queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+          if (!old) return undefined;
+          return {
+            ...old,
+            log: old.log.map((msg) =>
+              msg.id === currentMessageId
+                ? { ...msg, content: currentContent }
+                : msg
+            ),
+          };
+        });
+      };
+
+      const handleComplete = (message: Message) => {
+        if (message.role !== "system") {
+          queryClient.setQueryData<ConversationResponse>(
+            queryKey,
+            (old) => {
               if (!old) return undefined;
               return {
                 ...old,
                 log: old.log.map((msg) =>
-                  msg.id === context.assistantMessage.id
-                    ? { ...msg, content: currentContent }
+                  msg.id === currentMessageId
+                    ? { ...message, id: currentMessageId }
                     : msg
                 ),
               };
-            });
-          },
-          onComplete(message: Message) {
-            if (message.role !== "system") {
-              queryClient.setQueryData<ConversationResponse>(
-                queryKey,
-                (old) => {
-                  if (!old) return undefined;
-                  return {
-                    ...old,
-                    log: old.log.map((msg) =>
-                      msg.id === context.assistantMessage.id
-                        ? { ...message, id: context.assistantMessage.id }
-                        : msg
-                    ),
-                  };
-                }
-              );
             }
-          },
-          onToolOutput(message: Message) {
-            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-              if (!old) return undefined;
-              return {
-                ...old,
-                log: [...old.log, message],
-              };
-            });
-          },
-          onError(error: string) {
-            if (error !== "AbortError") {
-              toast({
-                variant: "destructive",
-                title: "Error",
-                description: error,
-              });
-            }
-          },
+          );
+        }
+      };
+
+      const handleInterrupt = () => {
+        console.log("Generation interrupted by user");
+        setIsGenerating(false);
+        // Add [interrupted] to the current message
+        queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+          if (!old) return undefined;
+          return {
+            ...old,
+            log: old.log.map((msg) =>
+              msg.id === currentMessageId
+                ? { ...msg, content: msg.content + "\n\n[interrupted]" }
+                : msg
+            ),
+          };
+        });
+      };
+
+      const handleError = (error: string) => {
+        if (error === "AbortError") {
+          handleInterrupt();
+        } else {
+          setIsGenerating(false);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error,
+          });
+        }
+      };
+
+      const handleToolOutput = async (message: Message) => {
+        if (!isGenerating) return;
+
+        // Add tool output to conversation
+        queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+          if (!old) return undefined;
+          return {
+            ...old,
+            log: [...old.log, message],
+          };
+        });
+
+        // Safety check - prevent infinite loops
+        const currentLog = queryClient.getQueryData<ConversationResponse>(queryKey)?.log || [];
+        const toolUseCount = currentLog.filter(msg => msg.role === "tool").length;
+        if (toolUseCount > 10) {
+          console.warn("Too many tool uses, stopping auto-generation");
+          toast({
+            title: "Warning",
+            description: "Stopped auto-generation after 10 tool uses",
+          });
+          setIsGenerating(false);
+          return;
+        }
+
+        // After tool output, continue generating
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: "",
+          timestamp: new Date().toISOString(),
+          id: `assistant-${Date.now()}`,
+        };
+
+        // Add empty assistant message for streaming
+        queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+          if (!old) return undefined;
+          return {
+            ...old,
+            log: [...old.log, assistantMessage],
+          };
+        });
+
+        // Update current message tracking
+        currentMessageId = assistantMessage.id;
+        currentContent = "";
+
+        // Continue generating with the new assistant message
+        try {
+          await api.generateResponse(conversation.name, {
+            onToken: handleToken,
+            onComplete: handleComplete,
+            onToolOutput: handleToolOutput,
+            onError: handleError,
+          });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            handleInterrupt();
+          } else {
+            setIsGenerating(false);
+            throw error;
+          }
+        }
+      };
+
+      try {
+        // Initial generation
+        await api.generateResponse(conversation.name, {
+          onToken: handleToken,
+          onComplete: handleComplete,
+          onToolOutput: handleToolOutput,
+          onError: handleError,
         });
       } catch (error) {
-        // Handle interruption
         if (error instanceof DOMException && error.name === "AbortError") {
-          console.log("Generation interrupted by user");
+          handleInterrupt();
         } else {
-          throw error; // Re-throw other errors to be handled by onError
+          // Show error toast and rethrow
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to generate response",
+          });
+          throw error;
         }
       }
     },
@@ -218,12 +318,19 @@ export function useConversation(
     },
   });
 
-  const isLoadingState = isLoading || isFetching || isSending;
+  const isLoadingState = isLoading || isFetching;
+
+  // Cleanup generation state on unmount
+  useEffect(() => {
+    return () => {
+      setIsGenerating(false);
+    };
+  }, []);
 
   return {
     conversationData,
     sendMessage,
     isLoading: isLoadingState,
-    isSending,
+    isGenerating,
   };
 }

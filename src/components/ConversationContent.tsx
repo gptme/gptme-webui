@@ -15,7 +15,7 @@ interface Props {
 }
 
 export const ConversationContent: FC<Props> = ({ conversation }) => {
-  const { conversationData, sendMessage, isLoading, isSending } =
+  const { conversationData, sendMessage, isLoading, isGenerating } =
     useConversation(conversation);
   const [showInitialSystem, setShowInitialSystem] = useState(false);
   const api = useApi();
@@ -134,7 +134,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
           });
         }}
         isReadOnly={conversation.readonly}
-        isSending={isSending}
+        isGenerating={isGenerating}
       />
     </main>
   );
