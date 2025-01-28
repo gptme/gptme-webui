@@ -82,7 +82,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   }, [content]);
 
   return (
-    <div className="py-4">
+    <div className="py-2">
       <div className="max-w-3xl mx-auto px-4">
         <div className="flex items-start gap-3">
           <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
@@ -103,7 +103,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
           <div className={`flex-1 ${
             message.role === "system" ? "text-muted-foreground" : ""
           }`}>
-            <div className={`rounded-lg px-4 py-2 ${
+            <div className={`rounded-lg px-3 py-1.5 ${
               message.role === "assistant" 
                 ? "bg-card" 
                 : message.role === "user" 
