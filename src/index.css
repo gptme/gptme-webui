@@ -32,28 +32,28 @@
   }
 
   .dark {
-    --background: 240 10% 11%;
+    --background: 0 0% 13%;
     --foreground: 0 0% 95%;
-    --card: 240 10% 13%;
+    --card: 0 0% 15%;
     --card-foreground: 0 0% 95%;
-    --popover: 240 10% 13%;
+    --popover: 0 0% 15%;
     --popover-foreground: 0 0% 95%;
     --primary: 142.1 70.6% 45.3%;
     --primary-foreground: 144.9 80.4% 10%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 0 0% 18%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 10% 15%;
+    --muted: 0 0% 18%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 10% 15.1%;
+    --accent: 0 0% 18%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 85.7% 97.3%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
     --ring: 142.4 71.8% 29.2%;
-    --code-background: 240 10% 10%;
+    --code-background: 0 0% 10%;
     --codesnip: 0 0% 100%;
-    --codesnip-background: 240 10% 15%;
+    --codesnip-background: 0 0% 18%;
   }
 }
 
@@ -179,3 +179,4 @@ details > details {
 .hljs-number {
   @apply text-orange-400;
 }
+
