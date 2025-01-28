@@ -81,8 +81,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
     };
   }, [content]);
 
-  const isUser = message.role === "user";
-  const avatarClasses = `hidden sm:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
+  const avatarClasses = `hidden md:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
     message.role === "assistant"
       ? "bg-gptme-600 text-white left-0"
       : message.role === "system"
@@ -103,12 +102,12 @@ export const ChatMessage: FC<Props> = ({ message }) => {
               <User className="w-5 h-5" />
             )}
           </div>
-          <div className={`pl-12 ${isUser ? "pr-12 pl-0" : ""}`}>
+            <div className="md:px-12">
             <div className={`rounded-lg px-3 py-1.5 ${
-              message.role === "assistant" 
-                ? "bg-card" 
-                : message.role === "user" 
-                ? "bg-[#2A3441] text-white"
+              message.role === "assistant"
+                ? "bg-card"
+                : message.role === "user"
+                ? "dark:bg-[#2A3441] bg-[#EAF4FF] dark:text-white"
                 : "bg-muted"
             }`}>
               <div
