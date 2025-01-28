@@ -81,17 +81,22 @@ export const ChatMessage: FC<Props> = ({ message }) => {
     };
   }, [content]);
 
+  const isUser = message.role === "user";
+  const messageClasses = `flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`;
+  const bubbleClasses = `flex-1 ${message.role === "system" ? "text-muted-foreground" : ""}`;
+  const avatarClasses = `mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+    message.role === "assistant"
+      ? "bg-gptme-600 text-white"
+      : message.role === "system"
+      ? "bg-slate-500 text-white"
+      : "bg-blue-600 text-white"
+  }`;
+
   return (
     <div className="py-2">
       <div className="max-w-3xl mx-auto px-4">
-        <div className="flex items-start gap-3">
-          <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-            message.role === "assistant"
-              ? "bg-gptme-600 text-white"
-              : message.role === "system"
-              ? "bg-slate-500 text-white"
-              : "bg-blue-600 text-white"
-          }`}>
+        <div className={messageClasses}>
+          <div className={avatarClasses}>
             {message.role === "assistant" ? (
               <Bot className="w-5 h-5" />
             ) : message.role === "system" ? (
@@ -100,9 +105,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
               <User className="w-5 h-5" />
             )}
           </div>
-          <div className={`flex-1 ${
-            message.role === "system" ? "text-muted-foreground" : ""
-          }`}>
+          <div className={bubbleClasses}>
             <div className={`rounded-lg px-3 py-1.5 ${
               message.role === "assistant" 
                 ? "bg-card" 
