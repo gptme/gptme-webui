@@ -81,12 +81,26 @@ export const ChatMessage: FC<Props> = ({ message }) => {
     };
   }, [content]);
 
+  const isUser = message.role === "user";
+  const isAssistant = message.role === "assistant";
+  const isSystem = message.role === "system";
+  const isError = message.content.startsWith("Error");
+  const isSuccess = message.content.startsWith("Patch successfully");
+
   const avatarClasses = `hidden md:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
-    message.role === "assistant"
+    isAssistant
       ? "bg-gptme-600 text-white left-0"
-      : message.role === "system"
-      ? "bg-slate-500 text-white left-0"
+      : isSystem
+          ? (isError ? "bg-red-800 text-red-100" : (isSuccess ? "bg-green-800 text-green-100" : "bg-slate-500 text-white left-0"))
       : "bg-blue-600 text-white right-0"
+  }`;
+
+  const messageClasses = `rounded-lg px-3 py-1.5 ${
+    isAssistant
+      ? "bg-card"
+      : isUser
+          ? "bg-[#EAF4FF] text-black dark:bg-[#2A3441] dark:text-white"
+          : (isError ? "bg-[#FFDDDD] dark:bg-[#440000] text-red-500" : (isSuccess ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200" : "bg-muted"))
   }`;
 
   return (
@@ -94,22 +108,16 @@ export const ChatMessage: FC<Props> = ({ message }) => {
       <div className="max-w-3xl mx-auto px-4">
         <div className="relative">
           <div className={avatarClasses}>
-            {message.role === "assistant" ? (
+            {isAssistant ? (
               <Bot className="w-5 h-5" />
-            ) : message.role === "system" ? (
+            ) : isSystem ? (
               <Terminal className="w-5 h-5" />
             ) : (
               <User className="w-5 h-5" />
             )}
           </div>
             <div className="md:px-12">
-            <div className={`rounded-lg px-3 py-1.5 ${
-              message.role === "assistant"
-                ? "bg-card"
-                : message.role === "user"
-                ? "dark:bg-[#2A3441] bg-[#EAF4FF] dark:text-white"
-                : "bg-muted"
-            }`}>
+            <div className={messageClasses}>
               <div
                 className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
                 dangerouslySetInnerHTML={{ __html: parsedContent }}
