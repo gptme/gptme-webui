@@ -15,13 +15,14 @@ marked.setOptions({
   gfm: true,
   breaks: true,
   silent: true,
+  headerIds: false,
+  mangle: false
 });
 
 marked.use(
   markedHighlight({
     langPrefix: "hljs language-",
-    highlight(code, lang, info) {
-      lang = info.split(".")[1] || lang;
+    highlight(code, lang) {
       const language = hljs.getLanguage(lang) ? lang : "plaintext";
       return hljs.highlight(code, { language }).value;
     },
@@ -43,25 +44,9 @@ export const ChatMessage: FC<Props> = ({ message }) => {
             `<details><summary>Thinking</summary>\n\n${thinkingContent}\n\n</details>`
         );
 
-        let parsedResult = await marked.parse(processedContent, {
+        const parsedResult = await marked.parse(processedContent, {
           async: true,
         });
-
-        parsedResult = parsedResult.replace(
-          /<pre><code(?:\s+class="([^"]+)")?>([^]*?)<\/code><\/pre>/g,
-          (_, classes = "", code) => {
-            const langtag = ((classes || "").split(" ")[1] || "Code").replace(
-              "language-",
-              ""
-            );
-            return `
-            <details>
-              <summary>${langtag}</summary>
-              <pre><code class="${classes}">${code}</code></pre>
-            </details>
-          `;
-          }
-        );
 
         if (isMounted) {
           setParsedContent(parsedResult);
