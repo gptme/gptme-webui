@@ -21,12 +21,85 @@ marked.use(
   markedHighlight({
     langPrefix: "hljs language-",
     highlight(code, lang, info) {
-      lang = info.split(".")[1] || lang;
+      lang = info.split(".").pop() || lang;
       const language = hljs.getLanguage(lang) ? lang : "plaintext";
       return hljs.highlight(code, { language }).value;
     },
   })
 );
+
+function handleWrappedFencedCodeBlocks(content: string) {
+    // Parse codeblocks in string, handling nested blocks by changing the outermost level
+    // fence to use ~~~ instead of backticks (need to count backticks to make sure it's the outermost).
+    //
+    // We can assume that codeblocks always have a language tag, so we can use that to separate the start and end of the block.
+    //
+    // Example input:
+    // ```markdown
+    // Here's a nested block
+    // ```python
+    // print("hello")
+    // ```
+    // ```
+    //
+    // Example output:
+    // ~~~markdown
+    // Here's a nested block
+    // ```python
+    // print("hello")
+    // ```
+    // ~~~
+
+    // Early exit if no code blocks (needs at least opening and closing fence)
+    if (content.split('```').length < 3) {
+        return content;
+    }
+
+    const lines = content.split('\n');
+    const stack: string[] = [];  // Stack of language tags to track nesting
+    let result = '';
+    let currentBlock: string[] = [];
+
+    for (const line of lines) {
+        const strippedLine = line.trim();
+        if (strippedLine.startsWith('```')) {
+            const lang = strippedLine.slice(3);
+            if (stack.length === 0) {
+                // Start of a new outermost block
+                stack.push(lang);
+                result += '~~~' + lang + '\n';
+            } else if (lang && stack[stack.length - 1] !== lang) {
+                // Nested start - different language
+                currentBlock.push(line);
+                stack.push(lang);
+            } else {
+                // End of a block
+                if (stack.length === 1) {
+                    // End of outermost block
+                    result += currentBlock.join('\n') + '\n~~~';
+                    currentBlock = [];
+                } else {
+                    // End of nested block
+                    currentBlock.push(line);
+                }
+                stack.pop();
+            }
+        } else if (stack.length > 0) {
+            // Inside a block
+            currentBlock.push(line);
+        } else {
+            // Outside any block
+            result += line + '\n';
+        }
+    }
+
+    // Handle any unclosed blocks
+    if (stack.length > 0) {
+        result += currentBlock.join('\n');
+    }
+
+    return result.trim();
+}
 
 export const ChatMessage: FC<Props> = ({ message }) => {
   const [parsedContent, setParsedContent] = useState("");
@@ -37,11 +110,15 @@ export const ChatMessage: FC<Props> = ({ message }) => {
     let isMounted = true;
     const processContent = async () => {
       try {
-        const processedContent = content.replace(
+        // Transform thinking tags before markdown parsing
+        let processedContent = content.replace(
           /(?:[^`])<thinking>([\s\S]*?)(?:<\/thinking>|$)/g,
           (_match: string, thinkingContent: string) =>
             `<details><summary>Thinking</summary>\n\n${thinkingContent}\n\n</details>`
         );
+
+        // Handle wrapped fenced code blocks
+        processedContent = handleWrappedFencedCodeBlocks(processedContent);
 
         let parsedResult = await marked.parse(processedContent, {
           async: true,
