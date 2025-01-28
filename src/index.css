@@ -62,41 +62,41 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-sm;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
   }
 }
 
 .chat-message {
-  @apply py-2;
+  @apply py-1.5;
 }
 
 .chat-message > p {
-  @apply leading-relaxed py-0.5;
+  @apply leading-relaxed py-0.5 text-sm;
 }
 
 .chat-message h1 {
-  @apply text-3xl font-bold mt-8 border-b border-border pb-2;
+  @apply text-2xl font-bold mt-6 border-b border-border pb-2;
 }
 
 .chat-message h2 {
-  @apply text-2xl font-bold mt-6 pb-1 mb-2 border-b border-border;
+  @apply text-xl font-bold mt-5 pb-1 mb-2 border-b border-border;
 }
 
 .chat-message h3 {
-  @apply text-xl font-bold mt-4 pb-1 mb-2;
+  @apply text-lg font-bold mt-4 pb-1 mb-2;
 }
 
 .chat-message h4 {
-  @apply text-lg font-bold mt-4 pb-2;
+  @apply text-base font-bold mt-3 pb-2;
 }
 
 .chat-message h5 {
-  @apply text-base font-bold mt-4 pb-2;
+  @apply text-sm font-bold mt-3 pb-2;
 }
 
 .chat-message h6 {
-  @apply text-sm font-bold mt-4 pb-2;
+  @apply text-xs font-bold mt-3 pb-2;
 }
 
 .chat-message details > pre {
