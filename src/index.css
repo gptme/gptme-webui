@@ -68,11 +68,11 @@
 }
 
 .chat-message {
-  @apply py-6;
+  @apply py-2;
 }
 
 .chat-message > p {
-  @apply leading-relaxed;
+  @apply leading-relaxed py-0.5;
 }
 
 .chat-message h1 {
@@ -179,5 +179,3 @@ details > details {
 .hljs-number {
   @apply text-orange-400;
 }
-
-
