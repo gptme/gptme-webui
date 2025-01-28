@@ -82,7 +82,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   }, [content]);
 
   const isUser = message.role === "user";
-  const avatarClasses = `flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
+  const avatarClasses = `hidden sm:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
     message.role === "assistant"
       ? "bg-gptme-600 text-white left-0"
       : message.role === "system"
