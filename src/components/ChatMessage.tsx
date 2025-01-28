@@ -84,18 +84,18 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   const isUser = message.role === "user";
   const messageClasses = `flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`;
   const bubbleClasses = `flex-1 ${message.role === "system" ? "text-muted-foreground" : ""}`;
-  const avatarClasses = `hidden sm:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center ${
+  const avatarClasses = `hidden sm:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
     message.role === "assistant"
-      ? "bg-gptme-600 text-white"
+      ? "bg-gptme-600 text-white left-0"
       : message.role === "system"
-      ? "bg-slate-500 text-white"
-      : "bg-blue-600 text-white"
+      ? "bg-slate-500 text-white left-0"
+      : "bg-blue-600 text-white right-0"
   }`;
 
   return (
     <div className="py-4">
       <div className="max-w-3xl mx-auto px-4">
-        <div className={messageClasses}>
+        <div className="relative">
           <div className={avatarClasses}>
             {message.role === "assistant" ? (
               <Bot className="w-5 h-5" />
@@ -105,7 +105,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
               <User className="w-5 h-5" />
             )}
           </div>
-          <div className={bubbleClasses}>
+          <div className={`pl-12 ${isUser ? "pr-12 pl-0" : ""}`}>
             <div className={`rounded-lg px-3 py-1.5 ${
               message.role === "assistant" 
                 ? "bg-card" 
