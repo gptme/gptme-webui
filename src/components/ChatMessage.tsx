@@ -84,7 +84,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   const isUser = message.role === "user";
   const messageClasses = `flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`;
   const bubbleClasses = `flex-1 ${message.role === "system" ? "text-muted-foreground" : ""}`;
-  const avatarClasses = `hidden sm:flex mt-1 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center ${
+  const avatarClasses = `hidden sm:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center ${
     message.role === "assistant"
       ? "bg-gptme-600 text-white"
       : message.role === "system"
@@ -93,7 +93,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   }`;
 
   return (
-    <div className="py-2">
+    <div className="py-4">
       <div className="max-w-3xl mx-auto px-4">
         <div className={messageClasses}>
           <div className={avatarClasses}>
