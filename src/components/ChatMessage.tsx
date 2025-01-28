@@ -15,6 +15,8 @@ marked.setOptions({
   gfm: true,
   breaks: true,
   silent: true,
+  headerIds: false,
+  mangle: false
 });
 
 marked.use(
@@ -42,7 +44,9 @@ export const ChatMessage: FC<Props> = ({ message }) => {
             `<details><summary>Thinking</summary>\n\n${thinkingContent}\n\n</details>`
         );
 
-        const parsedResult = await marked.parse(processedContent);
+        const parsedResult = await marked.parse(processedContent, {
+          async: true,
+        });
 
         if (isMounted) {
           setParsedContent(parsedResult);
