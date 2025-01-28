@@ -82,8 +82,6 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   }, [content]);
 
   const isUser = message.role === "user";
-  const messageClasses = `flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`;
-  const bubbleClasses = `flex-1 ${message.role === "system" ? "text-muted-foreground" : ""}`;
   const avatarClasses = `hidden sm:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
     message.role === "assistant"
       ? "bg-gptme-600 text-white left-0"
