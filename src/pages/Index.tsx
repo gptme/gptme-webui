@@ -6,11 +6,10 @@ import { LeftSidebar } from "@/components/LeftSidebar";
 import { RightSidebar } from "@/components/RightSidebar";
 import { ConversationContent } from "@/components/ConversationContent";
 import { useApi } from "@/contexts/ApiContext";
-import type { ConversationSummary } from "@/types/conversation";
 import type { ConversationItem } from "@/components/ConversationList";
 import { toConversationItems } from "@/utils/conversation";
 import { demoConversations, type DemoConversation } from "@/democonversations";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface Props {
   className?: string;
@@ -20,6 +19,7 @@ const Index: FC<Props> = () => {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const conversationParam = searchParams.get('conversation');
   const [selectedConversation, setSelectedConversation] = useState<string>(
     conversationParam || demoConversations[0].name
@@ -91,8 +91,10 @@ const Index: FC<Props> = () => {
         queryKey: ["conversation", selectedConversation],
       });
       setSelectedConversation(id);
+      // Update URL with the new conversation ID
+      navigate(`/?conversation=${id}`);
     },
-    [selectedConversation, queryClient]
+    [selectedConversation, queryClient, navigate]
   );
 
   const conversation = allConversations.find(
