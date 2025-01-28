@@ -1,5 +1,5 @@
 import { type FC } from "react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MenuBar } from "@/components/MenuBar";
 import { LeftSidebar } from "@/components/LeftSidebar";
@@ -10,6 +10,7 @@ import type { ConversationSummary } from "@/types/conversation";
 import type { ConversationItem } from "@/components/ConversationList";
 import { toConversationItems } from "@/utils/conversation";
 import { demoConversations, type DemoConversation } from "@/democonversations";
+import { useSearchParams } from "react-router-dom";
 
 interface Props {
   className?: string;
@@ -18,11 +19,20 @@ interface Props {
 const Index: FC<Props> = () => {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const conversationParam = searchParams.get('conversation');
   const [selectedConversation, setSelectedConversation] = useState<string>(
-    demoConversations[0].name
+    conversationParam || demoConversations[0].name
   );
   const { api, isConnected, baseUrl } = useApi();
   const queryClient = useQueryClient();
+
+  // Update selected conversation when URL param changes
+  useEffect(() => {
+    if (conversationParam) {
+      setSelectedConversation(conversationParam);
+    }
+  }, [conversationParam]);
 
   // Fetch conversations from API with proper caching
   const {
@@ -31,7 +41,7 @@ const Index: FC<Props> = () => {
     error,
     isLoading,
     refetch
-  } = useQuery<ConversationSummary[]>({
+  } = useQuery({
     queryKey: ["conversations", baseUrl, isConnected],
     queryFn: async () => {
       console.log("Fetching conversations, connection state:", isConnected);
