@@ -110,7 +110,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
               message.role === "assistant" 
                 ? "bg-card" 
                 : message.role === "user" 
-                ? "bg-primary text-primary-foreground"
+                ? "bg-[#2A3441] text-white"
                 : "bg-muted"
             }`}>
               <div
