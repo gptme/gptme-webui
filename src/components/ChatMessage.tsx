@@ -198,7 +198,7 @@ export const ChatMessage: FC<Props> = ({ message, isInitialSystem, previousMessa
             )
   }`;
 
-  const messageClasses = `rounded-lg px-3 py-1.5 ${
+  const messageClasses = `${
     isUser
       ? "bg-[#EAF4FF] text-black dark:bg-[#2A3441] dark:text-white"
       : isAssistant
@@ -208,10 +208,14 @@ export const ChatMessage: FC<Props> = ({ message, isInitialSystem, previousMessa
               : (isSuccess
                   ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200"
                   : "bg-card")
+  } ${
+    isToolResponse 
+      ? 'rounded-t-none' 
+      : 'rounded-lg'
   }`;
 
   return (
-    <div className={`${isToolResponse ? 'pt-1' : 'py-4'}`}>
+    <div className={`${isToolResponse ? 'pt-0' : 'py-4'}`}>
       <div className="max-w-3xl mx-auto px-4">
         <div className="relative">
           <div className={avatarClasses}>
@@ -223,10 +227,10 @@ export const ChatMessage: FC<Props> = ({ message, isInitialSystem, previousMessa
               <User className="w-5 h-5" />
             )}
           </div>
-            <div className="md:px-12">
+          <div className="md:px-12">
             <div className={messageClasses}>
               <div
-                className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
+                className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)] px-3 py-1.5"
                 dangerouslySetInnerHTML={{ __html: parsedContent }}
               />
             </div>
