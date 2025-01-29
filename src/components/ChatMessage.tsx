@@ -3,6 +3,7 @@ import type { FC } from "react";
 import type { Message } from "@/types/conversation";
 import { MessageAvatar } from "./MessageAvatar";
 import { parseMarkdownContent } from "@/utils/markdownUtils";
+import { getMessageChainType } from "@/utils/messageUtils";
 
 interface Props {
     message: Message;
@@ -38,16 +39,11 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
 
     const isUser = message.role === "user";
     const isAssistant = message.role === "assistant";
-    const isSystem = message.role === "system";
     const isError = message.content.startsWith("Error");
     const isSuccess = message.content.startsWith("Patch successfully");
     
-    // Determine if this message is part of a chain
-    const isPartOfChain = (previousMessage?.role === "assistant" || previousMessage?.role === "system") &&
-        (message.role === "system" || message.role === "assistant");
-    const continuesChain = (nextMessage?.role === "assistant" || nextMessage?.role === "system") &&
-        (message.role === "system" || message.role === "assistant");
-
+    const chainType = getMessageChainType(message, previousMessage, nextMessage);
+    
     const messageClasses = `
         ${isUser
             ? "bg-[#EAF4FF] text-black dark:bg-[#2A3441] dark:text-white"
@@ -59,14 +55,20 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
                         ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200"
                         : "bg-card"
         }
-        ${!isPartOfChain && !continuesChain && 'rounded-lg'}
-        ${!isPartOfChain && continuesChain && 'rounded-t-lg'}
-        ${isPartOfChain && !continuesChain && 'rounded-b-lg'}
-        ${isPartOfChain && 'border-t-0'}
+        ${chainType === "standalone" && "rounded-lg"}
+        ${chainType === "start" && "rounded-t-lg"}
+        ${chainType === "end" && "rounded-b-lg"}
+        ${chainType === "middle" && ""}
+        ${chainType !== "start" && chainType !== "standalone" && "border-t-0"}
+    `;
+
+    const wrapperClasses = `
+        ${chainType !== "start" && chainType !== "standalone" ? "-mt-[2px]" : "mt-4"}
+        ${chainType === "standalone" ? "mb-4" : "mb-0"}
     `;
 
     return (
-        <div className={`${isPartOfChain ? '-mt-4' : 'py-4'}`}>
+        <div className={wrapperClasses}>
             <div className="max-w-3xl mx-auto px-4">
                 <div className="relative">
                     <MessageAvatar 
