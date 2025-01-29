@@ -114,16 +114,16 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
             return null;
           }
 
-          const previousMessage = index > 0 ? currentMessages[index - 1] : undefined;
-
           return (
             <ChatMessage
               key={`${index}-${msg.timestamp}-${msg.content.length}`}
               message={msg}
-              previousMessage={previousMessage}
+              isInitialSystem={isInitialSystem}
             />
           );
         })}
+        {/* Add a margin at the bottom to give the last message some space and signify end of conversation */}
+        <div className="mb-[10vh]"></div>
       </div>
       <ChatInput
         onSend={sendMessage}

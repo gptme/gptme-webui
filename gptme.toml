@@ -1,1 +1,1 @@
-files = ["README.md", "src/main.tsx", "src/App.tsx", "../gptme/gptme/server/api.py"]
+files = ["README.md", "package.json", "src/main.tsx", "src/App.tsx", "../gptme/gptme/server/api.py"]

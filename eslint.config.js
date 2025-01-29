@@ -13,6 +13,7 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: {
         ...globals.browser,
+        ...globals.jest,
         React: "readonly",
       },
       parserOptions: {
