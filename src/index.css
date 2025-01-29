@@ -51,7 +51,7 @@
     --border: 0 0% 13%;
     --input: 0 0% 13%;
     --ring: 142.4 71.8% 29.2%;
-    --code-background: 0 0% 7%;
+    --code-background: 0 0% 3%;
     --codesnip: 0 0% 100%;
     --codesnip-background: 0 0% 13%;
   }
@@ -89,6 +89,10 @@
 
 .chat-message > p {
   @apply leading-relaxed py-0.5 text-sm;
+}
+
+.role-system .chat-message > p {
+  @apply leading-relaxed py-0.5 text-xs;
 }
 
 .chat-message h1 {

@@ -48,7 +48,7 @@ export function processNestedCodeBlocks(content: string) {
                 stack.push(lang);
             } else {
                 if (stack.length === 1) {
-                    result += currentBlock.join('\n') + '\n~~~';
+                    result += currentBlock.join('\n') + '\n~~~\n';
                     currentBlock = [];
                 } else {
                     currentBlock.push(line);
@@ -93,7 +93,7 @@ export function parseMarkdownContent(content: string) {
         (_, classes = "", code) => {
             const langtag = ((classes || "").split(" ")[1] || "Code").replace("language-", "");
             const args = fences?.shift() || "";
-            
+
             const emoji = getCodeBlockEmoji(langtag);
             return `
             <details>
