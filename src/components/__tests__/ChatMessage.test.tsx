@@ -1,10 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { ChatMessage } from "../ChatMessage";
-import type { Message } from "@/types/conversation";
 
 describe("ChatMessage", () => {
     it("renders user message", () => {
-        const message: Message = {
+        const message = {
             role: "user",
             content: "Hello",
             timestamp: new Date().toISOString(),
@@ -15,7 +14,7 @@ describe("ChatMessage", () => {
     });
 
     it("renders assistant message", () => {
-        const message: Message = {
+        const message = {
             role: "assistant",
             content: "Hi there!",
             timestamp: new Date().toISOString(),
