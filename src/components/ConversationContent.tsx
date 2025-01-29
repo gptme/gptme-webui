@@ -114,11 +114,13 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
             return null;
           }
 
+          const previousMessage = index > 0 ? currentMessages[index - 1] : undefined;
+
           return (
             <ChatMessage
               key={`${index}-${msg.timestamp}-${msg.content.length}`}
               message={msg}
-              isInitialSystem={isInitialSystem}
+              previousMessage={previousMessage}
             />
           );
         })}

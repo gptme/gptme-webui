@@ -8,7 +8,7 @@ import type { Message } from "@/types/conversation";
 
 interface Props {
   message: Message;
-  isInitialSystem?: boolean;
+  previousMessage?: Message;
 }
 
 marked.setOptions({
@@ -101,7 +101,7 @@ function handleWrappedFencedCodeBlocks(content: string) {
     return result.trim();
 }
 
-export const ChatMessage: FC<Props> = ({ message }) => {
+export const ChatMessage: FC<Props> = ({ message, previousMessage }) => {
   const [parsedContent, setParsedContent] = useState("");
 
   const content = message.content || (message.role == "assistant" ? "Thinking..." : "");
@@ -164,6 +164,9 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   const isError = message.content.startsWith("Error");
   const isSuccess = message.content.startsWith("Patch successfully");
 
+  // Check if this system message follows a user/assistant message
+  const isToolResponse = isSystem && previousMessage && (previousMessage.role === "user" || previousMessage.role === "assistant");
+
   const avatarClasses = `hidden md:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
     isAssistant
       ? "bg-gptme-600 text-white left-0"
@@ -181,7 +184,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   }`;
 
   return (
-    <div className="py-4">
+    <div className={`${isToolResponse ? 'pt-0 pb-4' : 'py-4'}`}>
       <div className="max-w-3xl mx-auto px-4">
         <div className="relative">
           <div className={avatarClasses}>
@@ -193,7 +196,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
               <User className="w-5 h-5" />
             )}
           </div>
-            <div className="md:px-12">
+          <div className="md:px-12">
             <div className={messageClasses}>
               <div
                 className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
