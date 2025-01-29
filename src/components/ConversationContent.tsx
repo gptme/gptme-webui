@@ -113,15 +113,16 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
             return null;
           }
 
-          // Get the previous message for spacing context
+          // Get the previous and next messages for spacing context
           const previousMessage = index > 0 ? currentMessages[index - 1] : null;
+          const nextMessage = index < currentMessages.length - 1 ? currentMessages[index + 1] : null;
 
           return (
             <ChatMessage
               key={`${index}-${msg.timestamp}-${msg.content.length}`}
               message={msg}
-              isInitialSystem={isInitialSystem}
               previousMessage={previousMessage}
+              nextMessage={nextMessage}
             />
           );
         })}

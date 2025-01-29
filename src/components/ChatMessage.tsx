@@ -7,9 +7,10 @@ import { parseMarkdownContent } from "@/utils/markdownUtils";
 interface Props {
     message: Message;
     previousMessage?: Message | null;
+    nextMessage?: Message | null;
 }
 
-export const ChatMessage: FC<Props> = ({ message, previousMessage }) => {
+export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }) => {
     const [parsedContent, setParsedContent] = useState("");
     const content = message.content || (message.role === "assistant" ? "Thinking..." : "");
 
@@ -40,8 +41,12 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage }) => {
     const isSystem = message.role === "system";
     const isError = message.content.startsWith("Error");
     const isSuccess = message.content.startsWith("Patch successfully");
-    const isToolResponse = isSystem && previousMessage && 
-        (previousMessage.role === "user" || previousMessage.role === "assistant");
+    
+    // Determine if this message is part of a chain
+    const isPartOfChain = (previousMessage?.role === "assistant" || previousMessage?.role === "system") &&
+        (message.role === "system" || message.role === "assistant");
+    const continuesChain = (nextMessage?.role === "assistant" || nextMessage?.role === "system") &&
+        (message.role === "system" || message.role === "assistant");
 
     const messageClasses = `
         ${isUser
@@ -54,13 +59,14 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage }) => {
                         ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200"
                         : "bg-card"
         }
-        ${!isToolResponse && 'rounded-lg'}
-        ${isToolResponse && previousMessage?.role === 'user' && 'rounded-b-lg'}
-        ${isToolResponse && previousMessage?.role === 'assistant' && 'rounded-b-lg'}
+        ${!isPartOfChain && !continuesChain && 'rounded-lg'}
+        ${!isPartOfChain && continuesChain && 'rounded-t-lg'}
+        ${isPartOfChain && !continuesChain && 'rounded-b-lg'}
+        ${isPartOfChain && 'border-t-0'}
     `;
 
     return (
-        <div className={`${isToolResponse ? '-mt-4 border-t-0' : 'py-4'}`}>
+        <div className={`${isPartOfChain ? '-mt-4' : 'py-4'}`}>
             <div className="max-w-3xl mx-auto px-4">
                 <div className="relative">
                     <MessageAvatar 
