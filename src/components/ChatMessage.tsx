@@ -49,7 +49,7 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
         ${isUser
             ? "bg-[#EAF4FF] text-black dark:bg-[#2A3441] dark:text-white"
             : isAssistant
-                ? "bg-card"
+                ? "bg-[#F8F9FA] dark:bg-card text-foreground"
                 : isSystem
                     ? isError
                         ? "bg-[#FFF2F2] text-red-600 dark:bg-[#440000] dark:text-red-400 font-mono border border-red-200 dark:border-red-900"
