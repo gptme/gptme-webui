@@ -79,6 +79,7 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
                         role={message.role}
                         isError={isError}
                         isSuccess={isSuccess}
+                        chainType={chainType}
                     />
                     <div className="md:px-12">
                         <div className={messageClasses}>

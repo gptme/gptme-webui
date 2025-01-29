@@ -5,9 +5,15 @@ interface MessageAvatarProps {
     role: MessageRole;
     isError?: boolean;
     isSuccess?: boolean;
+    chainType: "start" | "middle" | "end" | "standalone";
 }
 
-export function MessageAvatar({ role, isError, isSuccess }: MessageAvatarProps) {
+export function MessageAvatar({ role, isError, isSuccess, chainType }: MessageAvatarProps) {
+    // Only show avatar for standalone messages or the start of a chain
+    if (chainType !== "start" && chainType !== "standalone") {
+        return null;
+    }
+
     const avatarClasses = `hidden md:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
         role === "user"
             ? "bg-blue-600 text-white right-0"
