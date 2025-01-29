@@ -37,7 +37,6 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
       }
 
       const messages = conversationData.log;
-      // console.log('ConversationContent: Messages:', messages);
 
       const firstNonSystem = messages.findIndex((msg) => msg.role !== "system");
       const hasSystemMessages = messages.some((msg) => msg.role === "system");
@@ -114,11 +113,15 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
             return null;
           }
 
+          // Get the previous message for spacing context
+          const previousMessage = index > 0 ? currentMessages[index - 1] : null;
+
           return (
             <ChatMessage
               key={`${index}-${msg.timestamp}-${msg.content.length}`}
               message={msg}
               isInitialSystem={isInitialSystem}
+              previousMessage={previousMessage}
             />
           );
         })}

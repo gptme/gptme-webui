@@ -9,6 +9,7 @@ import type { Message } from "@/types/conversation";
 interface Props {
   message: Message;
   isInitialSystem?: boolean;
+  previousMessage?: Message | null;
 }
 
 marked.setOptions({
@@ -103,7 +104,7 @@ export function transformThinkingTags(content: string) {
     );
 }
 
-export const ChatMessage: FC<Props> = ({ message }) => {
+export const ChatMessage: FC<Props> = ({ message, isInitialSystem, previousMessage }) => {
   const [parsedContent, setParsedContent] = useState("");
 
   const content = message.content || (message.role == "assistant" ? "Thinking..." : "");
@@ -181,6 +182,9 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   const isError = message.content.startsWith("Error");
   const isSuccess = message.content.startsWith("Patch successfully");
 
+  // Check if this message is a system message that follows a user/assistant message
+  const isToolResponse = isSystem && previousMessage && (previousMessage.role === "user" || previousMessage.role === "assistant");
+
   const avatarClasses = `hidden md:flex mt-0.5 flex-shrink-0 w-8 h-8 rounded-full items-center justify-center absolute ${
       isUser
       ? "bg-blue-600 text-white right-0"
@@ -207,7 +211,7 @@ export const ChatMessage: FC<Props> = ({ message }) => {
   }`;
 
   return (
-    <div className="py-4">
+    <div className={`${isToolResponse ? 'pt-1' : 'py-4'}`}>
       <div className="max-w-3xl mx-auto px-4">
         <div className="relative">
           <div className={avatarClasses}>
