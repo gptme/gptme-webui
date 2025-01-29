@@ -55,7 +55,7 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
                         ? "bg-[#FFF2F2] text-red-600 dark:bg-[#440000] dark:text-red-400 font-mono border border-red-200 dark:border-red-900"
                         : isSuccess
                             ? "bg-[#F0FDF4] text-green-700 dark:bg-green-900 dark:text-green-200 font-mono border border-green-200 dark:border-green-900"
-                            : "bg-[#F8F9FA] text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-400 font-mono border border-gray-200 dark:border-gray-800"
+                            : "bg-[#F3F4F6] text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-300 font-mono border border-gray-200 dark:border-gray-800"
                     : "bg-card"
         }
         ${chainType === "standalone" && "rounded-lg"}
@@ -63,6 +63,7 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
         ${chainType === "end" && "rounded-b-lg"}
         ${chainType === "middle" && ""}
         ${chainType !== "start" && chainType !== "standalone" && "border-t-0"}
+        border
     `;
 
     const wrapperClasses = `
