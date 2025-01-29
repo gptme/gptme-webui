@@ -39,6 +39,7 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
 
     const isUser = message.role === "user";
     const isAssistant = message.role === "assistant";
+    const isSystem = message.role === "system";
     const isError = message.content.startsWith("Error");
     const isSuccess = message.content.startsWith("Patch successfully");
     
@@ -49,11 +50,13 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
             ? "bg-[#EAF4FF] text-black dark:bg-[#2A3441] dark:text-white"
             : isAssistant
                 ? "bg-card"
-                : isError
-                    ? "bg-[#FFDDDD] dark:bg-[#440000] text-red-500"
-                    : isSuccess
-                        ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200"
-                        : "bg-card"
+                : isSystem
+                    ? isError
+                        ? "bg-[#FFDDDD] dark:bg-[#440000] text-red-500 font-mono"
+                        : isSuccess
+                            ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200 font-mono"
+                            : "bg-[#1E1E1E] text-gray-300 dark:bg-[#1A1A1A] dark:text-gray-400 font-mono"
+                    : "bg-card"
         }
         ${chainType === "standalone" && "rounded-lg"}
         ${chainType === "start" && "rounded-t-lg"}
