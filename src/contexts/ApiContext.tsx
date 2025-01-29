@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { createApiClient } from "@/utils/api";
-import type { ApiClient } from "@/utils/api";
-import type { QueryClient } from "@tanstack/react-query";
+import { ApiClient, createApiClient } from "@/utils/api";
+import { QueryClient } from "@tanstack/react-query";
 
 interface ApiContextType {
   api: ApiClient;

@@ -242,14 +242,6 @@ export function useConversation(
         }
 
         // After tool output, continue generating
-        console.log(
-          "[useConversation] Preparing to continue after tool output",
-          {
-            isGenerating,
-            previousMessageId: currentMessageId,
-          }
-        );
-
         const assistantMessage: Message = {
           role: "assistant",
           content: "",
@@ -260,13 +252,6 @@ export function useConversation(
         // Add empty assistant message for streaming
         queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
           if (!old) return undefined;
-          console.log(
-            "[useConversation] Adding new assistant message for continuation",
-            {
-              newMessageId: assistantMessage.id,
-              isGenerating,
-            }
-          );
           return {
             ...old,
             log: [...old.log, assistantMessage],
@@ -276,11 +261,6 @@ export function useConversation(
         // Update current message tracking
         currentMessageId = assistantMessage.id;
         currentContent = "";
-
-        console.log("[useConversation] Starting continued generation", {
-          newMessageId: currentMessageId,
-          isGenerating,
-        });
 
         // Continue generating with the new assistant message
         try {

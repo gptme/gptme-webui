@@ -119,17 +119,16 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
               key={`${index}-${msg.timestamp}-${msg.content.length}`}
               message={msg}
               isInitialSystem={isInitialSystem}
-              nextMessage={currentMessages[index + 1]}
             />
           );
         })}
-        <div className="mb-[10vh]"></div>
       </div>
       <ChatInput
         onSend={sendMessage}
         onInterrupt={async () => {
           console.log("Interrupting from ConversationContent...");
           await api.cancelPendingRequests();
+          // Invalidate the query to ensure UI updates
           queryClient.invalidateQueries({
             queryKey: ["conversation", conversation.name],
           });

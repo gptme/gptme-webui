@@ -15,19 +15,3 @@ repos:
     language: system
     pass_filenames: false
     always_run: true
-  - id: test
-    name: test
-    stages: [commit]
-    types: [javascript, jsx, ts, tsx]
-    entry: npm test
-    language: system
-    pass_filenames: false
-    always_run: true
-  - id: lint
-    name: lint
-    stages: [commit]
-    types: [javascript, jsx, ts, tsx]
-    entry: npm run lint
-    language: system
-    pass_filenames: false
-    always_run: true

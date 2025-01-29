@@ -1,7 +1,5 @@
 # gptme-webui
 
-[![CI](https://github.com/ErikBjare/gptme-webui/actions/workflows/ci.yml/badge.svg)](https://github.com/ErikBjare/gptme-webui/actions/workflows/ci.yml)
-
 A fancy web UI for [gptme][gptme], built with [gptengineer.app][gptengineer.app].
 
 An alternative to the minimal UI currently provided by `gptme`.

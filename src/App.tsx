@@ -35,7 +35,7 @@ const AppContent: FC = () => {
 
   return (
     <ApiProvider initialBaseUrl={apiUrl} queryClient={queryClient}>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <BrowserRouter>
         <Index />
         <Toaster />
         <Sonner />

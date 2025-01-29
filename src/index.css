@@ -71,22 +71,6 @@
   @apply py-1.5;
 }
 
-.chat-message a {
-  @apply text-blue-300;
-
-  &:hover {
-    @apply text-blue-600;
-  }
-
-  &:visited {
-    @apply text-purple-300;
-  }
-
-  &:visited:hover {
-    @apply text-purple-600;
-  }
-}
-
 .chat-message > p {
   @apply leading-relaxed py-0.5 text-sm;
 }
@@ -136,11 +120,11 @@
 }
 
 .chat-message details {
-  @apply my-2 rounded-md overflow-hidden border border-border text-sm dark:border-stone-950;
+  @apply my-2 rounded-lg overflow-hidden border border-border text-sm;
 }
 
 .chat-message details summary {
-  @apply px-3 py-2 bg-muted cursor-pointer hover:ring hover:ring-inset hover:ring-ring transition-colors rounded-md text-xs;
+  @apply px-4 py-2 bg-muted cursor-pointer hover:ring hover:ring-inset hover:ring-ring transition-colors rounded-lg;
 }
 
 .chat-message details[open] {

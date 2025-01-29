@@ -23,13 +23,9 @@ export const ChatInput: FC<Props> = ({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isGenerating && onInterrupt) {
-      console.log("[ChatInput] Interrupting generation...", { isGenerating });
-      try {
-        await onInterrupt();
-        console.log("[ChatInput] Generation interrupted successfully", { isGenerating });
-      } catch (error) {
-        console.error("[ChatInput] Error interrupting generation:", error);
-      }
+      console.log("Interrupting generation...");
+      await onInterrupt();
+      console.log("Generation interrupted");
     } else if (message.trim()) {
       onSend(message);
       setMessage("");

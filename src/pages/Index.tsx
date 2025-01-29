@@ -92,7 +92,7 @@ const Index: FC<Props> = () => {
       });
       setSelectedConversation(id);
       // Update URL with the new conversation ID
-      navigate(`?conversation=${id}`);
+      navigate(`/?conversation=${id}`);
     },
     [selectedConversation, queryClient, navigate]
   );
