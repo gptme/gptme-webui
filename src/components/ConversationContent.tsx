@@ -123,6 +123,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
               message={msg}
               previousMessage={previousMessage}
               nextMessage={nextMessage}
+              conversationId={conversation.name}
             />
           );
         })}

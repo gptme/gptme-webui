@@ -4,16 +4,87 @@ import type { Message } from "@/types/conversation";
 import { MessageAvatar } from "./MessageAvatar";
 import { parseMarkdownContent } from "@/utils/markdownUtils";
 import { getMessageChainType } from "@/utils/messageUtils";
+import { useApi } from "@/contexts/ApiContext";
 
 interface Props {
     message: Message;
     previousMessage?: Message | null;
     nextMessage?: Message | null;
+    conversationId: string;
 }
 
-export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }) => {
+export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage, conversationId }) => {
+    const { baseUrl } = useApi();
     const [parsedContent, setParsedContent] = useState("");
     const content = message.content || (message.role === "assistant" ? "Thinking..." : "");
+
+    const renderFiles = () => {
+        if (!message.files?.length) return null;
+
+        return (
+            <div className="mt-2 space-y-2">
+                {message.files.map((filename) => {
+                    // Remove any parent directory references and normalize path
+                    const sanitizedPath = filename.split('/').filter(part => part !== '..').join('/');
+                    const fileUrl = `${baseUrl}/api/conversations/${conversationId}/files/${sanitizedPath}`;
+                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
+
+                    // Get just the filename without path for display
+                    const displayName = sanitizedPath.split('/').pop() || sanitizedPath;
+
+                    if (isImage) {
+                        return (
+                            <div key={filename} className="max-w-md">
+                                <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block cursor-zoom-in"
+                                    title="Click to view full size"
+                                >
+                                    <div className="relative">
+                                        <img
+                                            src={fileUrl}
+                                            alt={displayName}
+                                            className="rounded-md border border-border hover:opacity-90 transition-opacity"
+                                            onError={(e) => {
+                                                const img = e.currentTarget;
+                                                const errorDiv = img.parentElement?.querySelector('.error-message');
+                                                if (errorDiv) {
+                                                    if (img.src.includes('..')) {
+                                                        errorDiv.textContent = "⚠️ Cannot access files outside the workspace";
+                                                    } else {
+                                                        errorDiv.textContent = "⚠️ Failed to load image";
+                                                    }
+                                                    errorDiv.classList.remove('hidden');
+                                                }
+                                                img.classList.add('hidden');
+                                            }}
+                                        />
+                                        <div className="error-message hidden p-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md"></div>
+                                    </div>
+                                </a>
+                                <div className="text-xs text-muted-foreground mt-1">{displayName}</div>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div key={filename} className="text-sm">
+                            <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:underline"
+                            >
+                                📎 {displayName}
+                            </a>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -84,10 +155,13 @@ export const ChatMessage: FC<Props> = ({ message, previousMessage, nextMessage }
                     />
                     <div className="md:px-12">
                         <div className={messageClasses}>
-                            <div
-                                className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)] px-3 py-1.5"
-                                dangerouslySetInnerHTML={{ __html: parsedContent }}
-                            />
+                            <div className="px-3 py-1.5">
+                                <div
+                                    className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
+                                    dangerouslySetInnerHTML={{ __html: parsedContent }}
+                                />
+                                {renderFiles()}
+                            </div>
                         </div>
                     </div>
                 </div>
