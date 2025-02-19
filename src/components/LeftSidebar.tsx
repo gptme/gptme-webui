@@ -1,4 +1,5 @@
 
+import { type FC } from "react";
 import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "./ConversationList";
