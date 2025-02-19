@@ -7,7 +7,7 @@ export const MenuBar: FC = () => {
   const navigate = useNavigate();
 
   const handleLogoClick = () => {
-    navigate('/', { replace: true }); // Replace current entry to avoid building up history
+    navigate('/new', { replace: true }); // Navigate to the welcome page
   };
 
   return (

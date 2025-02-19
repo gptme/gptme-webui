@@ -1,8 +1,9 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ApiProvider } from "./contexts/ApiContext";
 import Index from "./pages/Index";
 import type { FC } from "react";
@@ -36,7 +37,10 @@ const AppContent: FC = () => {
   return (
     <ApiProvider initialBaseUrl={apiUrl} queryClient={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Index />
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/new" element={<Index />} />
+        </Routes>
         <Toaster />
         <Sonner />
       </BrowserRouter>

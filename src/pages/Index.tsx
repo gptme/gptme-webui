@@ -6,11 +6,12 @@ import { MenuBar } from "@/components/MenuBar";
 import { LeftSidebar } from "@/components/LeftSidebar";
 import { RightSidebar } from "@/components/RightSidebar";
 import { ConversationContent } from "@/components/ConversationContent";
+import { WelcomeView } from "@/components/WelcomeView";
 import { useApi } from "@/contexts/ApiContext";
 import type { ConversationItem } from "@/components/ConversationList";
 import { toConversationItems } from "@/utils/conversation";
 import { demoConversations, type DemoConversation } from "@/democonversations";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 
 interface Props {
   className?: string;
@@ -21,6 +22,7 @@ const Index: FC<Props> = () => {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const conversationParam = searchParams.get('conversation');
   const [selectedConversation, setSelectedConversation] = useState<string>(
     conversationParam || demoConversations[0].name
@@ -100,17 +102,47 @@ const Index: FC<Props> = () => {
 
   const conversation = allConversations.find(
     (conv) => conv.name === selectedConversation
-  ) ?? allConversations[0];  // Fallback to first conversation if none selected
+  );
 
   // Update document title when selected conversation changes
   useEffect(() => {
-    if (conversation) {
+    if (location.pathname === '/new') {
+      setDocumentTitle('New Conversation');
+    } else if (conversation) {
       setDocumentTitle(conversation.name);
     } else {
       setDocumentTitle();
     }
     return () => setDocumentTitle();  // Reset title on unmount
-  }, [conversation]);
+  }, [conversation, location.pathname]);
+
+  const renderContent = () => {
+    if (location.pathname === '/new') {
+      return <WelcomeView onActionSelect={(message) => {
+        if (isConnected) {
+          // Create a new conversation with the selected message
+          const newId = Date.now().toString();
+          api.createConversation(newId, [])
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["conversations"] });
+              navigate(`/?conversation=${newId}`);
+              sendMessage(message);
+            })
+            .catch(() => {
+              toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to create new conversation",
+              });
+            });
+        } else {
+          // If not connected, just navigate to demo conversation
+          navigate('/?conversation=' + demoConversations[0].name);
+        }
+      }} />;
+    }
+    return <ConversationContent conversation={conversation} />;
+  };
 
   return (
     <div className="h-screen flex flex-col">
@@ -127,7 +159,7 @@ const Index: FC<Props> = () => {
           error={error as Error}
           onRetry={() => refetch()}
         />
-        <ConversationContent conversation={conversation} />
+        {renderContent()}
         <RightSidebar
           isOpen={rightSidebarOpen}
           onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}
