@@ -1,7 +1,8 @@
-import type { FC } from "react";
-import { useState, useMemo, useEffect, useRef } from "react";
+
+import { type FC, useState, useMemo, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { WelcomeView } from "./WelcomeView";
 import { useConversation } from "@/hooks/useConversation";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
@@ -11,7 +12,7 @@ import { useApi } from "@/contexts/ApiContext";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
-  conversation: ConversationItem;
+  conversation?: ConversationItem;
 }
 
 export const ConversationContent: FC<Props> = ({ conversation }) => {
@@ -20,6 +21,11 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   const [showInitialSystem, setShowInitialSystem] = useState(false);
   const api = useApi();
   const queryClient = useQueryClient();
+
+  // If no conversation is selected, show the welcome view
+  if (!conversation) {
+    return <WelcomeView onActionSelect={sendMessage} />;
+  }
 
   // Reset checkbox state when conversation changes
   useEffect(() => {
@@ -37,7 +43,6 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
       }
 
       const messages = conversationData.log;
-
       const firstNonSystem = messages.findIndex((msg) => msg.role !== "system");
       const hasInitialSystemMessages = firstNonSystem > 0;
 
@@ -106,14 +111,12 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
           </div>
         ) : null}
         {currentMessages.map((msg, index) => {
-          // Hide all system messages before the first non-system message by default
           const isInitialSystem =
             msg.role === "system" && index < firstNonSystemIndex;
           if (isInitialSystem && !showInitialSystem) {
             return null;
           }
 
-          // Get the previous and next messages for spacing context
           const previousMessage = index > 0 ? currentMessages[index - 1] : null;
           const nextMessage = index < currentMessages.length - 1 ? currentMessages[index + 1] : null;
 
@@ -127,7 +130,6 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
             />
           );
         })}
-        {/* Add a margin at the bottom to give the last message some space and signify end of conversation */}
         <div className="mb-[10vh]"></div>
       </div>
       <ChatInput
@@ -135,7 +137,6 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         onInterrupt={async () => {
           console.log("Interrupting from ConversationContent...");
           await api.cancelPendingRequests();
-          // Invalidate the query to ensure UI updates
           queryClient.invalidateQueries({
             queryKey: ["conversation", conversation.name],
           });
