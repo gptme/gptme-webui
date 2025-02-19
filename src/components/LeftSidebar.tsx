@@ -1,6 +1,6 @@
 
 import { type FC } from "react";
-import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink, Network, Search } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "./ConversationList";
 import { useApi } from "@/contexts/ApiContext";
@@ -14,24 +14,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { ConnectionDialog } from "./sidebar/ConnectionDialog";
+import { ConversationFilters } from "./sidebar/ConversationFilters";
+import { SidebarFooter } from "./sidebar/SidebarFooter";
 
 interface Props {
   isOpen: boolean;
@@ -61,11 +47,10 @@ export const LeftSidebar: FC<Props> = ({
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const { api, isConnected, baseUrl, setBaseUrl } = useApi();
+  const { api, isConnected } = useApi();
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [url, setUrl] = useState(baseUrl);
 
   const handleNewConversation = async () => {
     try {
@@ -86,32 +71,6 @@ export const LeftSidebar: FC<Props> = ({
     }
   };
 
-  const handleConnect = async () => {
-    try {
-      await setBaseUrl(url);
-      toast({
-        title: "Connected",
-        description: "Successfully connected to gptme instance",
-      });
-      setDialogOpen(false);
-    } catch (error) {
-      let errorMessage = "Could not connect to gptme instance.";
-      if (error instanceof Error) {
-        if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
-          errorMessage += " CORS issue detected - ensure the server has CORS enabled and is accepting requests from " + window.location.origin;
-        } else {
-          errorMessage += " Error: " + error.message;
-        }
-      }
-      console.error("Connection error:", error);
-      toast({
-        variant: "destructive",
-        title: "Connection failed",
-        description: errorMessage,
-      });
-    }
-  };
-
   return (
     <div className="relative h-full">
       <div
@@ -120,102 +79,26 @@ export const LeftSidebar: FC<Props> = ({
         } overflow-hidden h-full flex flex-col bg-background`}
       >
         <div className="h-12 border-b flex items-center justify-between px-4">
-          <div className="flex-1" /> {/* spacer */}
+          <div className="flex-1" />
           <Button variant="ghost" size="icon" onClick={onToggle}>
             <PanelLeftClose className="h-5 w-5" />
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Connection Status Button */}
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <button 
-                className={`flex items-center px-4 py-3 w-full hover:bg-accent transition-colors ${
-                  isConnected ? "text-green-600" : "text-muted-foreground"
-                }`}
-              >
-                <Network className="w-4 h-4 mr-3" />
-                <span className="flex-1 text-left">
-                  {isConnected ? "Connected" : "Connect to gptme"}
-                </span>
-              </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Connect to gptme</DialogTitle>
-                <DialogDescription>
-                  Connect to a gptme instance to enable advanced features and AI interactions.
-                  See the <a href="https://gptme.org/docs/server.html" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">server documentation</a> for more details.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <label htmlFor="url" className="text-sm font-medium">Server URL</label>
-                  <Input
-                    id="url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="http://127.0.0.1:5000"
-                  />
-                </div>
-                <Button onClick={handleConnect} className="w-full">
-                  {isConnected ? "Reconnect" : "Connect"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <ConnectionDialog isOpen={dialogOpen} onOpenChange={setDialogOpen} />
 
-          {/* Filters Section */}
-          <div className="px-4 py-2 border-t space-y-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search conversations..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Input
-                placeholder="Project"
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                className="h-9"
-              />
-              <Input
-                placeholder="Workspace"
-                value={selectedWorkspace}
-                onChange={(e) => setSelectedWorkspace(e.target.value)}
-                className="h-9"
-              />
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal h-9",
-                    !selectedDate && "text-muted-foreground"
-                  )}
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          <ConversationFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            selectedProject={selectedProject}
+            onProjectChange={setSelectedProject}
+            selectedWorkspace={selectedWorkspace}
+            onWorkspaceChange={setSelectedWorkspace}
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+          />
 
-          {/* Conversations Section */}
           <div className="border-t">
             <div className="flex items-center justify-between px-4 py-2">
               <h3 className="text-sm font-medium text-muted-foreground">Conversations</h3>
@@ -253,29 +136,7 @@ export const LeftSidebar: FC<Props> = ({
             </div>
           </div>
 
-          {/* Footer Links */}
-          <div className="mt-auto border-t p-2 text-xs text-muted-foreground">
-            <div className="flex items-center justify-center space-x-4">
-              <a
-                href="https://github.com/ErikBjare/gptme"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center hover:text-foreground"
-              >
-                <ExternalLink className="w-3 h-3 mr-1" />
-                gptme
-              </a>
-              <a
-                href="https://github.com/ErikBjare/gptme-webui"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center hover:text-foreground"
-              >
-                <ExternalLink className="w-3 h-3 mr-1" />
-                gptme-webui
-              </a>
-            </div>
-          </div>
+          <SidebarFooter />
         </div>
       </div>
       {!isOpen && (
