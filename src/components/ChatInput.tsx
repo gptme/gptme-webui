@@ -66,7 +66,7 @@ export const ChatInput: FC<Props> = ({
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={isGenerating ? "Generating response..." : placeholder}
-              className="min-h-[60px] pr-24 bg-[#F1F0FB] border-0 focus-visible:ring-0 resize-none"
+              className="min-h-[60px] pr-24 bg-secondary border-0 focus-visible:ring-0 resize-none"
               disabled={!api.isConnected || isReadOnly || isGenerating}
             />
             <div className="absolute bottom-2 right-2 flex gap-2">
