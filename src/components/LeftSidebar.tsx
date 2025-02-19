@@ -1,6 +1,6 @@
 
 import { type FC } from "react";
-import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink, Network } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink, Network, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "./ConversationList";
 import { useApi } from "@/contexts/ApiContext";
@@ -24,6 +24,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Props {
   isOpen: boolean;
@@ -49,6 +57,10 @@ export const LeftSidebar: FC<Props> = ({
   onRetry,
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<Date>();
   const { api, isConnected, baseUrl, setBaseUrl } = useApi();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -107,8 +119,7 @@ export const LeftSidebar: FC<Props> = ({
           isOpen ? "w-80" : "w-0"
         } overflow-hidden h-full flex flex-col`}
       >
-        <div className="h-12 border-b flex items-center justify-between px-4">
-          <h2 className="font-semibold">Menu</h2>
+        <div className="h-12 border-b flex items-center justify-end px-4">
           <Button variant="ghost" size="icon" onClick={onToggle}>
             <PanelLeftClose className="h-5 w-5" />
           </Button>
@@ -153,6 +164,55 @@ export const LeftSidebar: FC<Props> = ({
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Filters Section */}
+          <div className="px-4 py-2 border-t space-y-2">
+            <div className="flex items-center space-x-2">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search conversations..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-8"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Input
+                placeholder="Project"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="h-8"
+              />
+              <Input
+                placeholder="Workspace"
+                value={selectedWorkspace}
+                onChange={(e) => setSelectedWorkspace(e.target.value)}
+                className="h-8"
+              />
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal h-8",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
           {/* Conversations Section */}
           <div className="px-4 py-3 border-t">
