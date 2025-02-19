@@ -1,5 +1,5 @@
+
 import { ThemeToggle } from "./ThemeToggle";
-import { ConnectionButton } from "./ConnectionButton";
 
 import type { FC } from "react";
 
@@ -15,7 +15,6 @@ export const MenuBar: FC = () => {
         <span className="font-semibold text-base font-mono">gptme</span>
       </div>
       <div className="flex items-center gap-2">
-        <ConnectionButton />
         <ThemeToggle />
       </div>
     </div>

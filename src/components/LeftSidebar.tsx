@@ -1,4 +1,5 @@
-import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink } from "lucide-react";
+
+import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "./ConversationList";
 import { useApi } from "@/contexts/ApiContext";
@@ -12,8 +13,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-import type { FC } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 interface Props {
   isOpen: boolean;
@@ -38,10 +47,12 @@ export const LeftSidebar: FC<Props> = ({
   error,
   onRetry,
 }) => {
-  const { api, isConnected } = useApi();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { api, isConnected, baseUrl, setBaseUrl } = useApi();
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [url, setUrl] = useState(baseUrl);
 
   const handleNewConversation = async () => {
     try {
@@ -62,6 +73,32 @@ export const LeftSidebar: FC<Props> = ({
     }
   };
 
+  const handleConnect = async () => {
+    try {
+      await setBaseUrl(url);
+      toast({
+        title: "Connected",
+        description: "Successfully connected to gptme instance",
+      });
+      setDialogOpen(false);
+    } catch (error) {
+      let errorMessage = "Could not connect to gptme instance.";
+      if (error instanceof Error) {
+        if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
+          errorMessage += " CORS issue detected - ensure the server has CORS enabled and is accepting requests from " + window.location.origin;
+        } else {
+          errorMessage += " Error: " + error.message;
+        }
+      }
+      console.error("Connection error:", error);
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: errorMessage,
+      });
+    }
+  };
+
   return (
     <div className="relative h-full">
       <div
@@ -70,45 +107,90 @@ export const LeftSidebar: FC<Props> = ({
         } overflow-hidden h-full flex flex-col`}
       >
         <div className="h-12 border-b flex items-center justify-between px-4">
-          <h2 className="font-semibold">Conversations</h2>
-          <div className="flex items-center space-x-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
+          <h2 className="font-semibold">Menu</h2>
+          <Button variant="ghost" size="icon" onClick={onToggle}>
+            <PanelLeftClose className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Connection Status Button */}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <button 
+                className={`flex items-center px-4 py-3 w-full hover:bg-accent transition-colors ${
+                  isConnected ? "text-green-600" : "text-muted-foreground"
+                }`}
+              >
+                <Network className="w-4 h-4 mr-3" />
+                <span className="flex-1 text-left">
+                  {isConnected ? "Connected" : "Connect to gptme"}
+                </span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Connect to gptme</DialogTitle>
+                <DialogDescription>
+                  Connect to a gptme instance to enable advanced features and AI interactions.
+                  See the <a href="https://gptme.org/docs/server.html" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">server documentation</a> for more details.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <label htmlFor="url" className="text-sm font-medium">Server URL</label>
+                  <Input
+                    id="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="http://127.0.0.1:5000"
+                  />
+                </div>
+                <Button onClick={handleConnect} className="w-full">
+                  {isConnected ? "Reconnect" : "Connect"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Conversations Section */}
+          <div className="px-4 py-3 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Conversations</h3>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handleNewConversation}
                       disabled={!isConnected}
+                      className="h-6 w-6"
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {!isConnected
-                    ? "Connect to create new conversations"
-                    : "Create new conversation"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Button variant="ghost" size="icon" onClick={onToggle}>
-              <PanelLeftClose className="h-5 w-5" />
-            </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!isConnected
+                      ? "Connect to create new conversations"
+                      : "Create new conversation"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <ConversationList
+              conversations={conversations}
+              selectedId={selectedConversationId}
+              onSelect={onSelectConversation}
+              isLoading={isLoading}
+              isError={isError}
+              error={error}
+              onRetry={onRetry}
+            />
           </div>
-        </div>
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <ConversationList
-            conversations={conversations}
-            selectedId={selectedConversationId}
-            onSelect={onSelectConversation}
-            isLoading={isLoading}
-            isError={isError}
-            error={error}
-            onRetry={onRetry}
-          />
-          <div className="border-t p-2 text-xs text-muted-foreground">
+
+          {/* Footer Links */}
+          <div className="mt-auto border-t p-2 text-xs text-muted-foreground">
             <div className="flex items-center justify-center space-x-4">
               <a
                 href="https://github.com/ErikBjare/gptme"
