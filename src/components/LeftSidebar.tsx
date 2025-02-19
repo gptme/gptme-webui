@@ -1,6 +1,6 @@
 
 import { type FC } from "react";
-import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink, Network, Search, Filter } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink, Network, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "./ConversationList";
 import { useApi } from "@/contexts/ApiContext";
@@ -117,15 +117,16 @@ export const LeftSidebar: FC<Props> = ({
       <div
         className={`border-r transition-all duration-300 ${
           isOpen ? "w-80" : "w-0"
-        } overflow-hidden h-full flex flex-col`}
+        } overflow-hidden h-full flex flex-col bg-background`}
       >
-        <div className="h-12 border-b flex items-center justify-end px-4">
+        <div className="h-12 border-b flex items-center justify-between px-4">
+          <div className="flex-1" /> {/* spacer */}
           <Button variant="ghost" size="icon" onClick={onToggle}>
             <PanelLeftClose className="h-5 w-5" />
           </Button>
         </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto">
           {/* Connection Status Button */}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -167,13 +168,13 @@ export const LeftSidebar: FC<Props> = ({
 
           {/* Filters Section */}
           <div className="px-4 py-2 border-t space-y-2">
-            <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-muted-foreground" />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search conversations..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-8"
+                className="pl-9 h-9"
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -181,21 +182,21 @@ export const LeftSidebar: FC<Props> = ({
                 placeholder="Project"
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                className="h-8"
+                className="h-9"
               />
               <Input
                 placeholder="Workspace"
                 value={selectedWorkspace}
                 onChange={(e) => setSelectedWorkspace(e.target.value)}
-                className="h-8"
+                className="h-9"
               />
             </div>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
-                  variant={"outline"}
+                  variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal h-8",
+                    "w-full justify-start text-left font-normal h-9",
                     !selectedDate && "text-muted-foreground"
                   )}
                 >
@@ -215,8 +216,8 @@ export const LeftSidebar: FC<Props> = ({
           </div>
 
           {/* Conversations Section */}
-          <div className="px-4 py-3 border-t">
-            <div className="flex items-center justify-between mb-2">
+          <div className="border-t">
+            <div className="flex items-center justify-between px-4 py-2">
               <h3 className="text-sm font-medium text-muted-foreground">Conversations</h3>
               <TooltipProvider>
                 <Tooltip>
@@ -239,15 +240,17 @@ export const LeftSidebar: FC<Props> = ({
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <ConversationList
-              conversations={conversations}
-              selectedId={selectedConversationId}
-              onSelect={onSelectConversation}
-              isLoading={isLoading}
-              isError={isError}
-              error={error}
-              onRetry={onRetry}
-            />
+            <div className="overflow-y-auto max-h-[calc(100vh-24rem)]">
+              <ConversationList
+                conversations={conversations}
+                selectedId={selectedConversationId}
+                onSelect={onSelectConversation}
+                isLoading={isLoading}
+                isError={isError}
+                error={error}
+                onRetry={onRetry}
+              />
+            </div>
           </div>
 
           {/* Footer Links */}

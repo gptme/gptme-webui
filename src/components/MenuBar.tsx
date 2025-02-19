@@ -7,7 +7,7 @@ export const MenuBar: FC = () => {
   const navigate = useNavigate();
 
   const handleLogoClick = () => {
-    navigate('/'); // This will clear the conversation parameter
+    navigate('/', { replace: true }); // Replace current entry to avoid building up history
   };
 
   return (
