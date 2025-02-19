@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, type FC, type FormEvent, type KeyboardEvent } from "react";
 import { useApi } from "@/contexts/ApiContext";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Props {
   onSend: (message: string) => void;
@@ -64,24 +70,45 @@ export const ChatInput: FC<Props> = ({
               disabled={!api.isConnected || isReadOnly || isGenerating}
             />
             <div className="absolute bottom-2 right-2 flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
-                disabled={!api.isConnected || isReadOnly}
-              >
-                <Image className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
-                disabled={!api.isConnected || isReadOnly}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                      disabled={!api.isConnected || isReadOnly}
+                    >
+                      <Image className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Image upload coming soon!</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                      disabled={!api.isConnected || isReadOnly}
+                      // TODO: Implement model selector panel once we have an API to fetch available models
+                      onClick={() => console.log("Model selector panel - coming soon")}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Model settings (coming soon)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           <Button
