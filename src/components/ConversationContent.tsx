@@ -17,7 +17,7 @@ interface Props {
 
 export const ConversationContent: FC<Props> = ({ conversation }) => {
   const { conversationData, sendMessage, isLoading, isGenerating } =
-    useConversation(conversation?.name);
+    useConversation(conversation);
   const [showInitialSystem, setShowInitialSystem] = useState(false);
   const api = useApi();
   const queryClient = useQueryClient();
