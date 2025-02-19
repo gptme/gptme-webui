@@ -12,6 +12,8 @@ import type { ConversationItem } from "@/components/ConversationList";
 import { toConversationItems } from "@/utils/conversation";
 import { demoConversations, type DemoConversation } from "@/democonversations";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import { useConversation } from "@/hooks/useConversation";
 
 interface Props {
   className?: string;
@@ -29,15 +31,15 @@ const Index: FC<Props> = () => {
   );
   const { api, isConnected, baseUrl } = useApi();
   const queryClient = useQueryClient();
+  const { sendMessage } = useConversation();
+  const { toast } = useToast();
 
-  // Update selected conversation when URL param changes
   useEffect(() => {
     if (conversationParam) {
       setSelectedConversation(conversationParam);
     }
   }, [conversationParam]);
 
-  // Fetch conversations from API with proper caching
   const {
     data: apiConversations = [],
     isError,
@@ -62,25 +64,21 @@ const Index: FC<Props> = () => {
       }
     },
     enabled: isConnected,
-    staleTime: 0, // Always refetch when query is invalidated
+    staleTime: 0,
     gcTime: 5 * 60 * 1000,
   });
 
-  // Log any query errors
   if (isError) {
     console.error("Conversation query error:", error);
   }
 
-  // Combine demo and API conversations
   const allConversations: ConversationItem[] = [
-    // Convert demo conversations to ConversationItems
     ...demoConversations.map((conv: DemoConversation) => ({
       name: conv.name,
       lastUpdated: conv.lastUpdated,
       messageCount: conv.messages.length,
       readonly: true,
     })),
-    // Convert API conversations to ConversationItems
     ...toConversationItems(apiConversations),
   ];
 
@@ -89,12 +87,10 @@ const Index: FC<Props> = () => {
       if (id === selectedConversation) {
         return;
       }
-      // Cancel any pending queries for the previous conversation
       queryClient.cancelQueries({
         queryKey: ["conversation", selectedConversation],
       });
       setSelectedConversation(id);
-      // Update URL with the new conversation ID
       navigate(`?conversation=${id}`);
     },
     [selectedConversation, queryClient, navigate]
@@ -104,7 +100,6 @@ const Index: FC<Props> = () => {
     (conv) => conv.name === selectedConversation
   );
 
-  // Update document title when selected conversation changes
   useEffect(() => {
     if (location.pathname === '/new') {
       setDocumentTitle('New Conversation');
@@ -113,14 +108,13 @@ const Index: FC<Props> = () => {
     } else {
       setDocumentTitle();
     }
-    return () => setDocumentTitle();  // Reset title on unmount
+    return () => setDocumentTitle();
   }, [conversation, location.pathname]);
 
   const renderContent = () => {
     if (location.pathname === '/new') {
       return <WelcomeView onActionSelect={(message) => {
         if (isConnected) {
-          // Create a new conversation with the selected message
           const newId = Date.now().toString();
           api.createConversation(newId, [])
             .then(() => {
@@ -136,7 +130,6 @@ const Index: FC<Props> = () => {
               });
             });
         } else {
-          // If not connected, just navigate to demo conversation
           navigate('/?conversation=' + demoConversations[0].name);
         }
       }} />;

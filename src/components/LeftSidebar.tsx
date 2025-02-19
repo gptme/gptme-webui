@@ -1,6 +1,6 @@
 
 import { type FC } from "react";
-import { PanelLeftOpen, PanelLeftClose, Plus } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, Plus, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "./ConversationList";
 import { useApi } from "@/contexts/ApiContext";
@@ -79,10 +79,22 @@ export const LeftSidebar: FC<Props> = ({
         } overflow-hidden h-full flex flex-col bg-background`}
       >
         <div className="h-12 border-b flex items-center justify-between px-4">
-          <div className="flex-1" />
-          <Button variant="ghost" size="icon" onClick={onToggle}>
-            <PanelLeftClose className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggle}
+              className="shrink-0"
+            >
+              <PanelLeftClose className="h-5 w-5" />
+            </Button>
+            {isConnected ? (
+              <span className="text-green-600 flex items-center gap-2">
+                <Network className="w-4 h-4" />
+                Connected
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -139,16 +151,19 @@ export const LeftSidebar: FC<Props> = ({
           <SidebarFooter />
         </div>
       </div>
-      {!isOpen && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="absolute top-2 -right-10 z-50"
-        >
-          <PanelLeftOpen className="h-5 w-5" />
-        </Button>
-      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggle}
+        className="absolute top-2.5 left-3 z-50"
+        style={{ 
+          opacity: isOpen ? 0 : 1,
+          pointerEvents: isOpen ? 'none' : 'auto',
+          transition: 'opacity 0.2s ease-in-out'
+        }}
+      >
+        <PanelLeftOpen className="h-5 w-5" />
+      </Button>
     </div>
   );
 };
