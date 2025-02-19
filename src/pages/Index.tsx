@@ -1,3 +1,4 @@
+
 import { type FC } from "react";
 import { useState, useCallback, useEffect } from "react";
 import { setDocumentTitle } from "@/utils/title";
@@ -31,7 +32,7 @@ const Index: FC<Props> = () => {
   );
   const { api, isConnected, baseUrl } = useApi();
   const queryClient = useQueryClient();
-  const { sendMessage } = useConversation();
+  const { sendMessage } = useConversation(selectedConversation);
   const { toast } = useToast();
 
   useEffect(() => {

@@ -20,21 +20,22 @@ function getDemo(name: string): DemoConversation | undefined {
 }
 
 export function useConversation(
-  conversation: ConversationItem
+  conversationId: string | undefined
 ): UseConversationResult {
   const api = useApi();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     return () => {
       queryClient.cancelQueries({
-        queryKey: ["conversation", conversation.name],
+        queryKey: ["conversation", conversationId],
       });
     };
-  }, [conversation.name, queryClient]);
+  }, [conversationId, queryClient]);
 
-  const queryKey = ["conversation", conversation.name, conversation.readonly];
+  const queryKey = ["conversation", conversationId];
 
   const {
     data: conversationData,
@@ -43,23 +44,26 @@ export function useConversation(
   } = useQuery({
     queryKey,
     queryFn: async ({ signal }) => {
-      if (conversation.readonly) {
-        const demo = getDemo(conversation.name);
+      if (!conversationId) {
+        return undefined;
+      }
+
+      if (conversationId === "demo") {
+        const demo = getDemo(conversationId);
         return {
           log: demo?.messages || [],
-          logfile: conversation.name,
+          logfile: conversationId,
           branches: {},
         } as ConversationResponse;
       }
 
       try {
-        const response = await api.getConversation(conversation.name);
+        const response = await api.getConversation(conversationId);
 
         if (signal.aborted) {
           throw new Error("Query was cancelled");
         }
 
-        // If response is already in correct format, use it directly
         if (!response?.log || !response?.branches) {
           throw new Error("Invalid conversation data received");
         }
@@ -71,14 +75,12 @@ export function useConversation(
         );
       }
     },
-    enabled: Boolean(
-      conversation.name && (conversation.readonly || api.isConnected)
-    ),
-    staleTime: 0, // Always treat data as stale
+    enabled: Boolean(conversationId && api.isConnected),
+    staleTime: 0,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
-    refetchInterval: 0, // Disable automatic refetching
+    refetchInterval: 0,
   });
 
   interface MutationContext {
@@ -87,37 +89,31 @@ export function useConversation(
     assistantMessage: Message;
   }
 
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingState, setIsLoadingState] = useState(isLoading || isFetching);
 
   const { mutateAsync: sendMessage } = useMutation<void, Error, string, MutationContext>({
     mutationFn: async (message: string) => {
       setIsGenerating(true);
       try {
-        // Create user message
         const userMessage: Message = {
           role: "user",
           content: message,
           timestamp: new Date().toISOString(),
         };
 
-        // Send the user message first
-        await api.sendMessage(conversation.name, userMessage);
+        await api.sendMessage(conversationId, userMessage);
       } catch (error) {
         setIsGenerating(false);
         throw error;
       }
     },
     onMutate: async (message: string) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey });
 
-      // Snapshot the previous value
-      const previousData =
-        queryClient.getQueryData<ConversationResponse>(queryKey);
+      const previousData = queryClient.getQueryData<ConversationResponse>(queryKey);
 
       const timestamp = new Date().toISOString();
 
-      // Create both messages
       const userMessage: Message = {
         role: "user",
         content: message,
@@ -132,13 +128,11 @@ export function useConversation(
         id: `assistant-${Date.now()}`,
       };
 
-      // Optimistically update to the new value
       queryClient.setQueryData<ConversationResponse>(queryKey, (old) => ({
-        ...(old || { logfile: conversation.name, branches: {} }),
+        ...(old || { logfile: conversationId, branches: {} }),
         log: [...(old?.log || []), userMessage, assistantMessage],
       }));
 
-      // Return context
       return {
         previousData,
         userMessage,
@@ -169,27 +163,23 @@ export function useConversation(
 
       const handleComplete = (message: Message) => {
         if (message.role !== "system") {
-          queryClient.setQueryData<ConversationResponse>(
-            queryKey,
-            (old) => {
-              if (!old) return undefined;
-              return {
-                ...old,
-                log: old.log.map((msg) =>
-                  msg.id === currentMessageId
-                    ? { ...message, id: currentMessageId }
-                    : msg
-                ),
-              };
-            }
-          );
+          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+            if (!old) return undefined;
+            return {
+              ...old,
+              log: old.log.map((msg) =>
+                msg.id === currentMessageId
+                  ? { ...message, id: currentMessageId }
+                  : msg
+              ),
+            };
+          });
         }
       };
 
       const handleInterrupt = () => {
         console.log("Generation interrupted by user");
         setIsGenerating(false);
-        // Add [interrupted] to the current message
         queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
           if (!old) return undefined;
           return {
@@ -219,7 +209,6 @@ export function useConversation(
       const handleToolOutput = async (message: Message) => {
         if (!isGenerating) return;
 
-        // Add tool output to conversation
         queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
           if (!old) return undefined;
           return {
@@ -228,7 +217,6 @@ export function useConversation(
           };
         });
 
-        // Safety check - prevent infinite loops
         const currentLog = queryClient.getQueryData<ConversationResponse>(queryKey)?.log || [];
         const toolUseCount = currentLog.filter(msg => msg.role === "tool").length;
         if (toolUseCount > 10) {
@@ -241,50 +229,8 @@ export function useConversation(
           return;
         }
 
-        // After tool output, continue generating
-        console.log(
-          "[useConversation] Preparing to continue after tool output",
-          {
-            isGenerating,
-            previousMessageId: currentMessageId,
-          }
-        );
-
-        const assistantMessage: Message = {
-          role: "assistant",
-          content: "",
-          timestamp: new Date().toISOString(),
-          id: `assistant-${Date.now()}`,
-        };
-
-        // Add empty assistant message for streaming
-        queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-          if (!old) return undefined;
-          console.log(
-            "[useConversation] Adding new assistant message for continuation",
-            {
-              newMessageId: assistantMessage.id,
-              isGenerating,
-            }
-          );
-          return {
-            ...old,
-            log: [...old.log, assistantMessage],
-          };
-        });
-
-        // Update current message tracking
-        currentMessageId = assistantMessage.id;
-        currentContent = "";
-
-        console.log("[useConversation] Starting continued generation", {
-          newMessageId: currentMessageId,
-          isGenerating,
-        });
-
-        // Continue generating with the new assistant message
         try {
-          await api.generateResponse(conversation.name, {
+          await api.generateResponse(conversationId, {
             onToken: handleToken,
             onComplete: handleComplete,
             onToolOutput: handleToolOutput,
@@ -301,8 +247,7 @@ export function useConversation(
       };
 
       try {
-        // Initial generation
-        await api.generateResponse(conversation.name, {
+        await api.generateResponse(conversationId, {
           onToken: handleToken,
           onComplete: handleComplete,
           onToolOutput: handleToolOutput,
@@ -312,7 +257,6 @@ export function useConversation(
         if (error instanceof DOMException && error.name === "AbortError") {
           handleInterrupt();
         } else {
-          // Show error toast and rethrow
           toast({
             variant: "destructive",
             title: "Error",
@@ -323,12 +267,10 @@ export function useConversation(
       }
     },
     onError: (error, _variables, context) => {
-      // Roll back to previous state on error
       if (context?.previousData) {
         queryClient.setQueryData(queryKey, context.previousData);
       }
 
-      // Show error toast
       toast({
         variant: "destructive",
         title: "Error",
@@ -338,9 +280,6 @@ export function useConversation(
     },
   });
 
-  const isLoadingState = isLoading || isFetching;
-
-  // Cleanup generation state on unmount
   useEffect(() => {
     return () => {
       setIsGenerating(false);

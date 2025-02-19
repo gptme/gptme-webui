@@ -1,4 +1,3 @@
-
 import { type FC, useState, useMemo, useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -17,7 +16,7 @@ interface Props {
 
 export const ConversationContent: FC<Props> = ({ conversation }) => {
   const { conversationData, sendMessage, isLoading, isGenerating } = useConversation(
-    conversation?.name || ""
+    conversation?.name
   );
   const [showInitialSystem, setShowInitialSystem] = useState(false);
   const api = useApi();
