@@ -1,4 +1,5 @@
-import { Send, Loader2 } from "lucide-react";
+
+import { Send, Loader2, Image, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, type FC, type FormEvent, type KeyboardEvent } from "react";
@@ -50,30 +51,54 @@ export const ChatInput: FC<Props> = ({
     : "Connect to gptme to send messages";
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t">
-      <div className="max-w-3xl mx-auto flex">
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={isGenerating ? "Generating response..." : placeholder}
-          className="min-h-[60px] rounded-r-none"
-          disabled={!api.isConnected || isReadOnly || isGenerating}
-        />
-        <Button
-          type="submit"
-          className="min-h-[60px] min-w-[60px] bg-green-600 hover:bg-green-700 rounded-l-none rounded-r-lg"
-          disabled={!api.isConnected || isReadOnly}
-        >
-          {isGenerating ? (
-            <div className="flex items-center gap-2">
-              <span>Stop</span>
-              <Loader2 className="w-4 h-4 animate-spin" />
+    <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
+      <div className="max-w-3xl mx-auto">
+        <div className="relative flex items-end gap-2">
+          <div className="flex-1 relative">
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isGenerating ? "Generating response..." : placeholder}
+              className="min-h-[60px] pr-24 bg-secondary/50 border-0 focus-visible:ring-0 resize-none"
+              disabled={!api.isConnected || isReadOnly || isGenerating}
+            />
+            <div className="absolute bottom-2 right-2 flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                disabled={!api.isConnected || isReadOnly}
+              >
+                <Image className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                disabled={!api.isConnected || isReadOnly}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
             </div>
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-        </Button>
+          </div>
+          <Button
+            type="submit"
+            className="h-[60px] px-4 bg-green-600 hover:bg-green-700 rounded-lg shrink-0"
+            disabled={!api.isConnected || isReadOnly}
+          >
+            {isGenerating ? (
+              <div className="flex items-center gap-2">
+                <span>Stop</span>
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
       </div>
     </form>
   );
