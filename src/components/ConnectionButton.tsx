@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 export const ConnectionButton: FC = () => {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { baseUrl, setBaseUrl, isConnected, authToken, setAuthToken, tryConnect} = useApi();
+  const { baseUrl, setBaseUrl, isConnected, authToken, setAuthToken, tryConnect } = useApi();
   const [url, setUrl] = useState(baseUrl);
   const [useAuthToken, setUseAuthToken] = useState(authToken !== '');
   const [userToken, setUserToken] = useState('');
@@ -52,7 +52,7 @@ export const ConnectionButton: FC = () => {
       return;
     }
     setUserToken(e.target.value);
-  }
+  };
 
   const handleConnect = async () => {
     try {
@@ -127,18 +127,18 @@ export const ConnectionButton: FC = () => {
               placeholder="http://127.0.0.1:5000"
             />
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="use-auth" 
-              checked={useAuthToken} 
+            <Checkbox
+              id="use-auth"
+              checked={useAuthToken}
               onCheckedChange={(checked) => setUseAuthToken(checked === true)}
             />
-            <Label htmlFor="use-auth" className="text-sm font-medium cursor-pointer">
+            <Label htmlFor="use-auth" className="cursor-pointer text-sm font-medium">
               Add Authorization header
             </Label>
           </div>
-          
+
           {useAuthToken && (
             <div className="space-y-2">
               <label htmlFor="auth-token" className="text-sm font-medium">

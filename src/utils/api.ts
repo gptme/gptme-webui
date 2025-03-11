@@ -1,9 +1,9 @@
 import type {
-  ConversationResponse,
-  GenerateResponse,
   ApiError,
-  SendMessageRequest,
+  ConversationResponse,
   CreateConversationRequest,
+  GenerateResponse,
+  SendMessageRequest,
 } from '@/types/api';
 import type { Message } from '@/types/conversation';
 
@@ -43,7 +43,7 @@ export class ApiClient {
     this.baseUrl = baseUrl;
     this.authHeader = authHeader;
   }
-  
+
   private async fetchWithTimeout(
     url: string,
     options: RequestInit = {},
@@ -52,12 +52,15 @@ export class ApiClient {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const headers = {
+    let headers = {
       ...options.headers,
     };
-    
+
     if (this.authHeader) {
-      headers['Authorization'] = this.authHeader;
+      headers = {
+        ...headers,
+        Authorization: this.authHeader,
+      };
     }
 
     try {
@@ -75,22 +78,23 @@ export class ApiClient {
   }
 
   private async fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
-    const headers = {
-      'Content-Type': 'application/json',
+    let headers = {
       ...options.headers,
     };
-    
+
     if (this.authHeader) {
-      headers['Authorization'] = this.authHeader;
-    } else {
-      console.log('No Authorization header available for request');
+      headers = {
+        ...headers,
+        Authorization: this.authHeader,
+      };
     }
-    
-    console.log('Request headers:', headers);
-    
+
     const response = await fetch(url, {
       ...options,
-      headers,
+      headers: {
+        ...options.headers,
+        'Content-Type': 'applications/json',
+      },
     });
 
     if (!response.ok) {
@@ -267,15 +271,20 @@ export class ApiClient {
     let cleanup: (() => void) | undefined;
 
     try {
-      const headers = {
+      let headers: {
+        [key: string]: string;
+      } = {
         'Content-Type': 'application/json',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
       };
-      
+
       if (this.authHeader) {
-        headers['Authorization'] = this.authHeader;
+        headers = {
+          ...headers,
+          Authorization: this.authHeader,
+        };
       }
-      
+
       const response = await fetch(`${this.baseUrl}/api/conversations/${logfile}/generate`, {
         method: 'POST',
         headers,

@@ -1,7 +1,7 @@
-import type {ApiClient} from '@/utils/api';
-import {createApiClient} from '@/utils/api';
-import type {QueryClient} from '@tanstack/react-query';
-import {createContext, useContext, useEffect, useState, type ReactNode} from 'react';
+import type { ApiClient } from '@/utils/api';
+import { createApiClient } from '@/utils/api';
+import type { QueryClient } from '@tanstack/react-query';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 interface ApiContextType {
   api: ApiClient;
@@ -57,7 +57,7 @@ export function ApiProvider({
   }, [api, baseUrl]);
 
   const updateBaseUrl = async (newUrl: string) => {
-      setBaseUrl(newUrl);
+    setBaseUrl(newUrl);
   };
 
   const updateAuthToken = (header: string | null) => {
@@ -84,8 +84,7 @@ export function ApiProvider({
       setIsConnected(false);
       throw error;
     }
-  }
-
+  };
 
   return (
     <ApiContext.Provider
