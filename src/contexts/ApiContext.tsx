@@ -1,13 +1,16 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { createApiClient } from '@/utils/api';
-import type { ApiClient } from '@/utils/api';
-import type { QueryClient } from '@tanstack/react-query';
+import type {ApiClient} from '@/utils/api';
+import {createApiClient} from '@/utils/api';
+import type {QueryClient} from '@tanstack/react-query';
+import {createContext, useContext, useEffect, useState, type ReactNode} from 'react';
 
 interface ApiContextType {
   api: ApiClient;
   isConnected: boolean;
   baseUrl: string;
   setBaseUrl: (url: string) => void;
+  authToken: string | null;
+  setAuthToken: (header: string | null) => void;
+  tryConnect: () => Promise<void>;
   // Add methods from ApiClient that are used in components
   getConversation: ApiClient['getConversation'];
   sendMessage: ApiClient['sendMessage'];
@@ -27,6 +30,7 @@ export function ApiProvider({
   queryClient: QueryClient;
 }) {
   const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [api, setApi] = useState(() => createApiClient(initialBaseUrl));
   const [isConnected, setIsConnected] = useState(false);
 
@@ -53,32 +57,35 @@ export function ApiProvider({
   }, [api, baseUrl]);
 
   const updateBaseUrl = async (newUrl: string) => {
-    try {
       setBaseUrl(newUrl);
-      const newApi = createApiClient(newUrl);
+  };
 
-      // Update connection status
+  const updateAuthToken = (header: string | null) => {
+    setAuthToken(header);
+  };
+
+  const tryConnect = async () => {
+    try {
+      const newApi = createApiClient(baseUrl, `Bearer ${authToken}`);
       const connected = await newApi.checkConnection();
       if (!connected) {
         throw new Error('Failed to connect to API');
       }
-
       newApi.setConnected(true); // Explicitly set connection state
       setApi(newApi);
       setIsConnected(true);
-
-      // Invalidate and refetch all queries
       await queryClient.invalidateQueries();
       await queryClient.refetchQueries({
         queryKey: ['conversations'],
         type: 'active',
       });
     } catch (error) {
-      console.error('Failed to update API connection:', error);
+      console.error('Failed to connect to API:', error);
       setIsConnected(false);
-      throw error; // Re-throw to handle in the UI
+      throw error;
     }
-  };
+  }
+
 
   return (
     <ApiContext.Provider
@@ -87,6 +94,9 @@ export function ApiProvider({
         isConnected,
         baseUrl,
         setBaseUrl: updateBaseUrl,
+        authToken,
+        setAuthToken: updateAuthToken,
+        tryConnect,
         // Forward methods from the API client
         getConversation: api.getConversation.bind(api),
         sendMessage: api.sendMessage.bind(api),

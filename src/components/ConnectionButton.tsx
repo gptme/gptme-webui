@@ -14,12 +14,16 @@ import { useToast } from '@/components/ui/use-toast';
 import { Network, Check, Copy } from 'lucide-react';
 import { useApi } from '@/contexts/ApiContext';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 export const ConnectionButton: FC = () => {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { baseUrl, setBaseUrl, isConnected } = useApi();
+  const { baseUrl, setBaseUrl, isConnected, authToken, setAuthToken, tryConnect} = useApi();
   const [url, setUrl] = useState(baseUrl);
+  const [useAuthToken, setUseAuthToken] = useState(authToken !== '');
+  const [userToken, setUserToken] = useState('');
 
   const features = [
     'Create new conversations',
@@ -37,9 +41,26 @@ export const ConnectionButton: FC = () => {
     });
   };
 
+  const onChangeUserToken = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value && e.target.value.startsWith('Bearer ')) {
+      setUserToken(e.target.value.replace('Bearer ', ''));
+      toast({
+        variant: 'default',
+        title: 'Formated token',
+        description: 'Detected "Bearer" prefix, it is now automatically removed',
+      });
+      return;
+    }
+    setUserToken(e.target.value);
+  }
+
   const handleConnect = async () => {
     try {
-      await setBaseUrl(url);
+      setBaseUrl(url);
+      if (useAuthToken) {
+        setAuthToken(userToken);
+      }
+      await tryConnect();
       toast({
         title: 'Connected',
         description: 'Successfully connected to gptme instance',
@@ -106,6 +127,34 @@ export const ConnectionButton: FC = () => {
               placeholder="http://127.0.0.1:5000"
             />
           </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="use-auth" 
+              checked={useAuthToken} 
+              onCheckedChange={(checked) => setUseAuthToken(checked === true)}
+            />
+            <Label htmlFor="use-auth" className="text-sm font-medium cursor-pointer">
+              Add Authorization header
+            </Label>
+          </div>
+          
+          {useAuthToken && (
+            <div className="space-y-2">
+              <label htmlFor="auth-token" className="text-sm font-medium">
+                User Token
+              </label>
+              <Input
+                id="auth-token"
+                value={userToken}
+                onChange={onChangeUserToken}
+                placeholder="Your authentication token"
+              />
+              <p className="text-xs text-muted-foreground">
+                Will be sent as: Authorization: Bearer "[user token]"
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Start the server with:</label>
