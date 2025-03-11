@@ -4,7 +4,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ApiProvider } from './contexts/ApiContext';
+import { ApiVersionProvider, useApiVersion } from './contexts/ApiVersionContext';
 import Index from './pages/Index';
+import IndexV2 from './pages/IndexV2';
 import type { FC } from 'react';
 
 // Parse URL fragment parameters
@@ -49,6 +51,7 @@ const queryClient = new QueryClient({
 
 const AppContent: FC = () => {
   const defaultBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
+  const { apiVersion } = useApiVersion();
 
   // Parse fragment parameters synchronously before first render
   const { baseUrl, userToken } = parseFragmentParams();
@@ -63,7 +66,7 @@ const AppContent: FC = () => {
       queryClient={queryClient}
     >
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Index />
+        {apiVersion === 'v1' ? <Index /> : <IndexV2 />}
         <Toaster />
         <Sonner />
       </BrowserRouter>
@@ -75,7 +78,9 @@ const App: FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppContent />
+        <ApiVersionProvider>
+          <AppContent />
+        </ApiVersionProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
