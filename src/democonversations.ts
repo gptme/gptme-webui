@@ -82,7 +82,7 @@ export const demoConversations: DemoConversation[] = [
       {
         role: 'system',
         content:
-          '```result\n1. [GitHub - ErikBjare/gptme: A CLI tool for interacting with LLMs](https://github.com/ErikBjare/gptme)\n...\n```',
+          '```result\n1. [GitHub - gptme/gptme: A CLI tool for interacting with LLMs](https://github.com/gptme/gptme)\n...\n```',
         timestamp: now.toISOString(),
       },
       {
@@ -132,7 +132,7 @@ export const demoConversations: DemoConversation[] = [
       {
         role: 'assistant',
         content:
-          "The gptme web UI offers several advantages over the CLI interface:\n\n1. **Rich Message Display**:\n   - Syntax highlighted code blocks\n   - Collapsible sections for code and thinking\n   - Different styles for user/assistant/system messages\n   - Emoji indicators for different types of content:\n     - 📄 File paths\n     - 🛠️ Tool usage\n     - 📤 Command output\n     - 💻 Code blocks\n\n2. **Interactive Features**:\n   - Real-time streaming of responses\n   - Easy navigation between conversations\n   - Ability to view and restore conversation history\n\n3. **Integration with gptme-server**:\n   - Connects to your local gptme instance\n   - Access to all local tools and capabilities\n   - Secure local execution of commands\n\nHere's an example showing different types of content:\n\n```/path/to/file.py\n# This shows as a file path\n```\n\n```shell\n# This shows as a tool\nls -la\n```\n\n```stdout\n# This shows as command output\ntotal 0\n```\n\n<thinking>\nThinking blocks are collapsible and help show my reasoning process\n</thinking>\n\nThis web UI is a work in progress and will be improved over time (see the [remaining issues](https://github.com/ErikBjare/gptme-webui/issues)).",
+          "The gptme web UI offers several advantages over the CLI interface:\n\n1. **Rich Message Display**:\n   - Syntax highlighted code blocks\n   - Collapsible sections for code and thinking\n   - Different styles for user/assistant/system messages\n   - Emoji indicators for different types of content:\n     - 📄 File paths\n     - 🛠️ Tool usage\n     - 📤 Command output\n     - 💻 Code blocks\n\n2. **Interactive Features**:\n   - Real-time streaming of responses\n   - Easy navigation between conversations\n   - Ability to view and restore conversation history\n\n3. **Integration with gptme-server**:\n   - Connects to your local gptme instance\n   - Access to all local tools and capabilities\n   - Secure local execution of commands\n\nHere's an example showing different types of content:\n\n```/path/to/file.py\n# This shows as a file path\n```\n\n```shell\n# This shows as a tool\nls -la\n```\n\n```stdout\n# This shows as command output\ntotal 0\n```\n\n<thinking>\nThinking blocks are collapsible and help show my reasoning process\n</thinking>\n\nThis web UI is a work in progress and will be improved over time (see the [remaining issues](https://github.com/gptme/gptme-webui/issues)).",
         timestamp: now.toISOString(),
       },
       {
@@ -143,7 +143,7 @@ export const demoConversations: DemoConversation[] = [
       {
         role: 'assistant',
         content:
-          "To use the gptme web UI, you'll need to run `gptme-server` locally first:\n\n```shell\ngptme-server --cors-origin='<origin>'  # Replace <origin> with the web UI URL\n```\n\nThen you have two options for accessing the web UI:\n\n1. **Use the hosted version** at [chat.gptme.org](https://chat.gptme.org):\n   - Use `--cors-origin='https://chat.gptme.org'` when starting the server\n   - Click the 'Connect' button in the top-right corner\n   - Enter the server URL (default: http://127.0.0.1:5000)\n\n2. **Run the web UI locally**:\n   ```shell\n   git clone https://github.com/ErikBjare/gptme-webui\n   cd gptme-webui\n   npm install\n   npm run dev\n   ```\n   Then:\n   - Use `--cors-origin='http://localhost:8080'` when starting the server\n   - Open http://localhost:8080 in your browser\n   - Click 'Connect' and enter the server URL\n\nBoth options provide the same features, just choose what works best for you!",
+          "To use the gptme web UI, you'll need to run `gptme-server` locally first:\n\n```shell\ngptme-server --cors-origin='<origin>'  # Replace <origin> with the web UI URL\n```\n\nThen you have two options for accessing the web UI:\n\n1. **Use the hosted version** at [chat.gptme.org](https://chat.gptme.org):\n   - Use `--cors-origin='https://chat.gptme.org'` when starting the server\n   - Click the 'Connect' button in the top-right corner\n   - Enter the server URL (default: http://127.0.0.1:5000)\n\n2. **Run the web UI locally**:\n   ```shell\n   git clone https://github.com/gptme/gptme-webui\n   cd gptme-webui\n   npm install\n   npm run dev\n   ```\n   Then:\n   - Use `--cors-origin='http://localhost:8080'` when starting the server\n   - Open http://localhost:8080 in your browser\n   - Click 'Connect' and enter the server URL\n\nBoth options provide the same features, just choose what works best for you!",
         timestamp: now.toISOString(),
       },
     ],

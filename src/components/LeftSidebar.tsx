@@ -104,7 +104,7 @@ export const LeftSidebar: FC<Props> = ({
           <div className="border-t p-2 text-xs text-muted-foreground">
             <div className="flex items-center justify-center space-x-4">
               <a
-                href="https://github.com/ErikBjare/gptme"
+                href="https://github.com/gptme/gptme"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center hover:text-foreground"
@@ -113,7 +113,7 @@ export const LeftSidebar: FC<Props> = ({
                 gptme
               </a>
               <a
-                href="https://github.com/ErikBjare/gptme-webui"
+                href="https://github.com/gptme/gptme-webui"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center hover:text-foreground"

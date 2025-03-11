@@ -1,6 +1,6 @@
 # gptme-webui
 
-[![CI](https://github.com/ErikBjare/gptme-webui/actions/workflows/ci.yml/badge.svg)](https://github.com/ErikBjare/gptme-webui/actions/workflows/ci.yml)
+[![CI](https://github.com/gptme/gptme-webui/actions/workflows/ci.yml/badge.svg)](https://github.com/gptme/gptme-webui/actions/workflows/ci.yml)
 
 A fancy web UI for [gptme][gptme], built with [gptengineer.app][gptengineer.app].
 
@@ -18,7 +18,7 @@ An alternative to the minimal UI currently provided by `gptme`.
 You can use the web UI hosted at [chat.gptme.org](https://chat.gptme.org/), or run it locally:
 
 ```sh
-git clone https://github.com/ErikBjare/gptme-webui
+git clone https://github.com/gptme/gptme-webui
 cd gptme-webui
 npm i
 npm run dev
@@ -50,5 +50,5 @@ Available commands:
 
 **URL**: https://run.gptengineer.app/projects/b6f40770-f632-4741-8247-3d47b9beac4e/improve
 
-[gptme]: https://github.com/ErikBjare/gptme
+[gptme]: https://github.com/gptme/gptme
 [gptengineer.app]: https://gptengineer.app
