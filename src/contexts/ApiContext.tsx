@@ -23,15 +23,19 @@ const ApiContext = createContext<ApiContextType | null>(null);
 export function ApiProvider({
   children,
   initialBaseUrl,
+  initialAuthToken = null,
   queryClient,
 }: {
   children: ReactNode;
   initialBaseUrl: string;
+  initialAuthToken?: string | null;
   queryClient: QueryClient;
 }) {
   const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [api, setApi] = useState(() => createApiClient(initialBaseUrl));
+  const [authToken, setAuthToken] = useState<string | null>(initialAuthToken);
+  const [api, setApi] = useState(() =>
+    createApiClient(initialBaseUrl, initialAuthToken ? `Bearer ${initialAuthToken}` : null)
+  );
   const [isConnected, setIsConnected] = useState(false);
 
   // Attempt initial connection

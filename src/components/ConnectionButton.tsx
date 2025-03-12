@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,8 +22,46 @@ export const ConnectionButton: FC = () => {
   const { toast } = useToast();
   const { baseUrl, setBaseUrl, isConnected, authToken, setAuthToken, tryConnect } = useApi();
   const [url, setUrl] = useState(baseUrl);
-  const [useAuthToken, setUseAuthToken] = useState(authToken !== '');
-  const [userToken, setUserToken] = useState('');
+  const [useAuthToken, setUseAuthToken] = useState(authToken !== null && authToken !== '');
+  const [userToken, setUserToken] = useState(authToken || '');
+
+  // Auto-connect if parameters were provided through URL fragments
+  useEffect(() => {
+    const autoConnect = async () => {
+      // Don't auto-connect if already connected
+      if (isConnected) return;
+
+      // Check if URL and token were provided (different from default)
+      const defaultBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
+      const isUrlFromFragment = url !== defaultBaseUrl;
+      const isTokenFromFragment = userToken !== '';
+
+      if (isUrlFromFragment && isTokenFromFragment) {
+        try {
+          console.log('Auto-connecting with URL fragment parameters', { url, userToken });
+
+          // Update state before connecting
+          setBaseUrl(url);
+          if (isTokenFromFragment) {
+            setAuthToken(userToken);
+          }
+
+          await tryConnect();
+          toast({
+            title: 'Connected',
+            description: 'Successfully connected to gptme instance with URL fragment parameters',
+          });
+        } catch (error) {
+          console.error('Auto-connection failed:', error);
+          // Don't show toast on auto-connect failure to avoid confusion
+        }
+      }
+    };
+
+    // Only run on initial mount
+    void autoConnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const features = [
     'Create new conversations',
