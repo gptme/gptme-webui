@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
-import { ChatInput } from './ChatInput';
+import { ChatInput, type ChatOptions } from './ChatInput';
 import { useConversation } from '@/hooks/useConversation';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
@@ -13,6 +13,17 @@ import { useQueryClient } from '@tanstack/react-query';
 interface Props {
   conversation: ConversationItem;
 }
+
+// This can be replaced with an API call to fetch available models from the server
+const AVAILABLE_MODELS = [
+  'anthropic/claude-3-5-sonnet-20240620',
+  'anthropic/claude-3-opus-20240229',
+  'anthropic/claude-3-sonnet-20240229',
+  'anthropic/claude-3-haiku-20240307',
+  'openai/gpt-4-turbo',
+  'openai/gpt-4',
+  'openai/gpt-3.5-turbo',
+];
 
 export const ConversationContent: FC<Props> = ({ conversation }) => {
   const { conversationData, sendMessage, isLoading, isGenerating } = useConversation(conversation);
@@ -71,6 +82,14 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
     conversation.name, // Scroll when conversation changes
   ]);
 
+  const handleSendMessage = (message: string, options?: ChatOptions) => {
+    if (options) {
+      sendMessage({ message, options });
+    } else {
+      sendMessage(message);
+    }
+  };
+
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="relative flex-1 overflow-y-auto" ref={scrollContainerRef}>
@@ -125,7 +144,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         <div className="mb-[10vh]"></div>
       </div>
       <ChatInput
-        onSend={sendMessage}
+        onSend={handleSendMessage}
         onInterrupt={async () => {
           console.log('Interrupting from ConversationContent...');
           await api.cancelPendingRequests();
@@ -136,6 +155,8 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         }}
         isReadOnly={conversation.readonly}
         isGenerating={isGenerating}
+        availableModels={AVAILABLE_MODELS}
+        defaultModel={AVAILABLE_MODELS[0]}
       />
     </main>
   );

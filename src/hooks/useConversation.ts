@@ -7,10 +7,11 @@ import type { Message } from '@/types/conversation';
 import type { ConversationItem } from '@/components/ConversationList';
 import { demoConversations } from '@/democonversations';
 import type { DemoConversation } from '@/democonversations';
+import type { ChatOptions } from '@/components/ChatInput';
 
 interface UseConversationResult {
   conversationData: ConversationResponse | undefined;
-  sendMessage: (message: string) => Promise<void>;
+  sendMessage: (messageInput: string | { message: string; options?: ChatOptions }) => Promise<void>;
   isLoading: boolean;
   isGenerating: boolean;
 }
@@ -83,8 +84,13 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const { mutateAsync: sendMessage } = useMutation<void, Error, string, MutationContext>({
-    mutationFn: async (message: string) => {
+  const { mutateAsync: mutateMessage } = useMutation<
+    void,
+    Error,
+    { message: string; options?: ChatOptions },
+    MutationContext
+  >({
+    mutationFn: async ({ message, options: _options }) => {
       setIsGenerating(true);
       try {
         // Create user message
@@ -101,7 +107,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
         throw error;
       }
     },
-    onMutate: async (message: string) => {
+    onMutate: async ({ message }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey });
 
@@ -138,7 +144,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
         assistantMessage,
       };
     },
-    onSuccess: async (_, _variables, context) => {
+    onSuccess: async (_, { options }, context) => {
       if (!context) return;
 
       let currentContent = '';
@@ -264,12 +270,16 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
         // Continue generating with the new assistant message
         try {
-          await api.generateResponse(conversation.name, {
-            onToken: handleToken,
-            onComplete: handleComplete,
-            onToolOutput: handleToolOutput,
-            onError: handleError,
-          });
+          await api.generateResponse(
+            conversation.name,
+            {
+              onToken: handleToken,
+              onComplete: handleComplete,
+              onToolOutput: handleToolOutput,
+              onError: handleError,
+            },
+            options
+          );
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
             handleInterrupt();
@@ -282,12 +292,16 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
       try {
         // Initial generation
-        await api.generateResponse(conversation.name, {
-          onToken: handleToken,
-          onComplete: handleComplete,
-          onToolOutput: handleToolOutput,
-          onError: handleError,
-        });
+        await api.generateResponse(
+          conversation.name,
+          {
+            onToken: handleToken,
+            onComplete: handleComplete,
+            onToolOutput: handleToolOutput,
+            onError: handleError,
+          },
+          options
+        );
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           handleInterrupt();
@@ -326,6 +340,207 @@ export function useConversation(conversation: ConversationItem): UseConversation
       setIsGenerating(false);
     };
   }, []);
+
+  // Create a wrapper function that accepts both string and object input
+  const sendMessage = (
+    messageInput: string | { message: string; options?: ChatOptions }
+  ): Promise<void> => {
+    // Store options for use in onSuccess handler
+    let options: ChatOptions | undefined;
+    let message: string;
+
+    if (typeof messageInput === 'string') {
+      message = messageInput;
+    } else {
+      message = messageInput.message;
+      options = messageInput.options;
+    }
+
+    // Save options in closure for use in onSuccess
+    const generateOptions = options;
+
+    return mutateMessage(
+      { message, options },
+      {
+        onSuccess: async (
+          _data: void,
+          _variables: { message: string; options?: ChatOptions },
+          context: MutationContext | undefined
+        ) => {
+          if (!context) return;
+
+          let currentContent = '';
+          let currentMessageId = context.assistantMessage.id;
+          setIsGenerating(true);
+
+          const handleToken = (token: string) => {
+            currentContent += token;
+            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+              if (!old) return undefined;
+              return {
+                ...old,
+                log: old.log.map((msg) =>
+                  msg.id === currentMessageId ? { ...msg, content: currentContent } : msg
+                ),
+              };
+            });
+          };
+
+          const handleComplete = (message: Message) => {
+            if (message.role !== 'system') {
+              queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+                if (!old) return undefined;
+                return {
+                  ...old,
+                  log: old.log.map((msg) =>
+                    msg.id === currentMessageId ? { ...message, id: currentMessageId } : msg
+                  ),
+                };
+              });
+            }
+          };
+
+          const handleInterrupt = () => {
+            console.log('Generation interrupted by user');
+            setIsGenerating(false);
+            // Add [interrupted] to the current message
+            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+              if (!old) return undefined;
+              return {
+                ...old,
+                log: old.log.map((msg) =>
+                  msg.id === currentMessageId
+                    ? { ...msg, content: msg.content + '\n\n[interrupted]' }
+                    : msg
+                ),
+              };
+            });
+          };
+
+          const handleError = (error: string) => {
+            if (error === 'AbortError') {
+              handleInterrupt();
+            } else {
+              setIsGenerating(false);
+              toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error,
+              });
+            }
+          };
+
+          const handleToolOutput = async (message: Message) => {
+            if (!isGenerating) return;
+
+            // Add tool output to conversation
+            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+              if (!old) return undefined;
+              return {
+                ...old,
+                log: [...old.log, message],
+              };
+            });
+
+            // Safety check - prevent infinite loops
+            const currentLog = queryClient.getQueryData<ConversationResponse>(queryKey)?.log || [];
+            const toolUseCount = currentLog.filter((msg) => msg.role === 'tool').length;
+            if (toolUseCount > 10) {
+              console.warn('Too many tool uses, stopping auto-generation');
+              toast({
+                title: 'Warning',
+                description: 'Stopped auto-generation after 10 tool uses',
+              });
+              setIsGenerating(false);
+              return;
+            }
+
+            // After tool output, continue generating
+            console.log('[useConversation] Preparing to continue after tool output', {
+              isGenerating,
+              previousMessageId: currentMessageId,
+            });
+
+            const assistantMessage: Message = {
+              role: 'assistant',
+              content: '',
+              timestamp: new Date().toISOString(),
+              id: `assistant-${Date.now()}`,
+            };
+
+            // Add empty assistant message for streaming
+            queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+              if (!old) return undefined;
+              console.log('[useConversation] Adding new assistant message for continuation', {
+                newMessageId: assistantMessage.id,
+                isGenerating,
+              });
+              return {
+                ...old,
+                log: [...old.log, assistantMessage],
+              };
+            });
+
+            // Update current message tracking
+            currentMessageId = assistantMessage.id;
+            currentContent = '';
+
+            console.log('[useConversation] Starting continued generation', {
+              newMessageId: currentMessageId,
+              isGenerating,
+            });
+
+            // Continue generating with the new assistant message
+            try {
+              await api.generateResponse(
+                conversation.name,
+                {
+                  onToken: handleToken,
+                  onComplete: handleComplete,
+                  onToolOutput: handleToolOutput,
+                  onError: handleError,
+                },
+                generateOptions
+              );
+            } catch (error) {
+              if (error instanceof DOMException && error.name === 'AbortError') {
+                handleInterrupt();
+              } else {
+                setIsGenerating(false);
+                throw error;
+              }
+            }
+          };
+
+          try {
+            // Initial generation
+            await api.generateResponse(
+              conversation.name,
+              {
+                onToken: handleToken,
+                onComplete: handleComplete,
+                onToolOutput: handleToolOutput,
+                onError: handleError,
+              },
+              generateOptions
+            );
+          } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+              handleInterrupt();
+            } else {
+              // Show error toast and rethrow
+              toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to generate response',
+              });
+              throw error;
+            }
+          }
+        },
+      }
+    );
+  };
 
   return {
     conversationData,

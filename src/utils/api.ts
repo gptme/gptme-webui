@@ -254,9 +254,13 @@ export class ApiClient {
       onToolOutput?: (message: Message) => void;
       onError?: (error: string) => void;
     },
-    model?: string,
-    branch: string = 'main'
+    options?: {
+      model?: string;
+      stream?: boolean;
+      branch?: string;
+    }
   ): Promise<void> {
+    const { model, stream = true, branch = 'main' } = options || {};
     if (!this._isConnected) {
       throw new Error('Not connected to API');
     }
@@ -284,7 +288,7 @@ export class ApiClient {
       const response = await fetch(`${this.baseUrl}/api/conversations/${logfile}/generate`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ model, branch, stream: true }),
+        body: JSON.stringify({ model, branch, stream }),
         signal: this.controller?.signal,
       });
 
