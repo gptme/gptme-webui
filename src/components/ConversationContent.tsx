@@ -176,7 +176,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         onSend={handleSendMessage}
         onInterrupt={async () => {
           console.log('Interrupting from ConversationContent...');
-          // Use the  API's interrupt method
+          // Use the API's interrupt method
           await interruptGeneration();
           // Invalidate the query to ensure UI updates
           queryClient.invalidateQueries({

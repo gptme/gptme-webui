@@ -113,8 +113,8 @@ export function useConversation(conversation: ConversationItem): UseConversation
               // If the last message is from the assistant, update it
               if (lastMsg.role === 'assistant') {
                 messages[messages.length - 1] = {
-                  ...message,
-                  id: lastMsg.id,
+                  ...lastMsg,
+                  content: message.content,
                 };
               } else {
                 messages.push({
@@ -324,7 +324,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
         `[useConversation] Tool confirmation API call successful - waiting for output events`
       );
 
-      // For the  API, we don't need to manually reconnect - the server will automatically
+      // For the API, we don't need to manually reconnect - the server will automatically
       // execute the tool and send events through the already established event stream.
       console.log('[useConversation] Tool confirmation successful, waiting for tool output events');
     } catch (error) {
@@ -401,9 +401,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
       try {
         // Ensure we're ready to receive events
         console.log('[useConversation] Ensuring event stream is ready');
-
-        // Small delay to ensure event stream is ready
-        await new Promise((resolve) => setTimeout(resolve, 100));
 
         setIsGenerating(true);
 

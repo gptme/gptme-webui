@@ -156,7 +156,7 @@ export class ApiClient {
 
   async checkConnection(): Promise<boolean> {
     try {
-      // Check the  API
+      // Check the API
       const response = await this.fetchWithTimeout(`${this.baseUrl}/api/v2`, {}, 3000);
 
       if (!response.ok) {
@@ -235,8 +235,7 @@ export class ApiClient {
         // Skip logging pings to avoid console spam
         if (data.type !== 'ping') {
           console.log(`[ApiClient] Event received for ${conversationId}:`, {
-            type: data.type,
-            data: data.type === 'generation_progress' ? 'token...' : data,
+            ...data,
             eventSourceUrl: eventSource.url,
           });
         }
@@ -244,22 +243,26 @@ export class ApiClient {
         switch (data.type) {
           case 'message_added':
             console.log(`[ApiClient] Message added:`, data.message);
-            callbacks.onMessageAdded?.(data.message);
+            callbacks.onMessageAdded(data.message);
+            break;
+
+          case 'generation_started':
+            console.log(`[ApiClient] Generation started`, data);
             break;
 
           case 'generation_progress':
             console.log(`[ApiClient] Generation progress:`, data.token);
-            callbacks.onToken?.(data.token);
+            callbacks.onToken(data.token);
             break;
 
           case 'generation_complete':
             console.log(`[ApiClient] Generation complete:`, data.message);
-            callbacks.onComplete?.(data.message);
+            callbacks.onComplete(data.message);
             break;
 
           case 'tool_pending':
             console.log(`[ApiClient] Tool pending:`, data);
-            callbacks.onToolPending?.(data.tool_id, data.tooluse, data.auto_confirm);
+            callbacks.onToolPending(data.tool_id, data.tooluse, data.auto_confirm);
             break;
 
           case 'tool_executing':
@@ -268,7 +271,7 @@ export class ApiClient {
 
           case 'error':
             console.error(`[ApiClient] Error event:`, data);
-            callbacks.onError?.(data.error);
+            callbacks.onError(data.error);
             break;
 
           case 'generation_resuming':
@@ -285,7 +288,7 @@ export class ApiClient {
             break;
 
           default:
-            console.log(`[ApiClient] Unknown event type:`, data);
+            console.warn(`[ApiClient] Unknown event type:`, data);
             break;
         }
       } catch (e) {
