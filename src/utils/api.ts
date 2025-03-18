@@ -196,8 +196,9 @@ export class ApiClient {
   subscribeToEvents(
     conversationId: string,
     callbacks: {
+      onMessageStart: () => void;
       onToken: (token: string) => void;
-      onComplete: (message: Message) => void;
+      onMessageComplete: (message: Message) => void;
       onMessageAdded: (message: Message) => void;
       onToolPending: (toolId: string, tooluse: ToolUse, auto_confirm: boolean) => void;
       onError: (error: string) => void;
@@ -231,12 +232,12 @@ export class ApiClient {
         const data = JSON.parse(event.data);
 
         // Skip logging pings to avoid console spam
-        if (data.type !== 'ping') {
-          console.log(`[ApiClient] Event received for ${conversationId}:`, {
-            ...data,
-            eventSourceUrl: eventSource.url,
-          });
-        }
+        //if (data.type !== 'ping') {
+        //  console.log(`[ApiClient] Event received for ${conversationId}:`, {
+        //    ...data,
+        //    eventSourceUrl: eventSource.url,
+        //  });
+        //}
 
         switch (data.type) {
           case 'message_added':
@@ -249,13 +250,13 @@ export class ApiClient {
             break;
 
           case 'generation_progress':
-            console.log(`[ApiClient] Generation progress:`, data.token);
+            //console.log(`[ApiClient] Generation progress:`, data.token);
             callbacks.onToken(data.token);
             break;
 
           case 'generation_complete':
             console.log(`[ApiClient] Generation complete:`, data.message);
-            callbacks.onComplete(data.message);
+            callbacks.onMessageComplete(data.message);
             break;
 
           case 'tool_pending': {
@@ -276,10 +277,6 @@ export class ApiClient {
           case 'error':
             console.error(`[ApiClient] Error event:`, data);
             callbacks.onError(data.error);
-            break;
-
-          case 'generation_resuming':
-            console.log(`[ApiClient] Generation resuming`);
             break;
 
           case 'ping':

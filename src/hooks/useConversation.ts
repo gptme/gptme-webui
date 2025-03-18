@@ -59,16 +59,18 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
       // Subscribe to events
       api.subscribeToEvents(conversation.name, {
+        onMessageStart: () => {
+          console.log('[useConversation] Received message start');
+        },
         onToken: (token) => {
-          console.log('[useConversation] Received token', {
-            isGenerating: isGeneratingRef.current,
-            token,
-            conversationId: conversation.name,
-          });
+          //console.log('[useConversation] Received token', {
+          //  isGenerating: isGeneratingRef.current,
+          //  token,
+          //  conversationId: conversation.name,
+          //});
           setIsGenerating(true); // Ensure generating state is set when receiving tokens
 
           // Update the UI when tokens come in
-          // FIXME: somehow this misses some tokens
           queryClient.setQueryData<ConversationResponse>(
             ['conversation', conversation.name, conversation.readonly],
             (old) => {
@@ -77,7 +79,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
               const messages = [...old.log];
               const lastMsg = messages[messages.length - 1];
 
-              // If the last message is from the assistant and not marked as complete
+              // If the last message is from the assistant
               if (lastMsg.role === 'assistant') {
                 messages[messages.length - 1] = {
                   ...lastMsg,
@@ -99,7 +101,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
             }
           );
         },
-        onComplete: (message) => {
+        onMessageComplete: (message) => {
           console.log('[useConversation] Received complete message');
 
           // Update the conversation with the complete message
@@ -145,14 +147,29 @@ export function useConversation(conversation: ConversationItem): UseConversation
         onMessageAdded: (message) => {
           console.log('[useConversation] Received message:', message);
 
-          // if from assistant, don't output since we already got it
-          if (message.role === 'assistant') return;
-
           // Update the conversation with the message
           queryClient.setQueryData<ConversationResponse>(
             ['conversation', conversation.name, conversation.readonly],
             (old) => {
               if (!old) return undefined;
+              // Check last 2 messages for duplicates
+              // Prevents duplicate messages from being added to the log, as in the cases of:
+              //  - onMessageAdded running after onComplete (effectively a no-op)
+              //  - message_added events for messages we sent outselves (already added to conversation)
+              const recentMessages = old.log.slice(-2);
+              const isDuplicate = recentMessages.some(
+                (msg) => msg.role === message.role && msg.content === message.content
+                // && msg.timestamp === message.timestamp
+              );
+              const isSystem = message.role === 'system';
+              if (isSystem) {
+                setIsGenerating(false);
+              }
+
+              if (isDuplicate) {
+                console.log('[useConversation] Ignoring duplicate message:', message);
+                return old;
+              }
 
               console.log('[useConversation] Adding message to conversation:', message);
               return {
@@ -235,8 +252,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
   interface MutationContext {
     previousData: ConversationResponse | undefined;
-    userMessage: Message;
-    assistantMessage: Message;
   }
 
   // Add explicit interrupt method
@@ -365,21 +380,16 @@ export function useConversation(conversation: ConversationItem): UseConversation
       // Snapshot the previous value
       const previousData = queryClient.getQueryData<ConversationResponse>(queryKey);
 
-      const timestamp = new Date().toISOString();
-
-      // Create both messages
       const userMessage: Message = {
         role: 'user',
         content: message,
-        timestamp,
-        id: `user-${Date.now()}`,
+        timestamp: new Date().toISOString(),
       };
 
       const assistantMessage: Message = {
         role: 'assistant',
         content: '',
-        timestamp,
-        id: `assistant-${Date.now()}`,
+        timestamp: new Date().toISOString(),
       };
 
       // Optimistically update to the new value
@@ -391,8 +401,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
       // Return context
       return {
         previousData,
-        userMessage,
-        assistantMessage,
       };
     },
     onSuccess: async (_data, { options }, context) => {
