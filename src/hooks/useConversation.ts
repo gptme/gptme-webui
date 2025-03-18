@@ -68,6 +68,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
           setIsGenerating(true); // Ensure generating state is set when receiving tokens
 
           // Update the UI when tokens come in
+          // FIXME: somehow this misses some tokens
           queryClient.setQueryData<ConversationResponse>(
             ['conversation', conversation.name, conversation.readonly],
             (old) => {
@@ -163,7 +164,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
                   },
                 ],
               };
-              return old;
             }
           );
         },
