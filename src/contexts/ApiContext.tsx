@@ -15,8 +15,8 @@ interface ApiContextType {
   getConversation: ApiClient['getConversation'];
   sendMessage: ApiClient['sendMessage'];
   step: ApiClient['step'];
-  confirmTool: ApiClient['confirmTool']; // New method for tool confirmation
-  interruptGeneration: ApiClient['interruptGeneration']; // New method for interruption
+  confirmTool: ApiClient['confirmTool'];
+  interruptGeneration: ApiClient['interruptGeneration'];
   cancelPendingRequests: ApiClient['cancelPendingRequests'];
   // Add event stream methods
   subscribeToEvents: ApiClient['subscribeToEvents'];

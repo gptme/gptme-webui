@@ -91,11 +91,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   ]);
 
   const handleSendMessage = (message: string, options?: ChatOptions) => {
-    if (options) {
-      sendMessage({ message, options });
-    } else {
-      sendMessage(message);
-    }
+    sendMessage({ message, options });
   };
   // Handle tool confirmation
   const handleConfirmTool = async () => {

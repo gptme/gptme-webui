@@ -8,6 +8,12 @@ export interface Message {
   id?: string; // Add back message ID
 }
 
+export interface ToolUse {
+  tool: string;
+  args: string[];
+  content: string;
+}
+
 export interface ConversationSummary {
   name: string;
   modified: number;

@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
 import type { ConversationResponse } from '@/types/api';
-import type { Message } from '@/types/conversation';
+import type { Message, ToolUse } from '@/types/conversation';
 import type { ConversationItem } from '@/components/ConversationList';
 import { demoConversations } from '@/democonversations';
 import type { DemoConversation } from '@/democonversations';
@@ -12,14 +12,12 @@ import type { ChatOptions } from '@/components/ChatInput';
 // New type for pending tools
 export interface PendingTool {
   id: string;
-  tool: string;
-  args: string[];
-  content: string;
+  tooluse: ToolUse;
 }
 
 interface UseConversationResult {
   conversationData: ConversationResponse | undefined;
-  sendMessage: (messageInput: string | { message: string; options?: ChatOptions }) => Promise<void>;
+  sendMessage: (messageInput: { message: string; options?: ChatOptions }) => Promise<void>;
   isLoading: boolean;
   isGenerating: boolean;
   pendingTool: PendingTool | null;
@@ -62,7 +60,12 @@ export function useConversation(conversation: ConversationItem): UseConversation
       // Subscribe to events
       api.subscribeToEvents(conversation.name, {
         onToken: (token) => {
-          console.log('[useConversation] Received token');
+          console.log('[useConversation] Received token', {
+            isGenerating: isGeneratingRef.current,
+            token,
+            conversationId: conversation.name,
+          });
+          setIsGenerating(true); // Ensure generating state is set when receiving tokens
 
           // Update the UI when tokens come in
           queryClient.setQueryData<ConversationResponse>(
@@ -70,116 +73,96 @@ export function useConversation(conversation: ConversationItem): UseConversation
             (old) => {
               if (!old?.log?.length) return old;
 
-              // Find the last assistant message to update, or create one if needed
-              const lastMsg = old.log[old.log.length - 1];
+              const messages = [...old.log];
+              const lastMsg = messages[messages.length - 1];
 
-              // If last message is from assistant, append to it
+              // If the last message is from the assistant and not marked as complete
               if (lastMsg.role === 'assistant') {
-                return {
-                  ...old,
-                  log: [
-                    ...old.log.slice(0, -1),
-                    {
-                      ...lastMsg,
-                      content: lastMsg.content + token,
-                    },
-                  ],
+                messages[messages.length - 1] = {
+                  ...lastMsg,
+                  content: lastMsg.content + token,
                 };
               } else {
-                // If last message is from user or system, add a new assistant message
-                return {
-                  ...old,
-                  log: [
-                    ...old.log,
-                    {
-                      role: 'assistant',
-                      content: token,
-                      timestamp: new Date().toISOString(),
-                      id: `assistant-stream-${Date.now()}`,
-                    },
-                  ],
-                };
+                // Add a new assistant message
+                messages.push({
+                  role: 'assistant',
+                  content: token,
+                  timestamp: new Date().toISOString(),
+                });
               }
 
-              return old;
+              return {
+                ...old,
+                log: messages,
+              };
             }
           );
         },
         onComplete: (message) => {
           console.log('[useConversation] Received complete message');
+
           // Update the conversation with the complete message
           queryClient.setQueryData<ConversationResponse>(
             ['conversation', conversation.name, conversation.readonly],
             (old) => {
               if (!old) return undefined;
 
-              // Check if this message is already in the log to avoid duplicates
-              const messageExists = old.log.some(
-                (msg) => msg.role === message.role && msg.content === message.content
-              );
+              const messages = [...old.log];
+              const lastMsg = messages[messages.length - 1];
 
-              if (!messageExists) {
-                return {
-                  ...old,
-                  log: [...old.log, message],
+              // If the last message is from the assistant, update it
+              if (lastMsg.role === 'assistant') {
+                messages[messages.length - 1] = {
+                  ...message,
+                  id: lastMsg.id,
                 };
+              } else {
+                messages.push({
+                  ...message,
+                });
               }
-              return old;
+
+              return {
+                ...old,
+                log: messages,
+              };
             }
           );
+
+          setIsGenerating(false);
         },
-        onToolPending: (toolId, tool, args, content) => {
-          console.log('[useConversation] Received tool pending');
-
-          // Check if we're already generating, which means we're handling a tool
-          // or if we have already seen this tool
-          if (isGeneratingRef.current || pendingToolRef.current) {
-            console.log('[useConversation] Ignoring tool pending event during active generation');
-            return;
+        onToolPending: (toolId, tooluse, auto_confirm) => {
+          console.log(`[useConversation] Received tool pending with ${toolId}:`, tooluse);
+          if (auto_confirm) {
+            throw new Error('Auto-confirmation not supported');
           }
-
           setPendingTool({
             id: toolId,
-            tool,
-            args,
-            content,
+            tooluse,
           });
         },
         onMessageAdded: (message) => {
           console.log('[useConversation] Received message:', message);
 
-          // Update the conversation with the user message from another tab
+          // if from assistant, don't output since we already got it
+          if (message.role === 'assistant') return;
+
+          // Update the conversation with the message
           queryClient.setQueryData<ConversationResponse>(
             ['conversation', conversation.name, conversation.readonly],
             (old) => {
               if (!old) return undefined;
 
-              // Check if this message is already in the log to avoid duplicates
-              const messageExists = old.log.some(
-                (msg) =>
-                  msg.role === message.role &&
-                  msg.content === message.content &&
-                  // If timestamps are very close (within 2 seconds), consider it the same message
-                  (!msg.timestamp ||
-                    !message.timestamp ||
-                    Math.abs(
-                      new Date(msg.timestamp).getTime() - new Date(message.timestamp).getTime()
-                    ) < 2000)
-              );
-
-              if (!messageExists) {
-                console.log('[useConversation] Adding user message to conversation:', message);
-                return {
-                  ...old,
-                  log: [
-                    ...old.log,
-                    {
-                      ...message,
-                      id: message.id || `user-from-another-tab-${Date.now()}`,
-                    },
-                  ],
-                };
-              }
+              console.log('[useConversation] Adding message to conversation:', message);
+              return {
+                ...old,
+                log: [
+                  ...old.log,
+                  {
+                    ...message,
+                  },
+                ],
+              };
               return old;
             }
           );
@@ -347,39 +330,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
     } catch (error) {
       console.error('Error confirming tool:', error);
 
-      // Check if it's a 404 error - this means the endpoint doesn't exist (server is v1)
-      const apiError = error as { status?: number };
-      if (apiError.status === 404) {
-        console.warn('Tool confirmation endpoint not available - server may be using v1 API');
-
-        // If auto-confirming, just continue without the API call
-        if (action === 'auto') {
-          console.log('Auto-continuing despite missing endpoint');
-          setPendingTool(null);
-          return;
-        }
-
-        // If confirming, also continue
-        if (action === 'confirm') {
-          console.log('Continuing despite missing endpoint');
-          setPendingTool(null);
-          return;
-        }
-
-        // If skipping, clear the pending tool and interrupt generation
-        if (action === 'skip') {
-          setPendingTool(null);
-          try {
-            await api.interruptGeneration(conversation.name);
-            setIsGenerating(false);
-          } catch (err) {
-            console.error('Error interrupting generation after skip:', err);
-          }
-          return;
-        }
-      }
-
-      // For other errors, show a toast
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -391,84 +341,26 @@ export function useConversation(conversation: ConversationItem): UseConversation
     }
   };
 
-  // TODO: remove?
-  // these were passed to step before, but now we only listed to them in the event stream
-  /*
-  const currentMessageId = context.assistantMessage.id;
-  let callbacks = {
-    onToken: (token) => {
-      // Update the assistant message with the token
-      queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-        if (!old) return undefined;
-        return {
-          ...old,
-          log: old.log.map((msg) =>
-            msg.id === currentMessageId ? { ...msg, content: msg.content + token } : msg
-          ),
-        };
-      });
-    },
-    onComplete: (message) => {
-      if (message.role !== 'system') {
-        queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-          if (!old) return undefined;
-          return {
-            ...old,
-            log: old.log.map((msg) =>
-              msg.id === currentMessageId
-                ? { ...message, id: currentMessageId, completed: true }
-                : msg
-            ),
-          };
-        });
-      }
-    },
-    onToolPending: (toolId, tool, args, content) => {
-      console.log('[useConversation] Tool pending:', { toolId, tool, args });
-      setPendingTool({
-        id: toolId,
-        tool,
-        args,
-        content,
-      });
-    },
-    onToolOutput: handleToolOutput,
-    onError: (error) => {
-      if (error === 'AbortError') {
-        setIsGenerating(false);
-      } else {
-        setIsGenerating(false);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error,
-        });
-      }
-    },
-  };
-  */
   // Define the mutation to send a message
-  const { mutateAsync: sendMessage } = useMutation<void, Error, string, MutationContext>({
-    mutationFn: async (message: string) => {
-      setIsGenerating(true);
-      try {
-        // Create user message
-        const userMessage: Message = {
-          role: 'user',
-          content: message,
-          timestamp: new Date().toISOString(),
-        };
+  const { mutateAsync: sendMessage } = useMutation<
+    void,
+    Error,
+    { message: string; options?: ChatOptions },
+    MutationContext
+  >({
+    mutationFn: async ({ message }) => {
+      // Create user message
+      const userMessage: Message = {
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString(),
+      };
 
-        // Send the user message first
-        await api.sendMessage(conversation.name, userMessage);
-      } catch (error) {
-        setIsGenerating(false);
-        throw error;
-      }
+      // Send the user message first
+      await api.sendMessage(conversation.name, userMessage);
     },
     onMutate: async ({ message }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey });
+      setIsGenerating(true);
 
       // Snapshot the previous value
       const previousData = queryClient.getQueryData<ConversationResponse>(queryKey);
@@ -503,33 +395,40 @@ export function useConversation(conversation: ConversationItem): UseConversation
         assistantMessage,
       };
     },
-    onSuccess: async (_, { options }, context) => {
+    onSuccess: async (_data, { options }, context) => {
       if (!context) return;
 
-      setIsGenerating(true);
-
       try {
+        // Ensure we're ready to receive events
+        console.log('[useConversation] Ensuring event stream is ready');
+
+        // Small delay to ensure event stream is ready
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        setIsGenerating(true);
+
         // Initial generation
-        await api.step(
-          conversation.name,
-          undefined, // use default model
-          'main' // branch
-        );
+        console.log('[useConversation] Starting generation');
+        await api.step(conversation.name, options?.model);
+
+        console.log('[useConversation] Generation started, waiting for events');
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           setIsGenerating(false);
-        } else {
-          // Show error toast and rethrow
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to generate response',
-          });
-          throw error;
         }
+
+        // Show error toast and rethrow
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to generate response',
+        });
+        throw error;
       }
     },
     onError: (error, _variables, context) => {
+      setIsGenerating(false);
+
       // Roll back to previous state on error
       if (context?.previousData) {
         queryClient.setQueryData(queryKey, context.previousData);

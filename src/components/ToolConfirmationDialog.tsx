@@ -38,26 +38,12 @@ export function ToolConfirmationDialog({
   React.useEffect(() => {
     if (pendingTool) {
       // Extract the actual code from ToolUse string if possible
-      const content = pendingTool.content;
-      const extractedCode = extractCodeFromToolUse(content);
-      setEditedContent(extractedCode || content);
+      const content = pendingTool.tooluse.content;
+      setEditedContent(content);
       setIsEditing(false);
       setConfirmLoading(false);
     }
   }, [pendingTool]);
-
-  // Extract the actual code from the ToolUse string
-  const extractCodeFromToolUse = (content: string): string | null => {
-    // Check if it's an ipython tool
-    if (content.includes("ToolUse(tool='ipython'")) {
-      // Try to extract the actual code
-      const match = content.match(/content='([^']+)'/);
-      if (match && match[1]) {
-        return match[1].replace(/\\n/g, '\n');
-      }
-    }
-    return null;
-  };
 
   const handleConfirm = async () => {
     setConfirmLoading(true);
@@ -103,17 +89,6 @@ export function ToolConfirmationDialog({
     return args.map((arg, i) => `${i + 1}. ${arg}`).join('\n');
   };
 
-  // Format code for display
-  const formatCodeForDisplay = (content: string) => {
-    const extractedCode = extractCodeFromToolUse(content);
-    if (extractedCode) {
-      return extractedCode;
-    }
-
-    // For other tools, just return the content
-    return content;
-  };
-
   if (!pendingTool) return null;
 
   return (
@@ -129,13 +104,15 @@ export function ToolConfirmationDialog({
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <div className="font-medium">Tool:</div>
-            <div className="col-span-3 rounded bg-muted p-2 font-mono">{pendingTool.tool}</div>
+            <div className="col-span-3 rounded bg-muted p-2 font-mono">
+              {pendingTool.tooluse.tool}
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-start gap-4">
             <div className="font-medium">Arguments:</div>
             <div className="col-span-3 whitespace-pre-wrap rounded bg-muted p-2 font-mono">
-              {formatArgs(pendingTool.args)}
+              {formatArgs(pendingTool.tooluse.args)}
             </div>
           </div>
 
@@ -155,7 +132,7 @@ export function ToolConfirmationDialog({
             <div className="grid grid-cols-4 items-start gap-4">
               <div className="font-medium">Code:</div>
               <div className="col-span-3 whitespace-pre-wrap rounded bg-muted p-2 font-mono">
-                {formatCodeForDisplay(pendingTool.content)}
+                {pendingTool.tooluse.content}
               </div>
             </div>
           )}

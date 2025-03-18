@@ -1,12 +1,10 @@
 import type {
   ApiError,
   ConversationResponse,
-  SendMessageRequest,
   CreateConversationRequest,
-  GenerateResponse,
   SendMessageRequest,
 } from '@/types/api';
-import type { Message } from '@/types/conversation';
+import type { Message, ToolUse } from '@/types/conversation';
 
 const DEFAULT_API_URL = 'http://127.0.0.1:5000';
 
@@ -68,7 +66,7 @@ export class ApiClient {
 
   private async fetchWithTimeout(
     url: string,
-    options: globalThis.RequestInit = {},
+    options: RequestInit = {},
     timeoutMs: number = 5000
   ): Promise<Response> {
     const controller = new AbortController();
@@ -99,7 +97,7 @@ export class ApiClient {
     }
   }
 
-  private async fetchJson<T>(url: string, options: globalThis.RequestInit = {}): Promise<T> {
+  private async fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
     const headers: HeadersInit = {
       ...options.headers,
       'Content-Type': 'application/json',
@@ -197,15 +195,14 @@ export class ApiClient {
     this._isConnected = connected;
   }
 
-  //  API: Event Stream
   subscribeToEvents(
     conversationId: string,
     callbacks: {
-      onToken?: (token: string) => void;
-      onComplete?: (message: Message) => void;
-      onMessageAdded?: (message: Message) => void;
-      onToolPending?: (toolId: string, tool: string, args: string[], content: string) => void;
-      onError?: (error: string) => void;
+      onToken: (token: string) => void;
+      onComplete: (message: Message) => void;
+      onMessageAdded: (message: Message) => void;
+      onToolPending: (toolId: string, tooluse: ToolUse, auto_confirm: boolean) => void;
+      onError: (error: string) => void;
     }
   ): void {
     // Close any existing event stream for this conversation
@@ -237,7 +234,11 @@ export class ApiClient {
 
         // Skip logging pings to avoid console spam
         if (data.type !== 'ping') {
-          console.log(`[ApiClient] Event received:`, data);
+          console.log(`[ApiClient] Event received for ${conversationId}:`, {
+            type: data.type,
+            data: data.type === 'generation_progress' ? 'token...' : data,
+            eventSourceUrl: eventSource.url,
+          });
         }
 
         switch (data.type) {
@@ -247,7 +248,7 @@ export class ApiClient {
             break;
 
           case 'generation_progress':
-            console.log(`[ApiClient] Generation progress:`, data.message);
+            console.log(`[ApiClient] Generation progress:`, data.token);
             callbacks.onToken?.(data.token);
             break;
 
@@ -258,7 +259,7 @@ export class ApiClient {
 
           case 'tool_pending':
             console.log(`[ApiClient] Tool pending:`, data);
-            callbacks.onToolPending?.(data.tool_id, data.tool, data.args, data.content);
+            callbacks.onToolPending?.(data.tool_id, data.tooluse, data.auto_confirm);
             break;
 
           case 'tool_executing':
@@ -433,36 +434,24 @@ export class ApiClient {
     }
   }
 
-<<<<<<< HEAD
-  async generateResponse(
-    logfile: string,
-    callbacks: {
-      onToken?: (token: string) => void;
-      onComplete?: (message: Message) => void;
-      onToolOutput?: (message: Message) => void;
-      onError?: (error: string) => void;
-    },
-    options?: {
-      model?: string;
-      stream?: boolean;
-      branch?: string;
-    }
-  ): Promise<void> {
-    const { model, stream = true, branch = 'main' } = options || {};
-=======
   async step(logfile: string, model?: string, branch: string = 'main'): Promise<void> {
->>>>>>> 686820a (refactor: wip v2 api stuff (remove v1 api support, among other things))
     if (!this._isConnected) {
       throw new Error('Not connected to API');
     }
 
-    await this.cancelPendingRequests();
+    // Only abort the previous step request if there is one
+    if (this.controller) {
+      this.controller.abort();
+      this.controller = null;
+    }
 
     // Create new controller for this request
     this.controller = new AbortController();
 
     try {
-<<<<<<< HEAD
+      const sessionId = this.sessions.get(logfile);
+      console.log(`[ApiClient] Using session ID for generation: ${sessionId}`);
+
       let headers: {
         [key: string]: string;
       } = {
@@ -477,27 +466,17 @@ export class ApiClient {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/api/conversations/${logfile}/generate`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ model, branch, stream }),
-        signal: this.controller?.signal,
-      });
-=======
-      console.log(this.sessions);
-      const sessionId = this.sessions.get(logfile);
-      console.log(`[ApiClient] Using session ID for generation: ${sessionId}`);
->>>>>>> 686820a (refactor: wip v2 api stuff (remove v1 api support, among other things))
-
       // Start generation
-      await this.fetchJson<{ status: string; message: string; session_id: string }>(
+      const request = await this.fetchJson<{ status: string; message: string; session_id: string }>(
         `${this.baseUrl}/api/v2/conversations/${logfile}/step`,
         {
           method: 'POST',
+          headers,
           body: JSON.stringify({ session_id: sessionId, model, branch }),
           signal: this.controller.signal,
         }
       );
+      console.log(`[ApiClient] Generation started:`, request);
     } catch (error) {
       if (this.controller?.signal.aborted) {
         console.log('Generation request aborted');
