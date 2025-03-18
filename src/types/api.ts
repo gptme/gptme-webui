@@ -16,13 +16,6 @@ export interface SendMessageRequest extends Message {
   branch?: string;
 }
 
-// Request to generate a response
-export interface GenerateRequest {
-  model?: string;
-  branch?: string;
-  stream?: boolean;
-}
-
 // Response from /api/conversations/<logfile>
 export interface ConversationResponse {
   log: Message[];

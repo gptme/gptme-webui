@@ -35,10 +35,8 @@ function isApiErrorResponse(response: unknown): response is ApiError {
 
 export interface ToolPendingEvent {
   type: 'tool_pending';
-  tool_id: string;
-  tool: string;
-  args: string[];
-  content: string;
+  id: string;
+  tooluse: ToolUse;
   auto_confirm: boolean;
 }
 
@@ -260,10 +258,16 @@ export class ApiClient {
             callbacks.onComplete(data.message);
             break;
 
-          case 'tool_pending':
+          case 'tool_pending': {
             console.log(`[ApiClient] Tool pending:`, data);
-            callbacks.onToolPending(data.tool_id, data.tooluse, data.auto_confirm);
+            const pendingToolEvent = data as ToolPendingEvent;
+            callbacks.onToolPending(
+              pendingToolEvent.id,
+              pendingToolEvent.tooluse,
+              pendingToolEvent.auto_confirm
+            );
             break;
+          }
 
           case 'tool_executing':
             console.log(`[ApiClient] Tool executing:`, data);
