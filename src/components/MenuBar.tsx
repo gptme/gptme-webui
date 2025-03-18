@@ -1,6 +1,5 @@
 import { ThemeToggle } from './ThemeToggle';
 import { ConnectionButton } from './ConnectionButton';
-import { ApiVersionSwitcher } from './ApiVersionSwitcher';
 
 import type { FC } from 'react';
 
@@ -12,7 +11,6 @@ export const MenuBar: FC = () => {
         <span className="font-mono text-base font-semibold">gptme</span>
       </div>
       <div className="flex items-center gap-4">
-        <ApiVersionSwitcher />
         <ConnectionButton />
         <ThemeToggle />
       </div>

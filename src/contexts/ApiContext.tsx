@@ -1,27 +1,26 @@
 import { createApiClient } from '@/utils/api';
-import { createApiClientV2 } from '@/utils/apiV2';
-import type { ApiClientV2 } from '@/utils/apiV2';
+import type { ApiClient } from '@/utils/api';
 import type { QueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 interface ApiContextType {
-  api: ApiClientV2;
+  api: ApiClient;
   isConnected: boolean;
   baseUrl: string;
   setBaseUrl: (url: string) => void;
   authToken: string | null;
   setAuthToken: (header: string | null) => void;
   tryConnect: () => Promise<void>;
-  // Methods from ApiClientV2 that are used in components
-  getConversation: ApiClientV2['getConversation'];
-  sendMessage: ApiClientV2['sendMessage'];
-  generateResponse: ApiClientV2['generateResponse'];
-  confirmTool: ApiClientV2['confirmTool']; // New method for tool confirmation
-  interruptGeneration: ApiClientV2['interruptGeneration']; // New method for interruption
-  cancelPendingRequests: ApiClientV2['cancelPendingRequests'];
+  // Methods from ApiClient that are used in components
+  getConversation: ApiClient['getConversation'];
+  sendMessage: ApiClient['sendMessage'];
+  step: ApiClient['step'];
+  confirmTool: ApiClient['confirmTool']; // New method for tool confirmation
+  interruptGeneration: ApiClient['interruptGeneration']; // New method for interruption
+  cancelPendingRequests: ApiClient['cancelPendingRequests'];
   // Add event stream methods
-  subscribeToEvents: ApiClientV2['subscribeToEvents'];
-  closeEventStream: ApiClientV2['closeEventStream'];
+  subscribeToEvents: ApiClient['subscribeToEvents'];
+  closeEventStream: ApiClient['closeEventStream'];
 }
 
 const ApiContext = createContext<ApiContextType | null>(null);
@@ -40,7 +39,7 @@ export function ApiProvider({
   const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
   const [authToken, setAuthToken] = useState<string | null>(initialAuthToken);
   const [api, setApi] = useState(() =>
-    createApiClientV2(initialBaseUrl, initialAuthToken ? `Bearer ${initialAuthToken}` : null)
+    createApiClient(initialBaseUrl, initialAuthToken ? `Bearer ${initialAuthToken}` : null)
   );
   const [isConnected, setIsConnected] = useState(false);
 
@@ -76,7 +75,7 @@ export function ApiProvider({
 
   const tryConnect = async () => {
     try {
-      const newApi = createApiClientV2(baseUrl, `Bearer ${authToken}`);
+      const newApi = createApiClient(baseUrl, `Bearer ${authToken}`);
       const connected = await newApi.checkConnection();
       if (!connected) {
         throw new Error('Failed to connect to API');
@@ -109,7 +108,7 @@ export function ApiProvider({
         // Forward methods from the API client
         getConversation: api.getConversation.bind(api),
         sendMessage: api.sendMessage.bind(api),
-        generateResponse: api.generateResponse.bind(api),
+        step: api.step.bind(api),
         confirmTool: api.confirmTool.bind(api), // New method for tool confirmation
         interruptGeneration: api.interruptGeneration.bind(api), // New method for interruption
         cancelPendingRequests: api.cancelPendingRequests.bind(api),

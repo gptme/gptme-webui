@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { PendingTool } from '@/hooks/useConversationV2';
+import type { PendingTool } from '@/hooks/useConversation';
 import { Loader2 } from 'lucide-react';
 
 interface ToolConfirmationDialogProps {

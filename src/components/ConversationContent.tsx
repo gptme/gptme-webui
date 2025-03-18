@@ -7,8 +7,8 @@ import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
 import type { ConversationItem } from './ConversationList';
-import { useApi } from '@/contexts/ApiContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { ToolConfirmationDialog } from './ToolConfirmationDialog';
 
 interface Props {
   conversation: ConversationItem;
@@ -26,9 +26,17 @@ const AVAILABLE_MODELS = [
 ];
 
 export const ConversationContent: FC<Props> = ({ conversation }) => {
-  const { conversationData, sendMessage, isLoading, isGenerating } = useConversation(conversation);
+  const {
+    conversationData,
+    sendMessage,
+    isLoading,
+    isGenerating,
+    pendingTool,
+    confirmTool,
+    interruptGeneration,
+  } = useConversation(conversation);
+
   const [showInitialSystem, setShowInitialSystem] = useState(false);
-  const api = useApi();
   const queryClient = useQueryClient();
 
   // Reset checkbox state when conversation changes
@@ -89,9 +97,34 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
       sendMessage(message);
     }
   };
+  // Handle tool confirmation
+  const handleConfirmTool = async () => {
+    await confirmTool('confirm');
+  };
+
+  const handleEditTool = async (content: string) => {
+    await confirmTool('edit', { content });
+  };
+
+  const handleSkipTool = async () => {
+    await confirmTool('skip');
+  };
+
+  const handleAutoConfirmTool = async (count: number) => {
+    await confirmTool('auto', { count });
+  };
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
+      {/* Tool Confirmation Dialog */}
+      <ToolConfirmationDialog
+        pendingTool={pendingTool}
+        onConfirm={handleConfirmTool}
+        onEdit={handleEditTool}
+        onSkip={handleSkipTool}
+        onAuto={handleAutoConfirmTool}
+      />
+
       <div className="relative flex-1 overflow-y-auto" ref={scrollContainerRef}>
         {hasSystemMessages ? (
           <div className="flex w-full items-center bg-accent/50">
@@ -147,7 +180,8 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         onSend={handleSendMessage}
         onInterrupt={async () => {
           console.log('Interrupting from ConversationContent...');
-          await api.cancelPendingRequests();
+          // Use the  API's interrupt method
+          await interruptGeneration();
           // Invalidate the query to ensure UI updates
           queryClient.invalidateQueries({
             queryKey: ['conversation', conversation.name],
