@@ -1,12 +1,4 @@
-import type { Message, MessageRole } from './conversation';
-
-// Response from /api/conversations/<logfile>/generate
-export interface GenerateResponse {
-  role: MessageRole;
-  content: string;
-  stored: boolean;
-  error?: string;
-}
+import type { Message } from './conversation';
 
 // Error response from any endpoint
 export interface ApiError {
