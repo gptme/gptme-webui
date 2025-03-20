@@ -84,9 +84,9 @@ export const ChatInput: FC<Props> = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isGenerating ? 'Generating response...' : placeholder}
+            placeholder={placeholder}
             className="min-h-[60px] rounded-r-none"
-            disabled={!api.isConnected || isReadOnly || isGenerating}
+            disabled={!api.isConnected || isReadOnly}
           />
           <Button
             type="submit"
