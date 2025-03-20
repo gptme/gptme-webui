@@ -247,6 +247,7 @@ export class ApiClient {
 
           case 'generation_started':
             console.log(`[ApiClient] Generation started`, data);
+            callbacks.onMessageStart();
             break;
 
           case 'generation_progress':

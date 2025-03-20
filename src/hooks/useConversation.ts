@@ -61,6 +61,33 @@ export function useConversation(conversation: ConversationItem): UseConversation
       api.subscribeToEvents(conversation.name, {
         onMessageStart: () => {
           console.log('[useConversation] Received message start');
+          setIsGenerating(true); // Ensure generating state is set when receiving tokens
+
+          // Create empty message
+          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+            if (!old?.log?.length) return old;
+
+            const messages = [...old.log];
+            const lastMsg = messages[messages.length - 1];
+
+            // Check if we already have placeholder message
+            if (lastMsg.role === 'assistant' && lastMsg.content === '') {
+              return;
+            }
+
+            // Add a new assistant message
+            messages.push({
+              role: 'assistant',
+              content: '',
+              // TODO: Add timestamp from event
+              timestamp: new Date().toISOString(),
+            });
+
+            return {
+              ...old,
+              log: messages,
+            };
+          });
         },
         onToken: (token) => {
           //console.log('[useConversation] Received token', {
@@ -79,20 +106,14 @@ export function useConversation(conversation: ConversationItem): UseConversation
               const messages = [...old.log];
               const lastMsg = messages[messages.length - 1];
 
+              if (lastMsg.role !== 'assistant')
+                console.warn('Token received without assistant message');
+
               // If the last message is from the assistant
-              if (lastMsg.role === 'assistant') {
-                messages[messages.length - 1] = {
-                  ...lastMsg,
-                  content: lastMsg.content + token,
-                };
-              } else {
-                // Add a new assistant message
-                messages.push({
-                  role: 'assistant',
-                  content: token,
-                  timestamp: new Date().toISOString(),
-                });
-              }
+              messages[messages.length - 1] = {
+                ...lastMsg,
+                content: lastMsg.content + token,
+              };
 
               return {
                 ...old,
