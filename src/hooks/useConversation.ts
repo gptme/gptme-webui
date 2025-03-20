@@ -210,6 +210,42 @@ export function useConversation(conversation: ConversationItem): UseConversation
             };
           });
         },
+        onInterrupted: () => {
+          console.log('[useConversation] Generation interrupted');
+
+          // Clear generating state
+          setIsGenerating(false);
+
+          // Clear any pending tool
+          if (pendingToolRef.current) {
+            setPendingTool(null);
+          }
+
+          // Mark the conversation as interrupted in the UI
+          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+            if (!old?.log?.length) return old;
+
+            // Find the last assistant message
+            const messages = [...old.log];
+            const lastMsg = messages[messages.length - 1];
+
+            // Only add [interrupted] if it's not already there
+            if (
+              lastMsg.role === 'assistant' &&
+              !lastMsg.content.toLowerCase().includes('[interrupted]')
+            ) {
+              messages.push({
+                ...lastMsg,
+                content: lastMsg.content + ' [interrupted]',
+              });
+            }
+
+            return {
+              ...old,
+              log: messages,
+            };
+          });
+        },
         onError: (error) => {
           console.error('[useConversation] Error from event stream:', error);
         },

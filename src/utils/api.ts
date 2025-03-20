@@ -201,6 +201,7 @@ export class ApiClient {
       onMessageComplete: (message: Message) => void;
       onMessageAdded: (message: Message) => void;
       onToolPending: (toolId: string, tooluse: ToolUse, auto_confirm: boolean) => void;
+      onInterrupted: () => void;
       onError: (error: string) => void;
     }
   ): void {
@@ -287,6 +288,10 @@ export class ApiClient {
           case 'connected':
             console.log(`[ApiClient] Session connected event:`, data);
             this.sessions.set(conversationId, data.session_id);
+            break;
+
+          case 'interrupted':
+            callbacks.onInterrupted();
             break;
 
           default:
