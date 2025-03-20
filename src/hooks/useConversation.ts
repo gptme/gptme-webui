@@ -339,31 +339,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
       // Always update local state
       setIsGenerating(false);
 
-      // Mark the conversation as interrupted in the UI
-      queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
-        if (!old?.log?.length) return old;
-
-        // Find the last assistant message
-        const messages = [...old.log];
-        for (let i = messages.length - 1; i >= 0; i--) {
-          if (messages[i].role === 'assistant') {
-            // Only add [interrupted] if it's not already there
-            if (!messages[i].content.includes('[interrupted]')) {
-              messages[i] = {
-                ...messages[i],
-                content: messages[i].content + '[interrupted]',
-              };
-            }
-            break;
-          }
-        }
-
-        return {
-          ...old,
-          log: messages,
-        };
-      });
-
       console.log('Generation interrupted successfully');
     } catch (error) {
       console.error('Error in interrupt handler:', error);
