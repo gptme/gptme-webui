@@ -54,10 +54,20 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
   // Subscribe to the event stream as soon as the conversation is loaded
   useEffect(() => {
+    const queryKey = ['conversation', conversation.name, conversation.readonly];
+
     if (!conversation.readonly && api.isConnected && conversation.name) {
       console.log(`[useConversation] Auto-subscribing to events for ${conversation.name}`);
 
       // Subscribe to events
+      //
+      // NOTE: issues could occur if a client subscribes to a conversation that is already generating.
+      //
+      // i.e. if the client misses a message_start event (by connecting mid-generation),
+      // it will not know to set isGenerating to true, and will miss tokens at the start of the message.
+      //
+      // This could be mitigated by having the server keep events since message_start and send them when a client subscribes to an ongoing generation.
+      // Could also happen if there is latency between the conversation retrieval and subscribing to the event stream.
       api.subscribeToEvents(conversation.name, {
         onMessageStart: () => {
           console.log('[useConversation] Received message start');
@@ -98,29 +108,26 @@ export function useConversation(conversation: ConversationItem): UseConversation
           setIsGenerating(true); // Ensure generating state is set when receiving tokens
 
           // Update the UI when tokens come in
-          queryClient.setQueryData<ConversationResponse>(
-            ['conversation', conversation.name, conversation.readonly],
-            (old) => {
-              if (!old?.log?.length) return old;
+          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+            if (!old?.log?.length) return old;
 
-              const messages = [...old.log];
-              const lastMsg = messages[messages.length - 1];
+            const messages = [...old.log];
+            const lastMsg = messages[messages.length - 1];
 
-              if (lastMsg.role !== 'assistant')
-                console.warn('Token received without assistant message');
-
-              // If the last message is from the assistant
+            if (lastMsg.role === 'assistant') {
               messages[messages.length - 1] = {
                 ...lastMsg,
                 content: lastMsg.content + token,
               };
-
-              return {
-                ...old,
-                log: messages,
-              };
+            } else {
+              console.warn('Token without started message (should never happen)');
             }
-          );
+
+            return {
+              ...old,
+              log: messages,
+            };
+          });
         },
         onMessageComplete: (message) => {
           console.log('[useConversation] Received complete message');
@@ -141,6 +148,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
                   content: message.content,
                 };
               } else {
+                console.warn("Message complete without assistant's message (should never happen)");
                 messages.push({
                   ...message,
                 });
@@ -169,41 +177,38 @@ export function useConversation(conversation: ConversationItem): UseConversation
           console.log('[useConversation] Received message:', message);
 
           // Update the conversation with the message
-          queryClient.setQueryData<ConversationResponse>(
-            ['conversation', conversation.name, conversation.readonly],
-            (old) => {
-              if (!old) return undefined;
-              // Check last 2 messages for duplicates
-              // Prevents duplicate messages from being added to the log, as in the cases of:
-              //  - onMessageAdded running after onComplete (effectively a no-op)
-              //  - message_added events for messages we sent outselves (already added to conversation)
-              const recentMessages = old.log.slice(-2);
-              const isDuplicate = recentMessages.some(
-                (msg) => msg.role === message.role && msg.content === message.content
-                // && msg.timestamp === message.timestamp
-              );
-              const isSystem = message.role === 'system';
-              if (isSystem) {
-                setIsGenerating(false);
-              }
-
-              if (isDuplicate) {
-                console.log('[useConversation] Ignoring duplicate message:', message);
-                return old;
-              }
-
-              console.log('[useConversation] Adding message to conversation:', message);
-              return {
-                ...old,
-                log: [
-                  ...old.log,
-                  {
-                    ...message,
-                  },
-                ],
-              };
+          queryClient.setQueryData<ConversationResponse>(queryKey, (old) => {
+            if (!old) return undefined;
+            // Check last 2 messages for duplicates
+            // Prevents duplicate messages from being added to the log, as in the cases of:
+            //  - onMessageAdded running after onComplete (effectively a no-op)
+            //  - message_added events for messages we sent outselves (already added to conversation)
+            const recentMessages = old.log.slice(-2);
+            const isDuplicate = recentMessages.some(
+              (msg) => msg.role === message.role && msg.content === message.content
+              // && msg.timestamp === message.timestamp
+            );
+            const isSystem = message.role === 'system';
+            if (isSystem) {
+              setIsGenerating(false);
             }
-          );
+
+            if (isDuplicate) {
+              console.log('[useConversation] Ignoring duplicate message:', message);
+              return old;
+            }
+
+            console.log('[useConversation] Adding message to conversation:', message);
+            return {
+              ...old,
+              log: [
+                ...old.log,
+                {
+                  ...message,
+                },
+              ],
+            };
+          });
         },
         onError: (error) => {
           console.error('[useConversation] Error from event stream:', error);
