@@ -444,7 +444,12 @@ export class ApiClient {
     }
   }
 
-  async step(logfile: string, model?: string, branch: string = 'main'): Promise<void> {
+  async step(
+    logfile: string,
+    model?: string,
+    stream: boolean = true,
+    branch: string = 'main'
+  ): Promise<void> {
     if (!this._isConnected) {
       throw new Error('Not connected to API');
     }
@@ -482,7 +487,7 @@ export class ApiClient {
         {
           method: 'POST',
           headers,
-          body: JSON.stringify({ session_id: sessionId, model, branch }),
+          body: JSON.stringify({ session_id: sessionId, model, branch, stream }),
           signal: this.controller.signal,
         }
       );

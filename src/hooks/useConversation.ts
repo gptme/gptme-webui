@@ -451,7 +451,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
         // Initial generation
         console.log('[useConversation] Starting generation');
-        await api.step(conversation.name, options?.model);
+        await api.step(conversation.name, options?.model, options?.stream);
 
         console.log('[useConversation] Generation started, waiting for events');
       } catch (error) {
