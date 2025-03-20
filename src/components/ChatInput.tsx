@@ -1,9 +1,9 @@
-import { Send, Loader2, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { Send, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { useApi } from '@/contexts/ApiContext';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -37,7 +37,6 @@ export const ChatInput: FC<Props> = ({
   availableModels = [],
 }) => {
   const [message, setMessage] = useState('');
-  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
   const api = useApi();
@@ -78,88 +77,97 @@ export const ChatInput: FC<Props> = ({
 
   return (
     <form onSubmit={handleSubmit} className="border-t p-4">
-      <div className="mx-auto flex max-w-3xl flex-col">
+      <div className="mx-auto flex max-w-2xl flex-col">
         <div className="flex">
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            className="min-h-[60px] rounded-r-none"
-            disabled={!api.isConnected || isReadOnly}
-          />
-          <Button
-            type="submit"
-            className="min-h-[60px] min-w-[60px] rounded-l-none rounded-r-lg bg-green-600 hover:bg-green-700"
-            disabled={!api.isConnected || isReadOnly}
-          >
-            {isGenerating ? (
-              <div className="flex items-center gap-2">
-                <span>Stop</span>
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
+          <div className="flex flex-1">
+            <div className="relative flex flex-1">
+              <Textarea
+                value={message}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  // Auto-adjust height
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 400)}px`;
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                className="max-h-[400px] min-h-[60px] resize-none overflow-y-auto pb-8 pr-16"
+                disabled={!api.isConnected || isReadOnly}
+              />
+              <div className="absolute bottom-1.5 left-1.5">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-all hover:bg-accent hover:text-muted-foreground hover:opacity-100"
+                      disabled={!api.isConnected || isReadOnly}
+                    >
+                      <Settings className="mr-0.5 h-2.5 w-2.5" />
+                      Options
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="start">
+                    <div className="space-y-8">
+                      <div className="space-y-1">
+                        <Label htmlFor="model-select">Model</Label>
+                        <Select
+                          value={selectedModel}
+                          onValueChange={setSelectedModel}
+                          disabled={!api.isConnected || isReadOnly}
+                        >
+                          <SelectTrigger id="model-select">
+                            <SelectValue placeholder="Default model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">Default model</SelectItem>
+                            {availableModels.map((model) => (
+                              <SelectItem key={model} value={model}>
+                                {model}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-        <Collapsible open={isOptionsOpen} onOpenChange={setIsOptionsOpen} className="mt-2">
-          <div className="flex justify-center">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center gap-1 text-xs text-muted-foreground"
-              >
-                <Settings className="h-3 w-3" />
-                Options
-                {isOptionsOpen ? (
-                  <ChevronUp className="h-3 w-3" />
-                ) : (
-                  <ChevronDown className="h-3 w-3" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-
-          <CollapsibleContent className="mt-2 space-y-4 rounded-md border p-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="model-select">Model</Label>
-                <Select
-                  value={selectedModel}
-                  onValueChange={setSelectedModel}
-                  disabled={!api.isConnected || isReadOnly}
-                >
-                  <SelectTrigger id="model-select">
-                    <SelectValue placeholder="Default model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Default model</SelectItem>
-                    {availableModels.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-end space-x-2">
-                <Label htmlFor="streaming-toggle" className="flex-grow">
-                  Enable streaming
-                </Label>
-                <Switch
-                  id="streaming-toggle"
-                  checked={streamingEnabled}
-                  onCheckedChange={setStreamingEnabled}
-                  disabled={!api.isConnected || isReadOnly}
-                />
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="streaming-toggle">Enable streaming</Label>
+                        <Switch
+                          id="streaming-toggle"
+                          checked={streamingEnabled}
+                          onCheckedChange={setStreamingEnabled}
+                          disabled={!api.isConnected || isReadOnly}
+                        />
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+            <div className="relative h-full">
+              <Button
+                type="submit"
+                className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors
+                  ${
+                    isGenerating
+                      ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
+                      : 'h-10 w-10 bg-green-600 text-green-100'
+                  }
+                `}
+                disabled={!api.isConnected || isReadOnly}
+              >
+                {isGenerating ? (
+                  <div className="flex items-center gap-2">
+                    <span>Stop</span>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </form>
   );
