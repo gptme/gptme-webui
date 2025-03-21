@@ -12,9 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { PendingTool } from '@/hooks/useConversation';
 import { Loader2 } from 'lucide-react';
-
+import { type Observable } from '@legendapp/state';
+import { use$ } from '@legendapp/state/react';
 interface ToolConfirmationDialogProps {
-  pendingTool: PendingTool | null;
+  pendingTool$: Observable<PendingTool | null>;
   onConfirm: () => Promise<void>;
   onEdit: (content: string) => Promise<void>;
   onSkip: () => Promise<void>;
@@ -22,7 +23,7 @@ interface ToolConfirmationDialogProps {
 }
 
 export function ToolConfirmationDialog({
-  pendingTool,
+  pendingTool$,
   onConfirm,
   onEdit,
   onSkip,
@@ -33,6 +34,7 @@ export function ToolConfirmationDialog({
   const [autoConfirmCount, setAutoConfirmCount] = useState(5);
   const [showAutoConfirm, setShowAutoConfirm] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const pendingTool = use$(pendingTool$);
 
   // Reset state when the pending tool changes
   React.useEffect(() => {

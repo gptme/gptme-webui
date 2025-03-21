@@ -1,14 +1,20 @@
 import { Bot, User, Terminal } from 'lucide-react';
 import type { MessageRole } from '@/types/conversation';
+import { type Observable } from '@legendapp/state';
+import { use$ } from '@legendapp/state/react';
 
 interface MessageAvatarProps {
-  role: MessageRole;
-  isError?: boolean;
-  isSuccess?: boolean;
-  chainType: 'start' | 'middle' | 'end' | 'standalone';
+  role$: Observable<MessageRole>;
+  isError$?: Observable<boolean>;
+  isSuccess$?: Observable<boolean>;
+  chainType$: Observable<'start' | 'middle' | 'end' | 'standalone'>;
 }
 
-export function MessageAvatar({ role, isError, isSuccess, chainType }: MessageAvatarProps) {
+export function MessageAvatar({ role$, isError$, isSuccess$, chainType$ }: MessageAvatarProps) {
+  const role = use$(role$);
+  const isError = use$(isError$);
+  const isSuccess = use$(isSuccess$);
+  const chainType = use$(chainType$);
   // Only show avatar for standalone messages or the start of a chain
   if (chainType !== 'start' && chainType !== 'standalone') {
     return null;

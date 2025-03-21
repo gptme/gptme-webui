@@ -98,8 +98,7 @@ const Index: FC<Props> = () => {
     [selectedConversation, queryClient, navigate]
   );
 
-  const conversation =
-    allConversations.find((conv) => conv.name === selectedConversation) ?? allConversations[0]; // Fallback to first conversation if none selected
+  const conversation = allConversations.find((conv) => conv.name === selectedConversation);
 
   // Update document title when selected conversation changes
   useEffect(() => {
@@ -126,7 +125,7 @@ const Index: FC<Props> = () => {
           error={error as Error}
           onRetry={() => refetch()}
         />
-        <ConversationContent conversation={conversation} />
+        {conversation ? <ConversationContent conversation={conversation} /> : null}
         <RightSidebar
           isOpen={rightSidebarOpen}
           onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}
