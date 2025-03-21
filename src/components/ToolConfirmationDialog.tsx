@@ -14,6 +14,9 @@ import type { PendingTool } from '@/hooks/useConversation';
 import { Loader2 } from 'lucide-react';
 import { type Observable } from '@legendapp/state';
 import { use$ } from '@legendapp/state/react';
+import { CodeDisplay } from '@/components/CodeDisplay';
+import { detectToolLanguage } from '@/utils/highlightUtils';
+
 interface ToolConfirmationDialogProps {
   pendingTool$: Observable<PendingTool | null>;
   onConfirm: () => Promise<void>;
@@ -88,6 +91,7 @@ export function ToolConfirmationDialog({
   // Format args for display
   const formatArgs = (args: string[]) => {
     if (!args || args.length === 0) return 'No arguments';
+    if (args.length === 1) return args[0];
     return args.map((arg, i) => `${i + 1}. ${arg}`).join('\n');
   };
 
@@ -104,24 +108,34 @@ export function ToolConfirmationDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-6 items-center gap-4">
             <div className="font-medium">Tool:</div>
-            <div className="col-span-3 rounded bg-muted p-2 font-mono">
+            <div className="col-span-5 rounded bg-muted p-2 font-mono">
               {pendingTool.tooluse.tool}
             </div>
           </div>
 
-          <div className="grid grid-cols-4 items-start gap-4">
-            <div className="font-medium">Arguments:</div>
-            <div className="col-span-3 whitespace-pre-wrap rounded bg-muted p-2 font-mono">
-              {formatArgs(pendingTool.tooluse.args)}
-            </div>
-          </div>
+          {
+            /* Arguments */
+            pendingTool.tooluse.args.length > 0 && (
+              <div className="grid grid-cols-6 items-start gap-4">
+                <div className="font-medium">Arguments:</div>
+                <div className="col-span-5">
+                  <CodeDisplay
+                    code={formatArgs(pendingTool.tooluse.args)}
+                    maxHeight="150px"
+                    showLineNumbers={false}
+                    // Arguments are usually formatted plain text, so no language needed
+                  />
+                </div>
+              </div>
+            )
+          }
 
           {isEditing ? (
-            <div className="grid grid-cols-4 items-start gap-4">
+            <div className="grid grid-cols-6 items-start gap-4">
               <div className="font-medium">Edit Code:</div>
-              <div className="col-span-3">
+              <div className="col-span-5">
                 <Textarea
                   value={editedContent}
                   onChange={(e) => setEditedContent(e.target.value)}
@@ -131,10 +145,19 @@ export function ToolConfirmationDialog({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-4 items-start gap-4">
+            <div className="grid grid-cols-6 items-start gap-4">
               <div className="font-medium">Code:</div>
-              <div className="col-span-3 whitespace-pre-wrap rounded bg-muted p-2 font-mono">
-                {pendingTool.tooluse.content}
+              <div className="col-span-5">
+                <CodeDisplay
+                  code={pendingTool.tooluse.content}
+                  maxHeight="300px"
+                  showLineNumbers={true}
+                  language={detectToolLanguage(
+                    pendingTool.tooluse.tool,
+                    pendingTool.tooluse.args,
+                    pendingTool.tooluse.content
+                  )}
+                />
               </div>
             </div>
           )}

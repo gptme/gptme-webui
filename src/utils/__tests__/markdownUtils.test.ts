@@ -76,14 +76,14 @@ describe('transformThinkingTags', () => {
   it('should transform thinking tags to details/summary', () => {
     const input = 'Before <thinking>Some thoughts</thinking> After';
     const expected =
-      'Before <details><summary>💭 Thinking</summary>\n\nSome thoughts\n\n</details> After';
+      'Before <details type="thinking"><summary>💭 Thinking</summary>\n\nSome thoughts\n\n</details> After';
     expect(transformThinkingTags(input)).toBe(expected);
   });
 
   it('should handle multiple thinking tags', () => {
     const input = '<thinking>First thought</thinking> Middle <thinking>Second thought</thinking>';
     const expected =
-      '<details><summary>💭 Thinking</summary>\n\nFirst thought\n\n</details> Middle <details><summary>💭 Thinking</summary>\n\nSecond thought\n\n</details>';
+      '<details type="thinking"><summary>💭 Thinking</summary>\n\nFirst thought\n\n</details> Middle <details type="thinking"><summary>💭 Thinking</summary>\n\nSecond thought\n\n</details>';
     expect(transformThinkingTags(input)).toBe(expected);
   });
 
@@ -95,7 +95,7 @@ describe('transformThinkingTags', () => {
   it('preserves content outside thinking tags', () => {
     const input = 'Before <thinking>thinking</thinking> after';
     const expected =
-      'Before <details><summary>💭 Thinking</summary>\n\nthinking\n\n</details> after';
+      'Before <details type="thinking"><summary>💭 Thinking</summary>\n\nthinking\n\n</details> after';
     expect(transformThinkingTags(input)).toBe(expected);
   });
 });
@@ -227,7 +227,9 @@ You can try the web UI by:
       '<code class="hljs language-shell"><span class="hljs-comment"># This shows as a tool</span>'
     );
     expect(result).toContain('# This shows as command output');
-    expect(result).toContain('drwxr-xr-x 2 user user');
+
+    // Check for the directory listing - with HTML tags stripped
+    expect(result.replace(/<[^>]*>/g, '')).toContain('drwxr-xr-x 2 user user');
 
     // Check final content is included
     expect(result).toContain('You can try the web UI by:');
@@ -236,7 +238,7 @@ You can try the web UI by:
     expect(result).toContain('http://localhost:5173');
 
     // Check thinking block
-    expect(result).toContain('<details><summary>💭 Thinking</summary>');
+    expect(result).toContain('<details type="thinking"><summary>💭 Thinking</summary>');
     expect(result).toContain('Thinking blocks are collapsible');
   });
 });
