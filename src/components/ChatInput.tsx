@@ -14,7 +14,6 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
-import { Memo } from '@legendapp/state/react';
 
 export interface ChatOptions {
   model?: string;
@@ -147,32 +146,27 @@ export const ChatInput: FC<Props> = ({
               </div>
             </div>
             <div className="relative h-full">
-              <Memo>
-                {() => {
-                  return (
-                    <Button
-                      type="submit"
-                      className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors
+              <Button
+                type="submit"
+                className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors
                   ${
                     isGenerating$.get()
                       ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
                       : 'h-10 w-10 bg-green-600 text-green-100'
                   }
                 `}
-                      disabled={!api.isConnected || isReadOnly}
-                    >
-                      {isGenerating$.get() ? (
-                        <div className="flex items-center gap-2">
-                          <span>Stop</span>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  );
-                }}
-              </Memo>
+                disabled={!api.isConnected || isReadOnly}
+              >
+                {isGenerating$.get() ? (
+                  <div className="flex items-center gap-2">
+                    <span>Stop</span>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+              );
             </div>
           </div>
         </div>
