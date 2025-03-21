@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
-import hljs from 'highlight.js';
+import { highlightCode } from './highlightUtils';
 
 // Create custom renderer
 const renderer = new marked.Renderer();
@@ -30,11 +30,10 @@ marked.use(
   markedHighlight({
     langPrefix: 'hljs language-',
     highlight(code, lang, info) {
-      lang = info.split('.').pop() || lang;
-      if (lang == 'shell') lang = 'bash';
-      if (lang == 'result') lang = 'markdown';
-      const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-      return hljs.highlight(code, { language }).value;
+      // Use info for file extension detection if available
+      const langFromInfo = info ? info.split('.').pop() : undefined;
+      // Use our shared utility
+      return highlightCode(code, langFromInfo || lang, true);
     },
   })
 );
@@ -83,7 +82,7 @@ export function transformThinkingTags(content: string) {
   return content.replace(
     /<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/g,
     (_match: string, thinkingContent: string) =>
-      `<details><summary>💭 Thinking</summary>\n\n${thinkingContent}\n\n</details>`
+      `<details type="thinking"><summary>💭 Thinking</summary>\n\n${thinkingContent}\n\n</details>`
   );
 }
 

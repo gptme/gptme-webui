@@ -1,7 +1,7 @@
 import { Send, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, type FC, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -28,6 +28,7 @@ interface Props {
   isGenerating$: Observable<boolean>;
   defaultModel?: string;
   availableModels?: string[];
+  autoFocus?: boolean;
 }
 
 export const ChatInput: FC<Props> = ({
@@ -37,11 +38,35 @@ export const ChatInput: FC<Props> = ({
   isGenerating$,
   defaultModel = '',
   availableModels = [],
+  autoFocus = false,
 }) => {
   const [message, setMessage] = useState('');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
   const api = useApi();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus the textarea when autoFocus is true and component is interactive
+  useEffect(() => {
+    if (autoFocus && textareaRef.current && !isReadOnly && api.isConnected) {
+      textareaRef.current.focus();
+    }
+  }, [autoFocus, isReadOnly, api.isConnected]);
+
+  // Global keyboard shortcut for interrupting generation with Escape key
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape' && isGenerating$.get() && onInterrupt) {
+        console.log('[ChatInput] Global Escape pressed, interrupting generation...');
+        onInterrupt();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [isGenerating$, onInterrupt]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -68,6 +93,10 @@ export const ChatInput: FC<Props> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
+    } else if (e.key === 'Escape' && isGenerating$.get() && onInterrupt) {
+      e.preventDefault();
+      console.log('[ChatInput] Escape pressed, interrupting generation...');
+      onInterrupt();
     }
   };
 
@@ -84,6 +113,7 @@ export const ChatInput: FC<Props> = ({
           <div className="flex flex-1">
             <div className="relative flex flex-1">
               <Textarea
+                ref={textareaRef}
                 value={message}
                 onChange={(e) => {
                   setMessage(e.target.value);
