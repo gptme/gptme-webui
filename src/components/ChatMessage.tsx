@@ -9,8 +9,8 @@ import { Memo, useObservable } from '@legendapp/state/react';
 
 interface Props {
   message$: Observable<Message>;
-  previousMessage$: Observable<Message | undefined> | undefined;
-  nextMessage$: Observable<Message | undefined> | undefined;
+  previousMessage$?: Observable<Message | undefined>;
+  nextMessage$?: Observable<Message | undefined>;
   conversationId: string;
 }
 
