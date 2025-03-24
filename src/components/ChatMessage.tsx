@@ -122,8 +122,7 @@ export const ChatMessage: FC<Props> = ({
   );
 
   const chainType$ = useMessageChainType(message$, previousMessage$, nextMessage$);
-
-  const messageClasses = useObservable(
+  const messageClasses$ = useObservable(
     () => `
         ${
           isUser$.get()
@@ -147,8 +146,7 @@ export const ChatMessage: FC<Props> = ({
         border
     `
   );
-
-  const wrapperClasses = useObservable(
+  const wrapperClasses$ = useObservable(
     () => `
         ${chainType$.get() !== 'start' && chainType$.get() !== 'standalone' ? '-mt-[2px]' : 'mt-4'}
         ${chainType$.get() === 'standalone' ? 'mb-4' : 'mb-0'}
@@ -156,32 +154,38 @@ export const ChatMessage: FC<Props> = ({
   );
 
   return (
-    <div className={`role-${message$.role.get()} ${wrapperClasses.get()}`}>
-      <div className="mx-auto max-w-3xl px-4">
-        <div className="relative">
-          <MessageAvatar
-            role$={message$.role}
-            isError$={isError$}
-            isSuccess$={isSuccess$}
-            chainType$={chainType$}
-          />
-          <div className="md:px-12">
-            <div className={messageClasses.get()}>
-              <div className="px-3 py-1.5">
-                <Memo>
-                  {() => (
-                    <div
-                      className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
-                      dangerouslySetInnerHTML={{ __html: processedContent$.get() }}
-                    />
-                  )}
-                </Memo>
-                {renderFiles()}
+    <Memo>
+      {() => {
+        return (
+          <div className={`role-${message$.role.get()} ${wrapperClasses$.get()}`}>
+            <div className="mx-auto max-w-3xl px-4">
+              <div className="relative">
+                <MessageAvatar
+                  role$={message$.role}
+                  isError$={isError$}
+                  isSuccess$={isSuccess$}
+                  chainType$={chainType$}
+                />
+                <div className="md:px-12">
+                  <div className={messageClasses$.get()}>
+                    <div className="px-3 py-1.5">
+                      <Memo>
+                        {() => (
+                          <div
+                            className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
+                            dangerouslySetInnerHTML={{ __html: processedContent$.get() }}
+                          />
+                        )}
+                      </Memo>
+                      {renderFiles()}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+        );
+      }}
+    </Memo>
   );
 };

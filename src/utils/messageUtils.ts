@@ -10,9 +10,13 @@ export const useMessageChainType = (
   nextMessage$: Observable<Message | undefined> | undefined
 ) => {
   const messageChainType$ = useObservable(() => {
-    const isChainStart = !previousMessage$ || previousMessage$.role.get() === 'user';
-    const isChainEnd = !nextMessage$ || nextMessage$.role.get() === 'user';
-    const isPartOfChain = isNonUserMessage(message$.role.get());
+    const message = message$.get();
+    const previousMessage = previousMessage$?.get();
+    const nextMessage = nextMessage$?.get();
+
+    const isChainStart = !previousMessage || previousMessage.role === 'user';
+    const isChainEnd = !nextMessage || nextMessage.role === 'user';
+    const isPartOfChain = isNonUserMessage(message.role);
 
     if (!isPartOfChain) return 'standalone';
     if (isChainStart && isChainEnd) return 'standalone';
