@@ -1,10 +1,11 @@
-import type { FC } from 'react';
+import { useEffect, useRef, type FC } from 'react';
 import type { Message } from '@/types/conversation';
 import { MessageAvatar } from './MessageAvatar';
-import { parseMarkdownContent } from '@/utils/markdownUtils';
 import { useApi } from '@/contexts/ApiContext';
-import { type Observable } from '@legendapp/state';
-import { Memo, useObservable } from '@legendapp/state/react';
+import { ObservableHint, type Observable } from '@legendapp/state';
+import { Memo, useObservable, useObserveEffect } from '@legendapp/state/react';
+import * as smd from '@/utils/smd';
+import { customRenderer, type CustomRenderer } from '@/utils/markdownRenderer';
 
 interface Props {
   message$: Observable<Message>;
@@ -21,15 +22,40 @@ export const ChatMessage: FC<Props> = ({
 }) => {
   const { baseUrl } = useApi();
 
-  const processedContent$ = useObservable(() => {
-    const content =
-      message$.content.get() || (message$.role.get() === 'assistant' ? 'Thinking...' : '');
-    try {
-      const result = parseMarkdownContent(content);
-      return result;
-    } catch (error) {
-      console.error('Error parsing markdown:', error);
-      return content;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const renderer$ = useObservable<CustomRenderer | null>(null);
+  const parser$ = useObservable<smd.Parser | null>(null);
+
+  // Initialize the renderer and parser once the contentRef is available
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const renderer = customRenderer(contentRef.current);
+    renderer$.set(ObservableHint.opaque(renderer));
+    const parser = smd.parser(renderer);
+    parser$.set(ObservableHint.opaque(parser));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentRef.current]);
+
+  // Send any new content to the parser
+  const previousContent$ = useObservable('');
+  useObserveEffect(message$.content, ({ value }) => {
+    const previousContent = previousContent$.get();
+    const newChars = value?.slice(previousContent.length);
+    if (!newChars) return;
+    previousContent$.set(value || '');
+    if (!contentRef.current) return;
+    const parser = parser$.get();
+    if (!parser) return;
+    smd.parser_write(parser, newChars);
+  });
+
+  // End the parser when the message is complete
+  useObserveEffect(message$.isComplete, ({ value: isComplete }) => {
+    const parser = parser$.get();
+    if (isComplete && parser) {
+      smd.parser_end(parser);
+      renderer$.set(null);
+      parser$.set(null);
     }
   });
 
@@ -113,11 +139,11 @@ export const ChatMessage: FC<Props> = ({
   const isUser$ = useObservable(() => message$.role.get() === 'user');
   const isAssistant$ = useObservable(() => message$.role.get() === 'assistant');
   const isSystem$ = useObservable(() => message$.role.get() === 'system');
-  const isError$ = useObservable(() => processedContent$.get().startsWith('Error'));
+  const isError$ = useObservable(() => previousContent$.get().startsWith('Error'));
   const isSuccess$ = useObservable(
     () =>
-      processedContent$.get().startsWith('Patch successfully') ||
-      processedContent$.get().startsWith('Saved')
+      previousContent$.get().startsWith('Patch successfully') ||
+      previousContent$.get().startsWith('Saved')
   );
 
   const chainType$ = useObservable(() => {
@@ -185,8 +211,8 @@ export const ChatMessage: FC<Props> = ({
                       <Memo>
                         {() => (
                           <div
+                            ref={contentRef}
                             className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
-                            dangerouslySetInnerHTML={{ __html: processedContent$.get() }}
                           />
                         )}
                       </Memo>

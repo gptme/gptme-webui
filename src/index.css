@@ -173,7 +173,7 @@
 }
 
 .chat-message details[open] {
-  @apply rounded-lg border border-border pb-2;
+  @apply rounded-lg border border-border;
 }
 
 .chat-message details[open] > summary {

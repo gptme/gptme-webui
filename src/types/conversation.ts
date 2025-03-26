@@ -6,6 +6,7 @@ export interface Message {
   timestamp?: string;
   files?: string[];
   id?: string; // Add back message ID
+  isComplete?: boolean;
 }
 
 export interface ToolUse {

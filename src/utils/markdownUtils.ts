@@ -113,7 +113,7 @@ export function parseMarkdownContent(content: string) {
   return parsedResult;
 }
 
-function getCodeBlockEmoji(langtag: string): string {
+export function getCodeBlockEmoji(langtag: string): string {
   if (isPath(langtag)) return '📄';
   if (isTool(langtag)) return '🛠️';
   if (isOutput(langtag)) return '📤';
