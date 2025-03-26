@@ -140,10 +140,8 @@ export function ApiProvider({
   useEffect(() => {
     const attemptInitialConnection = async () => {
       try {
-        // Only auto-connect if we have URL fragment parameters
-        if (initialBaseUrl || initialAuthToken) {
-          await connect();
-        }
+        // Always try to connect on startup
+        await connect();
       } catch (error) {
         console.error('Initial connection attempt failed:', error);
         // Don't show toast for initial connection failure
