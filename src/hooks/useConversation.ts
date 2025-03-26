@@ -68,6 +68,10 @@ export function useConversation(conversation: ConversationItem): UseConversation
           if (!response?.log || !response?.branches) {
             throw new Error('Invalid conversation data received');
           }
+          // Add isComplete to each message
+          response.log.forEach((message) => {
+            message.isComplete = true;
+          });
           newData = response;
         }
 
@@ -129,6 +133,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
             role: 'assistant',
             content: '',
             timestamp: new Date().toISOString(),
+            isComplete: false,
           });
         },
         onToken: (token) => {
@@ -157,6 +162,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
           const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
           if (lastMessage$.role.get() === 'assistant') {
             lastMessage$.content.set(message.content);
+            lastMessage$.isComplete.set(true);
           } else {
             console.warn("Message complete without assistant's message (should never happen)");
             conversationData$.log.push(message);
@@ -256,11 +262,13 @@ export function useConversation(conversation: ConversationItem): UseConversation
       role: 'user',
       content: message,
       timestamp: new Date().toISOString(),
+      isComplete: true,
     };
     const assistantMessage: Message = {
       role: 'assistant',
       content: '',
       timestamp: new Date().toISOString(),
+      isComplete: false,
     };
 
     // Optimistically update to the new value
