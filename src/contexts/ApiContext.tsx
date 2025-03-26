@@ -1,16 +1,21 @@
 import { createApiClient } from '@/utils/api';
 import type { ApiClient } from '@/utils/api';
 import type { QueryClient } from '@tanstack/react-query';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
+
+interface ConnectionConfig {
+  baseUrl: string;
+  authToken: string | null;
+  useAuthToken: boolean;
+}
 
 interface ApiContextType {
   api: ApiClient;
   isConnected: boolean;
-  baseUrl: string;
-  setBaseUrl: (url: string) => void;
-  authToken: string | null;
-  setAuthToken: (header: string | null) => void;
-  tryConnect: () => Promise<void>;
+  connectionConfig: ConnectionConfig;
+  updateConfig: (config: Partial<ConnectionConfig>) => void;
+  connect: (config?: Partial<ConnectionConfig>) => Promise<void>;
   // Methods from ApiClient that are used in components
   getConversation: ApiClient['getConversation'];
   sendMessage: ApiClient['sendMessage'];
@@ -32,87 +37,137 @@ export function ApiProvider({
   queryClient,
 }: {
   children: ReactNode;
-  initialBaseUrl: string;
+  initialBaseUrl?: string;
   initialAuthToken?: string | null;
   queryClient: QueryClient;
 }) {
-  const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
-  const [authToken, setAuthToken] = useState<string | null>(initialAuthToken);
+  // Initialize connection configuration
+  const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(() => ({
+    baseUrl:
+      initialBaseUrl ||
+      localStorage.getItem('gptme_baseUrl') ||
+      import.meta.env.VITE_API_URL ||
+      'http://127.0.0.1:5000',
+    authToken: initialAuthToken || localStorage.getItem('gptme_userToken') || null,
+    useAuthToken: Boolean(initialAuthToken || localStorage.getItem('gptme_userToken')),
+  }));
+
   const [api, setApi] = useState(() =>
-    createApiClient(initialBaseUrl, initialAuthToken ? `Bearer ${initialAuthToken}` : null)
+    createApiClient(
+      connectionConfig.baseUrl,
+      connectionConfig.useAuthToken && connectionConfig.authToken
+        ? `Bearer ${connectionConfig.authToken}`
+        : null
+    )
   );
   const [isConnected, setIsConnected] = useState(false);
+
+  // Update connection configuration
+  const updateConfig = useCallback((newConfig: Partial<ConnectionConfig>) => {
+    setConnectionConfig((prev) => {
+      const updated = { ...prev, ...newConfig };
+
+      // Update localStorage
+      localStorage.setItem('gptme_baseUrl', updated.baseUrl);
+      if (updated.authToken && updated.useAuthToken) {
+        localStorage.setItem('gptme_userToken', updated.authToken);
+      } else {
+        localStorage.removeItem('gptme_userToken');
+      }
+
+      return updated;
+    });
+  }, []);
+
+  // Connect to API
+  const connect = useCallback(
+    async (config?: Partial<ConnectionConfig>) => {
+      try {
+        // Update config if provided
+        if (config) {
+          updateConfig(config);
+        }
+
+        const { baseUrl, authToken, useAuthToken } = config || connectionConfig;
+
+        // Create new API client
+        const newApi = createApiClient(
+          baseUrl,
+          useAuthToken && authToken ? `Bearer ${authToken}` : null
+        );
+
+        // Test connection
+        const connected = await newApi.checkConnection();
+        if (!connected) {
+          throw new Error('Failed to connect to API');
+        }
+
+        // Update state
+        newApi.setConnected(true);
+        setApi(newApi);
+        setIsConnected(true);
+
+        // Refresh queries
+        await queryClient.invalidateQueries();
+        await queryClient.refetchQueries({
+          queryKey: ['conversations'],
+          type: 'active',
+        });
+
+        toast.success('Connected to gptme server');
+      } catch (error) {
+        console.error('Failed to connect to API:', error);
+        setIsConnected(false);
+
+        let errorMessage = 'Could not connect to gptme instance.';
+        if (error instanceof Error) {
+          if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
+            errorMessage +=
+              ' CORS issue detected - ensure the server has CORS enabled and is accepting requests from ' +
+              window.location.origin;
+          } else {
+            errorMessage += ' Error: ' + error.message;
+          }
+        }
+        toast.error(errorMessage);
+        throw error;
+      }
+    },
+    [connectionConfig, queryClient, updateConfig]
+  );
 
   // Attempt initial connection
   useEffect(() => {
     const attemptInitialConnection = async () => {
       try {
-        console.log('Attempting initial connection to:', baseUrl);
-        const connected = await api.checkConnection();
-        console.log('Initial connection result:', connected);
-        if (connected) {
-          setIsConnected(true);
-          console.log('Successfully connected to API');
-        } else {
-          console.log('Failed to connect to API - server may be down');
+        // Only auto-connect if we have URL fragment parameters
+        if (initialBaseUrl || initialAuthToken) {
+          await connect();
         }
       } catch (error) {
         console.error('Initial connection attempt failed:', error);
-        setIsConnected(false);
+        // Don't show toast for initial connection failure
       }
     };
 
     void attemptInitialConnection();
-  }, [api, baseUrl]);
-
-  const updateBaseUrl = async (newUrl: string) => {
-    setBaseUrl(newUrl);
-  };
-
-  const updateAuthToken = (header: string | null) => {
-    setAuthToken(header);
-  };
-
-  const tryConnect = async () => {
-    try {
-      const newApi = createApiClient(baseUrl, `Bearer ${authToken}`);
-      const connected = await newApi.checkConnection();
-      if (!connected) {
-        throw new Error('Failed to connect to API');
-      }
-      newApi.setConnected(true); // Explicitly set connection state
-      setApi(newApi);
-      setIsConnected(true);
-      await queryClient.invalidateQueries();
-      await queryClient.refetchQueries({
-        queryKey: ['conversations'],
-        type: 'active',
-      });
-    } catch (error) {
-      console.error('Failed to connect to API:', error);
-      setIsConnected(false);
-      throw error;
-    }
-  };
+  }, [connect, initialBaseUrl, initialAuthToken]);
 
   return (
     <ApiContext.Provider
       value={{
         api,
         isConnected,
-        baseUrl,
-        setBaseUrl: updateBaseUrl,
-        authToken,
-        setAuthToken: updateAuthToken,
-        tryConnect,
+        connectionConfig,
+        updateConfig,
+        connect,
         // Forward methods from the API client
         getConversation: api.getConversation.bind(api),
         sendMessage: api.sendMessage.bind(api),
         step: api.step.bind(api),
-        confirmTool: api.confirmTool.bind(api), // New method for tool confirmation
-        interruptGeneration: api.interruptGeneration.bind(api), // New method for interruption
+        confirmTool: api.confirmTool.bind(api),
+        interruptGeneration: api.interruptGeneration.bind(api),
         cancelPendingRequests: api.cancelPendingRequests.bind(api),
-        // Add event stream methods
         subscribeToEvents: api.subscribeToEvents.bind(api),
         closeEventStream: api.closeEventStream.bind(api),
       }}

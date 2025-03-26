@@ -14,7 +14,7 @@
     "format": "prettier --list-different --write \"**/*.{ts,tsx,js,jsx,json,css,html}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,html}\"",
     "preview": "vite preview",
-    "test": "jest",
+    "test": "NODE_OPTIONS=--no-warnings jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

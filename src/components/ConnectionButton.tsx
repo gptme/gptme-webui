@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { FC } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,58 +10,21 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/use-toast';
 import { Network, Check, Copy } from 'lucide-react';
 import { useApi } from '@/contexts/ApiContext';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export const ConnectionButton: FC = () => {
   const [open, setOpen] = useState(false);
-  const { toast } = useToast();
-  const { baseUrl, setBaseUrl, isConnected, authToken, setAuthToken, tryConnect } = useApi();
-  const [url, setUrl] = useState(baseUrl);
-  const [useAuthToken, setUseAuthToken] = useState(authToken !== null && authToken !== '');
-  const [userToken, setUserToken] = useState(authToken || '');
-
-  // Auto-connect if parameters were provided through URL fragments
-  useEffect(() => {
-    const autoConnect = async () => {
-      // Don't auto-connect if already connected
-      if (isConnected) return;
-
-      // Check if URL and token were provided (different from default)
-      const defaultBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
-      const isUrlFromFragment = url !== defaultBaseUrl;
-      const isTokenFromFragment = userToken !== '';
-
-      if (isUrlFromFragment && isTokenFromFragment) {
-        try {
-          console.log('Auto-connecting with URL fragment parameters', { url, userToken });
-
-          // Update state before connecting
-          setBaseUrl(url);
-          if (isTokenFromFragment) {
-            setAuthToken(userToken);
-          }
-
-          await tryConnect();
-          toast({
-            title: 'Connected',
-            description: 'Successfully connected to gptme instance with URL fragment parameters',
-          });
-        } catch (error) {
-          console.error('Auto-connection failed:', error);
-          // Don't show toast on auto-connect failure to avoid confusion
-        }
-      }
-    };
-
-    // Only run on initial mount
-    void autoConnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { connectionConfig, connect, isConnected } = useApi();
+  const [formState, setFormState] = useState({
+    baseUrl: connectionConfig.baseUrl,
+    authToken: connectionConfig.authToken || '',
+    useAuthToken: connectionConfig.useAuthToken,
+  });
 
   const features = [
     'Create new conversations',
@@ -73,55 +36,33 @@ export const ConnectionButton: FC = () => {
 
   const copyCommand = () => {
     navigator.clipboard.writeText(serverCommand);
-    toast({
-      title: 'Copied',
-      description: 'Command copied to clipboard',
-    });
+    toast.success('Command copied to clipboard');
   };
 
-  const onChangeUserToken = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value && e.target.value.startsWith('Bearer ')) {
-      setUserToken(e.target.value.replace('Bearer ', ''));
-      toast({
-        variant: 'default',
-        title: 'Formated token',
-        description: 'Detected "Bearer" prefix, it is now automatically removed',
+  const onChangeAuthToken = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value && value.startsWith('Bearer ')) {
+      const token = value.replace('Bearer ', '');
+      setFormState((prev) => ({ ...prev, authToken: token }));
+      toast('Detected "Bearer" prefix, it is now automatically removed', {
+        description: 'Token format updated',
       });
       return;
     }
-    setUserToken(e.target.value);
+    setFormState((prev) => ({ ...prev, authToken: value }));
   };
 
   const handleConnect = async () => {
     try {
-      setBaseUrl(url);
-      if (useAuthToken) {
-        setAuthToken(userToken);
-      }
-      await tryConnect();
-      toast({
-        title: 'Connected',
-        description: 'Successfully connected to gptme instance',
+      await connect({
+        baseUrl: formState.baseUrl,
+        authToken: formState.useAuthToken ? formState.authToken : null,
+        useAuthToken: formState.useAuthToken,
       });
       setOpen(false);
     } catch (error) {
-      let errorMessage = 'Could not connect to gptme instance.';
-      if (error instanceof Error) {
-        if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
-          errorMessage +=
-            ' CORS issue detected - ensure the server has CORS enabled and is accepting requests from ' +
-            window.location.origin;
-        } else {
-          errorMessage += ' Error: ' + error.message;
-        }
-      }
-
+      // Error handling is now done in the ApiContext
       console.error('Connection error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Connection failed',
-        description: errorMessage,
-      });
     }
   };
 
@@ -160,8 +101,8 @@ export const ConnectionButton: FC = () => {
             </label>
             <Input
               id="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              value={formState.baseUrl}
+              onChange={(e) => setFormState((prev) => ({ ...prev, baseUrl: e.target.value }))}
               placeholder="http://127.0.0.1:5000"
             />
           </div>
@@ -169,23 +110,25 @@ export const ConnectionButton: FC = () => {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="use-auth"
-              checked={useAuthToken}
-              onCheckedChange={(checked) => setUseAuthToken(checked === true)}
+              checked={formState.useAuthToken}
+              onCheckedChange={(checked) =>
+                setFormState((prev) => ({ ...prev, useAuthToken: checked === true }))
+              }
             />
             <Label htmlFor="use-auth" className="cursor-pointer text-sm font-medium">
               Add Authorization header
             </Label>
           </div>
 
-          {useAuthToken && (
+          {formState.useAuthToken && (
             <div className="space-y-2">
               <label htmlFor="auth-token" className="text-sm font-medium">
                 User Token
               </label>
               <Input
                 id="auth-token"
-                value={userToken}
-                onChange={onChangeUserToken}
+                value={formState.authToken}
+                onChange={onChangeAuthToken}
                 placeholder="Your authentication token"
               />
               <p className="text-xs text-muted-foreground">

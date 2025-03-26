@@ -208,10 +208,36 @@ export class ApiClient {
     // Close any existing event stream for this conversation
     this.closeEventStream(conversationId);
 
-    // Create a new event stream
-    const url = `${this.baseUrl}/api/v2/conversations/${conversationId}/events`;
-    console.log(`[ApiClient] Connecting to event stream: ${url}`);
-    const eventSource = new EventSource(url);
+    /**
+     * For SSE connections, we need to pass the auth token as a query parameter
+     * since EventSource doesn't support custom headers.
+     *
+     * Security note: This is less secure than using headers, but necessary for SSE.
+     * The token in the URL may be logged or appear in browser history.
+     * We only do this for SSE connections, all other requests use headers.
+     */
+    const url = new URL(`${this.baseUrl}/api/v2/conversations/${conversationId}/events`);
+
+    if (this.authHeader) {
+      // Extract token from "Bearer <token>"
+      const token = this.authHeader.split(' ')[1];
+      if (!token) {
+        console.error('[ApiClient] Invalid auth header format, expected "Bearer <token>"');
+        throw new ApiClientError('Invalid auth header format');
+      }
+      url.searchParams.set('token', token);
+
+      // Log connection attempt but not the full URL with token
+      const urlWithoutToken = new URL(url);
+      urlWithoutToken.searchParams.delete('token');
+      console.log(
+        `[ApiClient] Connecting to event stream: ${urlWithoutToken.toString()} (with auth token)`
+      );
+    } else {
+      console.log(`[ApiClient] Connecting to event stream without auth: ${url.toString()}`);
+    }
+
+    const eventSource = new EventSource(url.toString(), { withCredentials: true });
 
     // Add connect event notification
     let isConnected = false;

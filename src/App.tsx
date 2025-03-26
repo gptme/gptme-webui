@@ -7,29 +7,20 @@ import { ApiProvider } from './contexts/ApiContext';
 import Index from './pages/Index';
 import type { FC } from 'react';
 
-// Parse URL fragment parameters and persist to localStorage
-const parseFragmentParams = () => {
-  const hash = window.location.hash.substring(1); // Remove the # character
+// Get URL fragment parameters if they exist
+const getFragmentParams = () => {
+  const hash = window.location.hash.substring(1);
   const params = new URLSearchParams(hash);
 
-  // Try to get values from fragment first, then fall back to localStorage
-  let baseUrl = params.get('baseUrl');
-  let userToken = params.get('userToken');
-
-  if (baseUrl || userToken) {
-    // Store new values in localStorage
-    if (baseUrl) localStorage.setItem('gptme_baseUrl', baseUrl);
-    if (userToken) localStorage.setItem('gptme_userToken', userToken);
-
-    // Remove the fragment from the URL to avoid exposing sensitive data
+  // Clean fragment from URL if parameters were found
+  if (params.has('baseUrl') || params.has('userToken')) {
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  } else {
-    // If no fragment params, try to get from localStorage
-    baseUrl = localStorage.getItem('gptme_baseUrl') || null;
-    userToken = localStorage.getItem('gptme_userToken') || null;
   }
 
-  return { baseUrl, userToken };
+  return {
+    baseUrl: params.get('baseUrl') || undefined,
+    userToken: params.get('userToken') || undefined,
+  };
 };
 
 const queryClient = new QueryClient({
@@ -56,20 +47,10 @@ const queryClient = new QueryClient({
 });
 
 const AppContent: FC = () => {
-  const defaultBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
-
-  // Parse fragment parameters synchronously before first render
-  const { baseUrl, userToken } = parseFragmentParams();
-
-  // Use the base URL from the fragment if available, otherwise use the default
-  const initialBaseUrl = baseUrl || defaultBaseUrl;
+  const { baseUrl, userToken } = getFragmentParams();
 
   return (
-    <ApiProvider
-      initialBaseUrl={initialBaseUrl}
-      initialAuthToken={userToken}
-      queryClient={queryClient}
-    >
+    <ApiProvider initialBaseUrl={baseUrl} initialAuthToken={userToken} queryClient={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Index />
         <Toaster />

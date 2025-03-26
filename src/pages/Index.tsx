@@ -25,7 +25,7 @@ const Index: FC<Props> = () => {
   const [selectedConversation, setSelectedConversation] = useState<string>(
     conversationParam || demoConversations[0].name
   );
-  const { api, isConnected, baseUrl } = useApi();
+  const { api, isConnected, connectionConfig } = useApi();
   const queryClient = useQueryClient();
 
   // Update selected conversation when URL param changes
@@ -43,7 +43,7 @@ const Index: FC<Props> = () => {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['conversations', baseUrl, isConnected],
+    queryKey: ['conversations', connectionConfig.baseUrl, isConnected],
     queryFn: async () => {
       console.log('Fetching conversations, connection state:', isConnected);
       if (!isConnected) {

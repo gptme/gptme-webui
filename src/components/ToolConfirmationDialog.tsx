@@ -50,6 +50,17 @@ export function ToolConfirmationDialog({
     }
   }, [pendingTool]);
 
+  const handleConfirm = React.useCallback(async () => {
+    setConfirmLoading(true);
+    try {
+      await onConfirm();
+    } catch (error) {
+      console.error('Error confirming tool:', error);
+    } finally {
+      setConfirmLoading(false);
+    }
+  }, [onConfirm]);
+
   // Add keyboard handler for Enter key
   React.useEffect(() => {
     const handleKeyPress = async (e: KeyboardEvent) => {
@@ -69,18 +80,7 @@ export function ToolConfirmationDialog({
 
     window.addEventListener('keypress', handleKeyPress);
     return () => window.removeEventListener('keypress', handleKeyPress);
-  }, [pendingTool, isEditing]);
-
-  const handleConfirm = async () => {
-    setConfirmLoading(true);
-    try {
-      await onConfirm();
-    } catch (error) {
-      console.error('Error confirming tool:', error);
-    } finally {
-      setConfirmLoading(false);
-    }
-  };
+  }, [pendingTool, isEditing, handleConfirm]);
 
   const handleEdit = async () => {
     setConfirmLoading(true);
