@@ -91,7 +91,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
     return () => {
       isCancelled = true;
     };
-  }, [conversation.name, conversation.readonly, api]);
+  }, [conversation.name, conversation.readonly, api, conversationData$]);
 
   const state$ = syncState(conversationData$);
   // const { isGetting: isLoading, error: _error } = use$(state$); // TODO: handle error

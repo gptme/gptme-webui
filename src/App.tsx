@@ -7,22 +7,6 @@ import { ApiProvider } from './contexts/ApiContext';
 import Index from './pages/Index';
 import type { FC } from 'react';
 
-// Get URL fragment parameters if they exist
-const getFragmentParams = () => {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-
-  // Clean fragment from URL if parameters were found
-  if (params.has('baseUrl') || params.has('userToken')) {
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
-
-  return {
-    baseUrl: params.get('baseUrl') || undefined,
-    userToken: params.get('userToken') || undefined,
-  };
-};
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -46,25 +30,17 @@ const queryClient = new QueryClient({
   },
 });
 
-const AppContent: FC = () => {
-  const { baseUrl, userToken } = getFragmentParams();
-
-  return (
-    <ApiProvider initialBaseUrl={baseUrl} initialAuthToken={userToken} queryClient={queryClient}>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Index />
-        <Toaster />
-        <Sonner />
-      </BrowserRouter>
-    </ApiProvider>
-  );
-};
-
 const App: FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppContent />
+        <ApiProvider queryClient={queryClient}>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <Index />
+            <Toaster />
+            <Sonner />
+          </BrowserRouter>
+        </ApiProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -32,25 +32,45 @@ const ApiContext = createContext<ApiContextType | null>(null);
 
 export function ApiProvider({
   children,
-  initialBaseUrl,
-  initialAuthToken = null,
   queryClient,
 }: {
   children: ReactNode;
-  initialBaseUrl?: string;
-  initialAuthToken?: string | null;
   queryClient: QueryClient;
 }) {
   // Initialize connection configuration
-  const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(() => ({
-    baseUrl:
-      initialBaseUrl ||
-      localStorage.getItem('gptme_baseUrl') ||
-      import.meta.env.VITE_API_URL ||
-      'http://127.0.0.1:5000',
-    authToken: initialAuthToken || localStorage.getItem('gptme_userToken') || null,
-    useAuthToken: Boolean(initialAuthToken || localStorage.getItem('gptme_userToken')),
-  }));
+  const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(() => {
+    // Get URL fragment parameters if they exist
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+
+    // Get values from fragment
+    const fragmentBaseUrl = params.get('baseUrl');
+    const fragmentUserToken = params.get('userToken');
+
+    // Save fragment values to localStorage if present
+    if (fragmentBaseUrl) {
+      localStorage.setItem('gptme_baseUrl', fragmentBaseUrl);
+    }
+    if (fragmentUserToken) {
+      localStorage.setItem('gptme_userToken', fragmentUserToken);
+    }
+
+    // Clean fragment from URL if parameters were found
+    if (fragmentBaseUrl || fragmentUserToken) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+
+    // Get stored values
+    const storedBaseUrl = localStorage.getItem('gptme_baseUrl');
+    const storedUserToken = localStorage.getItem('gptme_userToken');
+
+    return {
+      baseUrl:
+        fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000',
+      authToken: fragmentUserToken || storedUserToken || null,
+      useAuthToken: Boolean(fragmentUserToken || storedUserToken),
+    };
+  });
 
   const [api, setApi] = useState(() =>
     createApiClient(
@@ -149,7 +169,7 @@ export function ApiProvider({
     };
 
     void attemptInitialConnection();
-  }, [connect, initialBaseUrl, initialAuthToken]);
+  }, [connect]);
 
   return (
     <ApiContext.Provider
