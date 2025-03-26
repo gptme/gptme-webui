@@ -41,29 +41,56 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
   console.log('[useConversation] conversation.name', conversation.name);
 
-  const conversationData$ = useObservable(async () => {
-    console.log('[useConversation] Querying conversation', conversation.name);
-    if (conversation.readonly) {
-      const demo = getDemo(conversation.name);
-      return {
-        log: demo?.messages || [],
-        logfile: conversation.name,
-        branches: {},
-      } as ConversationResponse;
-    }
+  const conversationData$ = useObservable<ConversationResponse>({
+    log: [],
+    logfile: conversation.name,
+    branches: {},
+  });
 
-    try {
-      const response = await api.getConversation(conversation.name);
+  // Fetch conversation data
+  useEffect(() => {
+    let isCancelled = false;
 
-      // If response is already in correct format, use it directly
-      if (!response?.log || !response?.branches) {
-        throw new Error('Invalid conversation data received');
+    const fetchData = async () => {
+      try {
+        console.log('[useConversation] Querying conversation', conversation.name);
+        let newData: ConversationResponse;
+
+        if (conversation.readonly) {
+          const demo = getDemo(conversation.name);
+          newData = {
+            log: demo?.messages || [],
+            logfile: conversation.name,
+            branches: {},
+          };
+        } else {
+          const response = await api.getConversation(conversation.name);
+          if (!response?.log || !response?.branches) {
+            throw new Error('Invalid conversation data received');
+          }
+          newData = response;
+        }
+
+        if (!isCancelled) {
+          conversationData$.set(newData);
+        }
+      } catch (error) {
+        console.error('Error fetching conversation:', error);
+        if (!isCancelled) {
+          conversationData$.set({
+            log: [],
+            logfile: conversation.name,
+            branches: {},
+          });
+        }
       }
+    };
 
-      return response;
-    } catch (error) {
-      throw new Error(`Failed to fetch conversation: ${(error as Error).message}`);
-    }
+    void fetchData();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [conversation.name, conversation.readonly, api]);
 
   const state$ = syncState(conversationData$);
