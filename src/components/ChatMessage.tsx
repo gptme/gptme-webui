@@ -2,15 +2,14 @@ import type { FC } from 'react';
 import type { Message } from '@/types/conversation';
 import { MessageAvatar } from './MessageAvatar';
 import { parseMarkdownContent } from '@/utils/markdownUtils';
-import { useMessageChainType } from '@/utils/messageUtils';
 import { useApi } from '@/contexts/ApiContext';
 import { type Observable } from '@legendapp/state';
 import { Memo, useObservable } from '@legendapp/state/react';
 
 interface Props {
   message$: Observable<Message>;
-  previousMessage$?: Observable<Message | undefined>;
-  nextMessage$?: Observable<Message | undefined>;
+  previousMessage$: Observable<Message | undefined>;
+  nextMessage$: Observable<Message | undefined>;
   conversationId: string;
 }
 
@@ -121,7 +120,21 @@ export const ChatMessage: FC<Props> = ({
       processedContent$.get().startsWith('Saved')
   );
 
-  const chainType$ = useMessageChainType(message$, previousMessage$, nextMessage$);
+  const chainType$ = useObservable(() => {
+    const previousMessageRole = previousMessage$.role.get();
+    const nextMessageRole = nextMessage$.role.get();
+
+    const isChainStart = !previousMessageRole || previousMessageRole === 'user';
+    const isChainEnd = !nextMessageRole || nextMessageRole === 'user';
+    const isPartOfChain = message$.role.get() === 'assistant' || message$.role.get() === 'system';
+
+    if (!isPartOfChain) return 'standalone';
+    if (isChainStart && isChainEnd) return 'standalone';
+    if (isChainStart) return 'start';
+    if (isChainEnd) return 'end';
+    return 'middle';
+  });
+
   const messageClasses$ = useObservable(
     () => `
         ${

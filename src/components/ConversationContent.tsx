@@ -171,7 +171,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
               }
 
               // Get the previous and next messages for spacing context
-              const previousMessage$ = index > 0 ? conversationData$.log[index - 1] : undefined;
+              const previousMessage$ = conversationData$.log[index - 1];
               const nextMessage$ = conversationData$.log[index + 1];
 
               return (
