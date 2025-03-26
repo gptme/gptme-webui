@@ -21,7 +21,14 @@ describe('ChatMessage', () => {
       timestamp: new Date().toISOString(),
     });
 
-    render(<ChatMessage message$={message$} conversationId={testConversationId} />);
+    render(
+      <ChatMessage
+        message$={message$}
+        conversationId={testConversationId}
+        nextMessage$={observable<Message | undefined>(undefined)}
+        previousMessage$={observable<Message | undefined>(undefined)}
+      />
+    );
     expect(screen.getByText('Hello!')).toBeInTheDocument();
   });
 
@@ -32,7 +39,14 @@ describe('ChatMessage', () => {
       timestamp: new Date().toISOString(),
     });
 
-    render(<ChatMessage message$={message$} conversationId={testConversationId} />);
+    render(
+      <ChatMessage
+        message$={message$}
+        conversationId={testConversationId}
+        nextMessage$={observable<Message | undefined>(undefined)}
+        previousMessage$={observable<Message | undefined>(undefined)}
+      />
+    );
     expect(screen.getByText('Hi there!')).toBeInTheDocument();
   });
 
@@ -44,7 +58,12 @@ describe('ChatMessage', () => {
     });
 
     const { container } = render(
-      <ChatMessage message$={message$} conversationId={testConversationId} />
+      <ChatMessage
+        message$={message$}
+        conversationId={testConversationId}
+        nextMessage$={observable<Message | undefined>(undefined)}
+        previousMessage$={observable<Message | undefined>(undefined)}
+      />
     );
     const messageElement = container.querySelector('.font-mono');
     expect(messageElement).toBeInTheDocument();
