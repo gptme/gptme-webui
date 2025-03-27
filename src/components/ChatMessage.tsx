@@ -1,5 +1,5 @@
 import { useEffect, useRef, type FC } from 'react';
-import type { Message } from '@/types/conversation';
+import type { Message, StreamingMessage } from '@/types/conversation';
 import { MessageAvatar } from './MessageAvatar';
 import { useApi } from '@/contexts/ApiContext';
 import { ObservableHint, type Observable } from '@legendapp/state';
@@ -8,7 +8,7 @@ import * as smd from '@/utils/smd';
 import { customRenderer, type CustomRenderer } from '@/utils/markdownRenderer';
 
 interface Props {
-  message$: Observable<Message>;
+  message$: Observable<Message | StreamingMessage>;
   previousMessage$: Observable<Message | undefined>;
   nextMessage$: Observable<Message | undefined>;
   conversationId: string;
@@ -50,14 +50,33 @@ export const ChatMessage: FC<Props> = ({
   });
 
   // End the parser when the message is complete
-  useObserveEffect(message$.isComplete, ({ value: isComplete }) => {
-    const parser = parser$.get();
-    if (isComplete && parser) {
+  // Handle content changes
+  useObserveEffect(message$.content, () => {
+    const message = message$.peek();
+    const parser = parser$.peek();
+    if (!parser) return;
+
+    // For non-streaming messages, end parser immediately
+    if (!('isComplete' in message)) {
       smd.parser_end(parser);
       renderer$.set(null);
       parser$.set(null);
     }
   });
+
+  // Handle streaming message completion separately
+  useObserveEffect(
+    (message$ as Observable<StreamingMessage>).isComplete,
+    ({ value: isComplete }) => {
+      if (!isComplete) return;
+      const parser = parser$.peek();
+      if (!parser) return;
+
+      smd.parser_end(parser);
+      renderer$.set(null);
+      parser$.set(null);
+    }
+  );
 
   const renderFiles = () => {
     if (!message$.files.get()?.length) return null;

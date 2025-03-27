@@ -6,7 +6,7 @@ export default {
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
   },
   transform: {
-    '^.+\\.(ts|tsx)$': [
+    '^.+\\.(ts|tsx|js|jsx)$': [
       'ts-jest',
       {
         useESM: true,

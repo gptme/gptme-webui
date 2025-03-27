@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
 import type { ConversationResponse } from '@/types/api';
-import type { Message, ToolUse } from '@/types/conversation';
+import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
 import type { ConversationItem } from '@/components/ConversationList';
 import { demoConversations } from '@/democonversations';
 import type { DemoConversation } from '@/democonversations';
@@ -60,12 +60,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
         throw new Error('Invalid conversation data received');
       }
 
-      // Add isComplete to each message
-      // TODO: Send this on the server?
-      response.log.forEach((message) => {
-        message.isComplete = true;
-      });
-
       return response;
     } catch (error) {
       throw new Error(`Failed to fetch conversation: ${(error as Error).message}`);
@@ -104,12 +98,13 @@ export function useConversation(conversation: ConversationItem): UseConversation
           }
 
           // Add a new assistant message
-          conversationData$.log.push({
+          const streamingMessage: StreamingMessage = {
             role: 'assistant',
             content: '',
             timestamp: new Date().toISOString(),
             isComplete: false,
-          });
+          };
+          conversationData$.log.push(streamingMessage);
         },
         onToken: (token) => {
           // console.log('[useConversation] Received token', {
@@ -137,7 +132,11 @@ export function useConversation(conversation: ConversationItem): UseConversation
           const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
           if (lastMessage$.role.get() === 'assistant') {
             lastMessage$.content.set(message.content);
-            lastMessage$.isComplete.set(true);
+            // Type guard to check if message is StreamingMessage
+            const lastMessage = lastMessage$.get();
+            if ('isComplete' in lastMessage) {
+              (lastMessage$ as Observable<StreamingMessage>).isComplete.set(true);
+            }
           } else {
             console.warn("Message complete without assistant's message (should never happen)");
             conversationData$.log.push(message);
@@ -232,14 +231,14 @@ export function useConversation(conversation: ConversationItem): UseConversation
     });
     isGenerating$.set(true);
 
-    // Create user message
+    // Create user message (non-streaming)
     const userMessage: Message = {
       role: 'user',
       content: message,
       timestamp: new Date().toISOString(),
-      isComplete: true,
     };
-    const assistantMessage: Message = {
+    // Create assistant message (streaming)
+    const assistantMessage: StreamingMessage = {
       role: 'assistant',
       content: '',
       timestamp: new Date().toISOString(),
