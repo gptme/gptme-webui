@@ -1,4 +1,4 @@
-import type { Message } from './conversation';
+import type { Message, StreamingMessage } from './conversation';
 
 // Error response from any endpoint
 export interface ApiError {
@@ -18,7 +18,7 @@ export interface SendMessageRequest extends Message {
 
 // Response from /api/conversations/<logfile>
 export interface ConversationResponse {
-  log: Message[];
+  log: (Message | StreamingMessage)[];
   logfile: string;
   branches: Record<string, Message[]>;
 }

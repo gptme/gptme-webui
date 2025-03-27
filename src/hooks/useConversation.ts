@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
 import type { ConversationResponse } from '@/types/api';
-import type { Message, ToolUse } from '@/types/conversation';
+import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
 import type { ConversationItem } from '@/components/ConversationList';
 import { demoConversations } from '@/democonversations';
 import type { DemoConversation } from '@/democonversations';
@@ -98,7 +98,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
   }, [conversation.name, conversation.readonly, api, conversationData$]);
 
   const state$ = syncState(conversationData$);
-  // const { isGetting: isLoading, error: _error } = use$(state$); // TODO: handle error
   const isLoading$ = useObservable(state$.isGetting);
 
   // Subscribe to the event stream as soon as the conversation is loaded
@@ -118,9 +117,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
       api.subscribeToEvents(conversation.name, {
         onMessageStart: () => {
           console.log('[useConversation] Received message start');
-          isGenerating$.set(true); // Ensure generating state is set when receiving tokens
-
-          // Create empty message
+          isGenerating$.set(true);
 
           // Check if we already have placeholder message
           const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
@@ -129,20 +126,16 @@ export function useConversation(conversation: ConversationItem): UseConversation
           }
 
           // Add a new assistant message
-          conversationData$.log.push({
+          const streamingMessage: StreamingMessage = {
             role: 'assistant',
             content: '',
             timestamp: new Date().toISOString(),
             isComplete: false,
-          });
+          };
+          conversationData$.log.push(streamingMessage);
         },
         onToken: (token) => {
-          // console.log('[useConversation] Received token', {
-          //   isGenerating: isGenerating$.get(),
-          //   token,
-          //   conversationId: conversation.name,
-          // });
-          isGenerating$.set(true); // Ensure generating state is set when receiving tokens
+          isGenerating$.set(true);
 
           const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
 
@@ -162,7 +155,11 @@ export function useConversation(conversation: ConversationItem): UseConversation
           const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
           if (lastMessage$.role.get() === 'assistant') {
             lastMessage$.content.set(message.content);
-            lastMessage$.isComplete.set(true);
+            // Type guard to check if message is StreamingMessage
+            const lastMessage = lastMessage$.get();
+            if ('isComplete' in lastMessage) {
+              (lastMessage$ as Observable<StreamingMessage>).isComplete.set(true);
+            }
           } else {
             console.warn("Message complete without assistant's message (should never happen)");
             conversationData$.log.push(message);
@@ -183,16 +180,10 @@ export function useConversation(conversation: ConversationItem): UseConversation
         onMessageAdded: (message) => {
           console.log('[useConversation] Received message:', message);
 
-          // Update the conversation with the message
-
           // Check last 2 messages for duplicates
-          // Prevents duplicate messages from being added to the log, as in the cases of:
-          //  - onMessageAdded running after onComplete (effectively a no-op)
-          //  - message_added events for messages we sent outselves (already added to conversation)
           const recentMessages = conversationData$.log.slice(-2);
           const isDuplicate = recentMessages.some(
             (msg) => msg.role === message.role && msg.content === message.content
-            // && msg.timestamp === message.timestamp
           );
           const isSystem = message.role === 'system';
           if (isSystem) {
@@ -257,14 +248,14 @@ export function useConversation(conversation: ConversationItem): UseConversation
     });
     isGenerating$.set(true);
 
-    // Create user message
+    // Create user message (non-streaming)
     const userMessage: Message = {
       role: 'user',
       content: message,
       timestamp: new Date().toISOString(),
-      isComplete: true,
     };
-    const assistantMessage: Message = {
+    // Create assistant message (streaming)
+    const assistantMessage: StreamingMessage = {
       role: 'assistant',
       content: '',
       timestamp: new Date().toISOString(),
@@ -315,7 +306,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
     }
   };
 
-  // Add explicit interrupt method
   const interruptGeneration = async () => {
     try {
       console.log('Interrupting generation via API');
@@ -346,7 +336,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
     }
   };
 
-  // New function to confirm a pending tool
   const confirmTool = async (
     action: 'confirm' | 'edit' | 'skip' | 'auto',
     options?: { content?: string; count?: number }
@@ -381,8 +370,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
         `[useConversation] Tool confirmation API call successful - waiting for output events`
       );
 
-      // For the API, we don't need to manually reconnect - the server will automatically
-      // execute the tool and send events through the already established event stream.
       console.log('[useConversation] Tool confirmation successful, waiting for tool output events');
     } catch (error) {
       console.error('Error confirming tool:', error);
