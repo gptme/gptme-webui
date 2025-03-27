@@ -68,10 +68,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
           if (!response?.log || !response?.branches) {
             throw new Error('Invalid conversation data received');
           }
-          // Add isComplete to each message
-          response.log.forEach((message) => {
-            message.isComplete = true;
-          });
           newData = response;
         }
 

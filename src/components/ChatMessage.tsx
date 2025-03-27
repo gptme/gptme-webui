@@ -10,8 +10,8 @@ import { customRenderer, type CustomRenderer } from '@/utils/markdownRenderer';
 
 interface Props {
   message$: Observable<Message | StreamingMessage>;
-  previousMessage$: Observable<Message | undefined>;
-  nextMessage$: Observable<Message | undefined>;
+  previousMessage$?: Observable<Message | undefined>;
+  nextMessage$?: Observable<Message | undefined>;
   conversationId: string;
 }
 
