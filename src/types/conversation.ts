@@ -5,8 +5,10 @@ export interface Message {
   content: string;
   timestamp?: string;
   files?: string[];
-  id?: string; // Add back message ID
-  isComplete?: boolean;
+}
+
+export interface StreamingMessage extends Message {
+  isComplete: boolean;
 }
 
 export interface ToolUse {
