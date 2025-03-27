@@ -77,17 +77,35 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   // Create a ref for the scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Single effect to handle all scrolling
+  // Observable for if the conversation is auto-scrolling. Needed to separate the user's scroll event from the auto-scrolling event
+  const isAutoScrolling$ = useObservable(false);
+
+  // Observable for if the user scrolled during generation
+  const autoScrollAborted$ = useObservable(false);
+
+  // Reset the autoScrollAborted flag when generation is complete or starts again
+  useObserveEffect(isGenerating$, () => {
+    autoScrollAborted$.set(false);
+  });
+
+  // Scroll to the bottom when the conversation is updated, unless the user aborted the auto-scrolling by scrolling up
   useObserveEffect(
     () => {
       const scrollToBottom = () => {
         if (scrollContainerRef.current) {
+          isAutoScrolling$.set(true);
           scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+          // Reset the flag after the browser has processed the scroll
+          requestAnimationFrame(() => {
+            isAutoScrolling$.set(false);
+          });
         }
       };
 
-      // Use requestAnimationFrame for smooth scrolling
-      requestAnimationFrame(scrollToBottom);
+      if (!autoScrollAborted$.get()) {
+        // Use requestAnimationFrame for smooth scrolling
+        requestAnimationFrame(scrollToBottom);
+      }
     },
     { deps: [conversationData$.log] }
   );
@@ -123,7 +141,25 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         onAuto={handleAutoConfirmTool}
       />
 
-      <div className="relative flex-1 overflow-y-auto" ref={scrollContainerRef}>
+      <div
+        className="relative flex-1 overflow-y-auto"
+        ref={scrollContainerRef}
+        onScroll={() => {
+          if (!scrollContainerRef.current || isAutoScrolling$.get()) return;
+          const isBottom =
+            Math.abs(
+              scrollContainerRef.current.scrollHeight -
+                (scrollContainerRef.current.scrollTop + scrollContainerRef.current.clientHeight)
+            ) <= 1;
+          if (isBottom) {
+            // If the user scrolled to the bottom, re-enable auto-scrolling
+            autoScrollAborted$.set(false);
+          } else {
+            // If the user scrolled up, abort the auto-scrolling
+            autoScrollAborted$.set(true);
+          }
+        }}
+      >
         {hasSystemMessages$.get() ? (
           <Memo>
             {() => {
