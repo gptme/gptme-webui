@@ -47,7 +47,7 @@ export const LeftSidebar: FC<Props> = ({
         title: 'New conversation created',
         description: 'Starting a fresh conversation',
       });
-      navigate(`/?conversation=${newId}`);
+      navigate(`/?conversation=${newId}`, { relative: 'path' });
     } catch {
       toast({
         variant: 'destructive',

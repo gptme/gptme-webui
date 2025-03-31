@@ -30,6 +30,38 @@ interface ApiContextType {
 
 const ApiContext = createContext<ApiContextType | null>(null);
 
+export function connectionConfigFromHash(hash: string) {
+  const params = new URLSearchParams(hash);
+
+  // Get values from fragment
+  const fragmentBaseUrl = params.get('baseUrl');
+  const fragmentUserToken = params.get('userToken');
+
+  // Save fragment values to localStorage if present
+  if (fragmentBaseUrl) {
+    localStorage.setItem('gptme_baseUrl', fragmentBaseUrl);
+  }
+  if (fragmentUserToken) {
+    localStorage.setItem('gptme_userToken', fragmentUserToken);
+  }
+
+  // Clean fragment from URL if parameters were found
+  if (fragmentBaseUrl || fragmentUserToken) {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+
+  // Get stored values
+  const storedBaseUrl = localStorage.getItem('gptme_baseUrl');
+  const storedUserToken = localStorage.getItem('gptme_userToken');
+
+  return {
+    baseUrl:
+      fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || 'http://127.0.0.1:5700',
+    authToken: fragmentUserToken || storedUserToken || null,
+    useAuthToken: Boolean(fragmentUserToken || storedUserToken),
+  };
+}
+
 export function ApiProvider({
   children,
   queryClient,
@@ -41,35 +73,7 @@ export function ApiProvider({
   const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(() => {
     // Get URL fragment parameters if they exist
     const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-
-    // Get values from fragment
-    const fragmentBaseUrl = params.get('baseUrl');
-    const fragmentUserToken = params.get('userToken');
-
-    // Save fragment values to localStorage if present
-    if (fragmentBaseUrl) {
-      localStorage.setItem('gptme_baseUrl', fragmentBaseUrl);
-    }
-    if (fragmentUserToken) {
-      localStorage.setItem('gptme_userToken', fragmentUserToken);
-    }
-
-    // Clean fragment from URL if parameters were found
-    if (fragmentBaseUrl || fragmentUserToken) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-
-    // Get stored values
-    const storedBaseUrl = localStorage.getItem('gptme_baseUrl');
-    const storedUserToken = localStorage.getItem('gptme_userToken');
-
-    return {
-      baseUrl:
-        fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || 'http://127.0.0.1:5700',
-      authToken: fragmentUserToken || storedUserToken || null,
-      useAuthToken: Boolean(fragmentUserToken || storedUserToken),
-    };
+    return connectionConfigFromHash(hash);
   });
 
   const [api, setApi] = useState(() =>

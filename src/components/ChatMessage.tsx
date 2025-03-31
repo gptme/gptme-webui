@@ -54,6 +54,7 @@ export const ChatMessage: FC<Props> = ({
   // Handle content changes
   useObserveEffect(message$.content, () => {
     const message = message$.peek();
+    if (!message) return;
     const parser = parser$.peek();
     if (!parser) return;
 
