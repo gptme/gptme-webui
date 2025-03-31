@@ -66,7 +66,7 @@ export function ApiProvider({
 
     return {
       baseUrl:
-        fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000',
+        fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || 'http://127.0.0.1:5700',
       authToken: fragmentUserToken || storedUserToken || null,
       useAuthToken: Boolean(fragmentUserToken || storedUserToken),
     };

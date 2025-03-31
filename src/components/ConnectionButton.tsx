@@ -103,7 +103,7 @@ export const ConnectionButton: FC = () => {
               id="url"
               value={formState.baseUrl}
               onChange={(e) => setFormState((prev) => ({ ...prev, baseUrl: e.target.value }))}
-              placeholder="http://127.0.0.1:5000"
+              placeholder="http://127.0.0.1:5700"
             />
           </div>
 

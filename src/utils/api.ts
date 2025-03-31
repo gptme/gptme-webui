@@ -6,7 +6,7 @@ import type {
 } from '@/types/api';
 import type { Message, ToolUse } from '@/types/conversation';
 
-const DEFAULT_API_URL = 'http://127.0.0.1:5000';
+const DEFAULT_API_URL = 'http://127.0.0.1:5700';
 
 // Add DOM types
 type RequestInit = globalThis.RequestInit;

@@ -7,7 +7,7 @@ import { observable } from '@legendapp/state';
 // Mock the ApiContext
 jest.mock('@/contexts/ApiContext', () => ({
   useApi: () => ({
-    baseUrl: 'http://localhost:5000',
+    baseUrl: 'http://localhost:5700',
   }),
 }));
 

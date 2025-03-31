@@ -200,9 +200,9 @@ Thinking blocks are collapsible and help show my reasoning process
 </thinking>
 
 You can try the web UI by:
-1. Starting a local gptme-server: \`gptme-server --cors-origin='http://localhost:8080'\`
+1. Starting a local gptme-server: \`gptme-server --cors-origin='http://localhost:5701'\`
 2. Running the web UI: \`npm run dev\`
-3. Opening http://localhost:5173 in your browser`;
+3. Opening http://localhost:5701 in your browser`;
 
     const result = parseMarkdownContent(input);
 
@@ -235,7 +235,7 @@ You can try the web UI by:
     expect(result).toContain('You can try the web UI by:');
     expect(result).toContain('<code>gptme-server --cors-origin=');
     expect(result).toContain('<code>npm run dev</code>');
-    expect(result).toContain('http://localhost:5173');
+    expect(result).toContain('http://localhost:5701');
 
     // Check thinking block
     expect(result).toContain('<details type="thinking"><summary>💭 Thinking</summary>');
