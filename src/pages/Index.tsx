@@ -10,7 +10,7 @@ const Index: FC<Props> = () => {
   return (
     <div className="flex h-screen flex-col">
       <MenuBar />
-      <Conversations />
+      <Conversations route="/" />
     </div>
   );
 };

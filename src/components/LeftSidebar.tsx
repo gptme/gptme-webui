@@ -20,6 +20,7 @@ interface Props {
   isError?: boolean;
   error?: Error;
   onRetry?: () => void;
+  route: string;
 }
 
 export const LeftSidebar: FC<Props> = ({
@@ -32,6 +33,7 @@ export const LeftSidebar: FC<Props> = ({
   isError = false,
   error,
   onRetry,
+  route,
 }) => {
   const { api, isConnected } = useApi();
   const { toast } = useToast();
@@ -47,7 +49,8 @@ export const LeftSidebar: FC<Props> = ({
         title: 'New conversation created',
         description: 'Starting a fresh conversation',
       });
-      navigate(`/?conversation=${newId}`, { relative: 'path' });
+      console.log('newId', newId);
+      navigate(`${route}?conversation=${newId}`);
     } catch {
       toast({
         variant: 'destructive',

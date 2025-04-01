@@ -13,9 +13,10 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 
 interface Props {
   className?: string;
+  route: string;
 }
 
-const Conversations: FC<Props> = () => {
+const Conversations: FC<Props> = ({ route }) => {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [searchParams] = useSearchParams();
@@ -93,9 +94,9 @@ const Conversations: FC<Props> = () => {
       setSelectedConversation(id);
       // Update URL with the new conversation ID
       console.log(`[Conversations] [handleSelectConversation] id: ${id}`);
-      navigate(`?conversation=${id}`, { relative: 'path' });
+      navigate(`${route}?conversation=${id}`);
     },
-    [selectedConversation, queryClient, navigate]
+    [selectedConversation, queryClient, navigate, route]
   );
 
   const conversation = allConversations.find((conv) => conv.name === selectedConversation);
@@ -122,6 +123,7 @@ const Conversations: FC<Props> = () => {
         isError={isError}
         error={error as Error}
         onRetry={() => refetch()}
+        route={route}
       />
       {conversation ? <ConversationContent conversation={conversation} /> : null}
       <RightSidebar
