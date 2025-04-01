@@ -200,6 +200,7 @@ export type Renderer<T> = {
    */
   set_attr: Renderer_Set_Attr<T>;
 };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Any_Renderer = Renderer<any>;
 export type Default_Renderer_Data = {
   nodes: HTMLElement[];
