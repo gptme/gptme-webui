@@ -14,7 +14,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
-import { Memo, useObserveEffect } from '@legendapp/state/react';
+import { Computed, useObserveEffect } from '@legendapp/state/react';
 
 export interface ChatOptions {
   model?: string;
@@ -45,6 +45,8 @@ export const ChatInput: FC<Props> = ({
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
   const api = useApi();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isDisabled = isReadOnly || !api.isConnected;
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {
@@ -124,7 +126,7 @@ export const ChatInput: FC<Props> = ({
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 className="max-h-[400px] min-h-[60px] resize-none overflow-y-auto pb-8 pr-16"
-                disabled={!api.isConnected || isReadOnly}
+                disabled={isDisabled}
               />
               <div className="absolute bottom-1.5 left-1.5">
                 <Popover>
@@ -133,7 +135,7 @@ export const ChatInput: FC<Props> = ({
                       variant="ghost"
                       size="sm"
                       className="h-5 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-all hover:bg-accent hover:text-muted-foreground hover:opacity-100"
-                      disabled={!api.isConnected || isReadOnly}
+                      disabled={isDisabled}
                     >
                       <Settings className="mr-0.5 h-2.5 w-2.5" />
                       Options
@@ -146,7 +148,7 @@ export const ChatInput: FC<Props> = ({
                         <Select
                           value={selectedModel}
                           onValueChange={setSelectedModel}
-                          disabled={!api.isConnected || isReadOnly}
+                          disabled={isDisabled}
                         >
                           <SelectTrigger id="model-select">
                             <SelectValue placeholder="Default model" />
@@ -168,7 +170,7 @@ export const ChatInput: FC<Props> = ({
                           id="streaming-toggle"
                           checked={streamingEnabled}
                           onCheckedChange={setStreamingEnabled}
-                          disabled={!api.isConnected || isReadOnly}
+                          disabled={isDisabled}
                         />
                       </div>
                     </div>
@@ -177,7 +179,7 @@ export const ChatInput: FC<Props> = ({
               </div>
             </div>
             <div className="relative h-full">
-              <Memo>
+              <Computed>
                 {() => {
                   return (
                     <Button
@@ -189,7 +191,7 @@ export const ChatInput: FC<Props> = ({
                       : 'h-10 w-10 bg-green-600 text-green-100'
                   }
                 `}
-                      disabled={!api.isConnected || isReadOnly}
+                      disabled={isDisabled}
                     >
                       {isGenerating$.get() ? (
                         <div className="flex items-center gap-2">
@@ -202,7 +204,7 @@ export const ChatInput: FC<Props> = ({
                     </Button>
                   );
                 }}
-              </Memo>
+              </Computed>
             </div>
           </div>
         </div>
