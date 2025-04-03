@@ -1,21 +1,28 @@
 import hljs from 'highlight.js';
 //import 'highlight.js/styles/github-dark.css';
 
+export interface HighlightResult {
+  // The highlighted code
+  code: string;
+  // The detected language of the code
+  language?: string;
+}
+
 /**
  * Highlight code with syntax highlighting
  * @param code The code to highlight
  * @param language Optional language specification
  * @param autoDetect Whether to attempt language auto-detection if language not specified
  * @param maxDetectionLength Maximum length for auto-detection (for performance)
- * @returns HTML string with highlighted code
+ * @returns HighlightResult object with highlighted code and language
  */
 export function highlightCode(
   code: string,
   language?: string,
   autoDetect = true,
-  maxDetectionLength = 1000
-): string {
-  if (!code) return '';
+  maxDetectionLength = 10000
+): HighlightResult {
+  if (!code) return { code: '' };
 
   try {
     // Normalize language name
@@ -26,21 +33,22 @@ export function highlightCode(
 
       // Check if language is supported
       if (hljs.getLanguage(language)) {
-        return hljs.highlight(code, { language }).value;
+        return { code: hljs.highlight(code, { language }).value, language };
       }
     }
 
     // Auto-detect language for shorter code blocks if requested
     if (autoDetect && code.length < maxDetectionLength) {
-      return hljs.highlightAuto(code).value;
+      const result = hljs.highlightAuto(code);
+      return { code: result.value, language: result.language };
     }
 
     // Return escaped plain text for larger blocks or when auto-detect is disabled
-    return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return { code: code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') };
   } catch (error) {
     console.warn('Syntax highlighting error:', error);
     // Return escaped text on error
-    return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return { code: code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') };
   }
 }
 

@@ -30,7 +30,7 @@ export const ChatMessage: FC<Props> = ({
   // Initialize the renderer and parser once the contentRef is available
   useEffect(() => {
     if (!contentRef.current) return;
-    const renderer = customRenderer(contentRef.current);
+    const renderer = customRenderer(contentRef.current, false, true);
     renderer$.set(ObservableHint.opaque(renderer));
     const parser = smd.parser(renderer);
     parser$.set(ObservableHint.opaque(parser));

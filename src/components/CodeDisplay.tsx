@@ -25,7 +25,7 @@ export function CodeDisplay({
     if (!code) return;
 
     // Use our shared utility
-    setHighlightedCode(highlightCode(code, language, true, 1000));
+    setHighlightedCode(highlightCode(code, language, true, 1000).code);
   }, [code, language]);
 
   if (!code) return null;

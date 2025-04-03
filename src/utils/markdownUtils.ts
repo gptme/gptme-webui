@@ -33,7 +33,7 @@ marked.use(
       // Use info for file extension detection if available
       const langFromInfo = info ? info.split('.').pop() : undefined;
       // Use our shared utility
-      return highlightCode(code, langFromInfo || lang, true);
+      return highlightCode(code, langFromInfo || lang, true).code;
     },
   })
 );

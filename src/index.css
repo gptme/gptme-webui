@@ -140,7 +140,7 @@
 }
 
 .chat-message details {
-  @apply my-2 overflow-hidden rounded-md border border-border text-sm dark:border-stone-950;
+  @apply my-2 overflow-hidden rounded-md border border-border bg-white font-sans text-sm dark:border-stone-950 dark:bg-slate-900;
 }
 
 .chat-message details summary {
