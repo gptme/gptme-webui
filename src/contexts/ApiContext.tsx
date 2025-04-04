@@ -98,8 +98,6 @@ export function ApiProvider({
   children: ReactNode;
   queryClient: QueryClient;
 }) {
-  console.log('[Rendering] [ApiContext]');
-
   // Connect to API
   const connect = useCallback(
     async (config?: Partial<ConnectionConfig>) => {
