@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput, type ChatOptions } from './ChatInput';
 import { useConversation } from '@/hooks/useConversation';
@@ -39,7 +39,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   } = useConversation(conversation);
 
   // State to track when to auto-focus the input
-  const [shouldFocus, setShouldFocus] = useState(false);
+  const shouldFocus$ = useObservable(false);
   // Store the previous conversation name to detect changes
   const prevConversationNameRef = useRef<string | null>(null);
 
@@ -47,23 +47,12 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
   useEffect(() => {
     if (conversation.name !== prevConversationNameRef.current) {
       // New conversation detected - set focus flag
-      setShouldFocus(true);
+      shouldFocus$.set(true);
 
       // Store the current conversation name for future comparisons
       prevConversationNameRef.current = conversation.name;
     }
-  }, [conversation.name]);
-
-  // Reset focus flag after it's been used
-  useEffect(() => {
-    if (shouldFocus) {
-      const timer = setTimeout(() => {
-        setShouldFocus(false);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [shouldFocus]);
+  }, [conversation.name, shouldFocus$]);
 
   const showInitialSystem$ = useObservable<boolean>(false);
 
@@ -236,7 +225,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         isGenerating$={isGenerating$}
         availableModels={AVAILABLE_MODELS}
         defaultModel={AVAILABLE_MODELS[0]}
-        autoFocus={shouldFocus}
+        autoFocus$={shouldFocus$}
       />
     </main>
   );

@@ -9,12 +9,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import type { FC } from 'react';
+import { use$ } from '@legendapp/state/react';
+import { type Observable } from '@legendapp/state';
 
 interface Props {
   isOpen: boolean;
   onToggle: () => void;
   conversations: ConversationItem[];
-  selectedConversationId: string | null;
+  selectedConversationId$: Observable<string | null>;
   onSelectConversation: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
@@ -27,7 +29,7 @@ export const LeftSidebar: FC<Props> = ({
   isOpen,
   onToggle,
   conversations,
-  selectedConversationId,
+  selectedConversationId$,
   onSelectConversation,
   isLoading = false,
   isError = false,
@@ -35,7 +37,8 @@ export const LeftSidebar: FC<Props> = ({
   onRetry,
   route,
 }) => {
-  const { api, isConnected } = useApi();
+  const { api, isConnected$ } = useApi();
+  const isConnected = use$(isConnected$);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -97,7 +100,7 @@ export const LeftSidebar: FC<Props> = ({
         <div className="flex flex-1 flex-col overflow-hidden">
           <ConversationList
             conversations={conversations}
-            selectedId={selectedConversationId}
+            selectedId$={selectedConversationId$}
             onSelect={onSelectConversation}
             isLoading={isLoading}
             isError={isError}

@@ -7,7 +7,7 @@ import type { ConversationItem } from '@/components/ConversationList';
 import { demoConversations } from '@/democonversations';
 import type { DemoConversation } from '@/democonversations';
 import type { ChatOptions } from '@/components/ChatInput';
-import { useObservable } from '@legendapp/state/react';
+import { use$, useObservable } from '@legendapp/state/react';
 import { type Observable, syncState } from '@legendapp/state';
 
 // New type for pending tools
@@ -95,10 +95,11 @@ export function useConversation(conversation: ConversationItem): UseConversation
 
   const state$ = syncState(conversationData$);
   const isLoading$ = useObservable(state$.isGetting);
+  const isConnected = use$(api.isConnected$);
 
   // Subscribe to the event stream as soon as the conversation is loaded
   useEffect(() => {
-    if (!conversation.readonly && api.isConnected && conversation.name) {
+    if (!conversation.readonly && isConnected && conversation.name) {
       console.log(`[useConversation] Auto-subscribing to events for ${conversation.name}`);
 
       // Subscribe to events
@@ -231,7 +232,7 @@ export function useConversation(conversation: ConversationItem): UseConversation
     conversation.name,
     conversation.readonly,
     api,
-    api.isConnected,
+    isConnected,
     conversationData$,
     isGenerating$,
     pendingTool$,
