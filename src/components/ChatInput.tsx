@@ -28,7 +28,7 @@ interface Props {
   isGenerating$: Observable<boolean>;
   defaultModel?: string;
   availableModels?: string[];
-  autoFocus?: boolean;
+  autoFocus$: Observable<boolean>;
 }
 
 export const ChatInput: FC<Props> = ({
@@ -38,7 +38,7 @@ export const ChatInput: FC<Props> = ({
   isGenerating$,
   defaultModel = '',
   availableModels = [],
-  autoFocus = false,
+  autoFocus$,
 }) => {
   const [message, setMessage] = useState('');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
@@ -48,13 +48,16 @@ export const ChatInput: FC<Props> = ({
 
   const isConnected = use$(isConnected$);
   const isDisabled = isReadOnly || !isConnected;
+  const autoFocus = use$(autoFocus$);
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {
     if (autoFocus && textareaRef.current && !isReadOnly && isConnected) {
       textareaRef.current.focus();
+      // Reset autoFocus$ to false after focusing
+      autoFocus$.set(false);
     }
-  }, [autoFocus, isReadOnly, isConnected]);
+  }, [autoFocus, isReadOnly, isConnected, autoFocus$]);
 
   // Global keyboard shortcut for interrupting generation with Escape key
   useObserveEffect(() => {
