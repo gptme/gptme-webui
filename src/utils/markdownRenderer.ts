@@ -91,7 +91,7 @@ export function customRenderer(
 
       if (useReactTabbed && data.placeholder && data.code && data.lang && data.codeText) {
         const langFromInfo = data.lang ? data.lang.split('.').pop() : undefined;
-        if (langFromInfo !== 'md' && langFromInfo !== 'markdown') return;
+        if (langFromInfo !== 'md' && langFromInfo !== 'markdown' && langFromInfo !== 'html') return;
         try {
           // Create React root and render the component
           const reactRoot = createRoot(data.placeholder);
@@ -131,7 +131,10 @@ export function customRenderer(
         }
         data.nodes[data.index].innerHTML = highlighted.code;
 
-        const isMarkdown = highlighted.language === 'md' || highlighted.language === 'markdown';
+        const isMarkdown =
+          highlighted.language === 'md' ||
+          highlighted.language === 'markdown' ||
+          highlighted.language === 'html';
         // Store code text for React tabbed component
         if (useReactTabbed && data.placeholder && isMarkdown) {
           data.codeText += text;
