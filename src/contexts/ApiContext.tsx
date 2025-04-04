@@ -14,6 +14,7 @@ interface ConnectionConfig {
 
 interface ApiContextType {
   api: ApiClient;
+  isConnecting$: Observable<boolean>;
   isConnected$: Observable<boolean>;
   connectionConfig: ConnectionConfig;
   updateConfig: (config: Partial<ConnectionConfig>) => void;
@@ -200,6 +201,7 @@ export function ApiProvider({
     <ApiContext.Provider
       value={{
         api,
+        isConnecting$,
         isConnected$: api.isConnected$,
         connectionConfig,
         updateConfig,

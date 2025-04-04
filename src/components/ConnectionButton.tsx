@@ -17,9 +17,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { use$ } from '@legendapp/state/react';
+
 export const ConnectionButton: FC = () => {
   const [open, setOpen] = useState(false);
-  const { connectionConfig, connect, isConnected$ } = useApi();
+  const { connectionConfig, connect, isConnected$, isConnecting$ } = useApi();
   const [formState, setFormState] = useState({
     baseUrl: connectionConfig.baseUrl,
     authToken: connectionConfig.authToken || '',
@@ -27,7 +28,7 @@ export const ConnectionButton: FC = () => {
   });
 
   const isConnected = use$(isConnected$);
-
+  const isConnecting = use$(isConnecting$);
   const features = [
     'Create new conversations',
     'Access conversation history',
@@ -74,10 +75,13 @@ export const ConnectionButton: FC = () => {
         <Button
           variant="outline"
           size="xs"
-          className={isConnected ? 'text-green-600' : 'text-muted-foreground'}
+          className={cn(
+            isConnected ? 'text-green-600' : 'text-muted-foreground',
+            isConnecting && 'text-yellow-600'
+          )}
         >
           <Network className="mr-2 h-3 w-3" />
-          {isConnected ? 'Connected' : 'Connect'}
+          {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Connect'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -166,8 +170,9 @@ export const ConnectionButton: FC = () => {
           <Button
             onClick={handleConnect}
             className={cn('w-full', isConnected && 'bg-green-600 hover:bg-green-700')}
+            disabled={isConnecting}
           >
-            {isConnected ? 'Reconnect' : 'Connect'}
+            {isConnected ? 'Reconnect' : isConnecting ? 'Connecting...' : 'Connect'}
           </Button>
         </div>
       </DialogContent>
