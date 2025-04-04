@@ -1,4 +1,4 @@
-import { type FC } from 'react';
+import { useMemo, type FC } from 'react';
 import { useState, useCallback, useEffect } from 'react';
 import { setDocumentTitle } from '@/utils/title';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import type { ConversationItem } from '@/components/ConversationList';
 import { toConversationItems } from '@/utils/conversation';
 import { demoConversations, type DemoConversation } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { use$ } from '@legendapp/state/react';
+import { Memo, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
 
 interface Props {
   className?: string;
@@ -23,21 +23,19 @@ const Conversations: FC<Props> = ({ route }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const conversationParam = searchParams.get('conversation');
-  const [selectedConversation, setSelectedConversation] = useState<string>(
+  const selectedConversation$ = useObservable<string>(
     conversationParam || demoConversations[0].name
   );
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
 
-  console.log('[Rendering] [Conversations] isConnected', isConnected);
-
   // Update selected conversation when URL param changes
   useEffect(() => {
     if (conversationParam) {
-      setSelectedConversation(conversationParam);
+      selectedConversation$.set(conversationParam);
     }
-  }, [conversationParam]);
+  }, [conversationParam, selectedConversation$]);
 
   // Fetch conversations from API with proper caching
   const {
@@ -74,46 +72,60 @@ const Conversations: FC<Props> = ({ route }) => {
   }
 
   // Combine demo and API conversations
-  const allConversations: ConversationItem[] = [
-    // Convert demo conversations to ConversationItems
-    ...demoConversations.map((conv: DemoConversation) => ({
-      name: conv.name,
-      lastUpdated: conv.lastUpdated,
-      messageCount: conv.messages.length,
-      readonly: true,
-    })),
-    // Convert API conversations to ConversationItems
-    ...toConversationItems(apiConversations),
-  ];
+  const allConversations: ConversationItem[] = useMemo(
+    () => [
+      // Convert demo conversations to ConversationItems
+      ...demoConversations.map((conv: DemoConversation) => ({
+        name: conv.name,
+        lastUpdated: conv.lastUpdated,
+        messageCount: conv.messages.length,
+        readonly: true,
+      })),
+      // Convert API conversations to ConversationItems
+      ...toConversationItems(apiConversations),
+    ],
+    [apiConversations]
+  );
 
   const handleSelectConversation = useCallback(
     (id: string) => {
-      if (id === selectedConversation) {
+      if (id === selectedConversation$.get()) {
         return;
       }
       // Cancel any pending queries for the previous conversation
       queryClient.cancelQueries({
-        queryKey: ['conversation', selectedConversation],
+        queryKey: ['conversation', selectedConversation$],
       });
-      setSelectedConversation(id);
+      selectedConversation$.set(id);
       // Update URL with the new conversation ID
       console.log(`[Conversations] [handleSelectConversation] id: ${id}`);
       navigate(`${route}?conversation=${id}`);
     },
-    [selectedConversation, queryClient, navigate, route]
+    [selectedConversation$, queryClient, navigate, route]
   );
 
-  const conversation = allConversations.find((conv) => conv.name === selectedConversation);
+  const conversation$ = useObservable<ConversationItem | undefined>(undefined);
+
+  // Update conversation$ when selectedConversation$ changes
+  useObserveEffect(selectedConversation$, ({ value: selectedConversation }) => {
+    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation));
+  });
+
+  // Update conversation$ when allConversations changes
+  useEffect(() => {
+    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation$.get()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allConversations]);
 
   // Update document title when selected conversation changes
-  useEffect(() => {
+  useObserveEffect(conversation$, ({ value: conversation }) => {
     if (conversation) {
       setDocumentTitle(conversation.name);
     } else {
       setDocumentTitle();
     }
     return () => setDocumentTitle(); // Reset title on unmount
-  }, [conversation]);
+  });
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -121,7 +133,7 @@ const Conversations: FC<Props> = ({ route }) => {
         isOpen={leftSidebarOpen}
         onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
         conversations={allConversations}
-        selectedConversationId={selectedConversation}
+        selectedConversationId$={selectedConversation$}
         onSelectConversation={handleSelectConversation}
         isLoading={isLoading}
         isError={isError}
@@ -129,7 +141,12 @@ const Conversations: FC<Props> = ({ route }) => {
         onRetry={() => refetch()}
         route={route}
       />
-      {conversation ? <ConversationContent conversation={conversation} /> : null}
+      <Memo>
+        {() => {
+          const conversation = conversation$.get();
+          return conversation ? <ConversationContent conversation={conversation} /> : null;
+        }}
+      </Memo>
       <RightSidebar
         isOpen={rightSidebarOpen}
         onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}

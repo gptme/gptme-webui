@@ -10,12 +10,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 import type { FC } from 'react';
 import { use$ } from '@legendapp/state/react';
+import { type Observable } from '@legendapp/state';
 
 interface Props {
   isOpen: boolean;
   onToggle: () => void;
   conversations: ConversationItem[];
-  selectedConversationId: string | null;
+  selectedConversationId$: Observable<string | null>;
   onSelectConversation: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
@@ -28,7 +29,7 @@ export const LeftSidebar: FC<Props> = ({
   isOpen,
   onToggle,
   conversations,
-  selectedConversationId,
+  selectedConversationId$,
   onSelectConversation,
   isLoading = false,
   isError = false,
@@ -99,7 +100,7 @@ export const LeftSidebar: FC<Props> = ({
         <div className="flex flex-1 flex-col overflow-hidden">
           <ConversationList
             conversations={conversations}
-            selectedId={selectedConversationId}
+            selectedId$={selectedConversationId$}
             onSelect={onSelectConversation}
             isLoading={isLoading}
             isError={isError}

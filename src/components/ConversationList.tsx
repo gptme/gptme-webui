@@ -9,7 +9,8 @@ import type { ConversationResponse } from '@/types/api';
 import type { MessageRole } from '@/types/conversation';
 
 import type { FC } from 'react';
-import { use$ } from '@legendapp/state/react';
+import { Computed, use$ } from '@legendapp/state/react';
+import { type Observable } from '@legendapp/state';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
@@ -24,7 +25,7 @@ export interface ConversationItem {
 
 interface Props {
   conversations: ConversationItem[];
-  selectedId: string | null;
+  selectedId$: Observable<string | null>;
   onSelect: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
@@ -34,7 +35,7 @@ interface Props {
 
 export const ConversationList: FC<Props> = ({
   conversations,
-  selectedId,
+  selectedId$,
   onSelect,
   isLoading = false,
   isError = false,
@@ -98,48 +99,54 @@ export const ConversationList: FC<Props> = ({
     };
 
     return (
-      <div
-        className={`cursor-pointer rounded-lg p-3 transition-colors hover:bg-accent ${
-          selectedId === conv.name ? 'bg-accent' : ''
-        }`}
-        onClick={() => onSelect(conv.name)}
-      >
-        <div className="mb-1 font-medium">{stripDate(conv.name)}</div>
-        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-          <Tooltip>
-            <TooltipTrigger>
-              <span className="flex items-center">
-                <Clock className="mr-1 h-4 w-4" />
-                {getRelativeTimeString(conv.lastUpdated)}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex items-center">
-                <MessageSquare className="mr-1 h-4 w-4" />
-                {conv.messageCount}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <div className="whitespace-pre">
-                {demoConv || messages?.log ? formatBreakdown(getMessageBreakdown()) : 'Loading...'}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-          {conv.readonly && (
-            <Tooltip>
-              <TooltipTrigger>
-                <span className="flex items-center">
-                  <Lock className="h-4 w-4" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>This conversation is read-only</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-      </div>
+      <Computed>
+        {() => (
+          <div
+            className={`cursor-pointer rounded-lg p-3 transition-colors hover:bg-accent ${
+              selectedId$.get() === conv.name ? 'bg-accent' : ''
+            }`}
+            onClick={() => onSelect(conv.name)}
+          >
+            <div className="mb-1 font-medium">{stripDate(conv.name)}</div>
+            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="flex items-center">
+                    <Clock className="mr-1 h-4 w-4" />
+                    {getRelativeTimeString(conv.lastUpdated)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center">
+                    <MessageSquare className="mr-1 h-4 w-4" />
+                    {conv.messageCount}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="whitespace-pre">
+                    {demoConv || messages?.log
+                      ? formatBreakdown(getMessageBreakdown())
+                      : 'Loading...'}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+              {conv.readonly && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <span className="flex items-center">
+                      <Lock className="h-4 w-4" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>This conversation is read-only</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        )}
+      </Computed>
     );
   };
 
