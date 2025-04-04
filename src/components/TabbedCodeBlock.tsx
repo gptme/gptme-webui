@@ -20,7 +20,7 @@ interface TabbedCodeBlockProps {
  * code view and preview. Preview is only available for markdown and HTML content.
  *
  * For markdown content, it uses the streaming markdown parser to render the preview.
- * For HTML content, it directly sets the innerHTML.
+ * For HTML content, it uses a sandboxed iframe to prevent XSS attacks.
  */
 export const TabbedCodeBlock: React.FC<TabbedCodeBlockProps> = ({ language, codeText, code }) => {
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
@@ -37,22 +37,17 @@ export const TabbedCodeBlock: React.FC<TabbedCodeBlockProps> = ({ language, code
 
   // Handle markdown rendering when the preview tab is selected
   useEffect(() => {
-    if (previewRef.current && codeText) {
+    if (previewRef.current && codeText && isMarkdown) {
       try {
         // Clear previous content and error state
         previewRef.current.innerHTML = '';
         setRenderError(null);
 
-        if (isMarkdown) {
-          // Use streaming markdown parser for markdown content
-          const renderer = customRenderer(previewRef.current);
-          const parser = smd.parser(renderer);
-          smd.parser_write(parser, codeText);
-          smd.parser_end(parser);
-        } else if (language === 'html') {
-          // For HTML content, just set the innerHTML
-          previewRef.current.innerHTML = codeText;
-        }
+        // Use streaming markdown parser for markdown content
+        const renderer = customRenderer(previewRef.current);
+        const parser = smd.parser(renderer);
+        smd.parser_write(parser, codeText);
+        smd.parser_end(parser);
       } catch (error) {
         console.error('Error rendering preview:', error);
         setRenderError('Failed to render preview');
@@ -100,9 +95,17 @@ export const TabbedCodeBlock: React.FC<TabbedCodeBlockProps> = ({ language, code
         <div
           ref={previewRef}
           className={`preview-content prose prose-sm dark:prose-invert mx-4 !mt-[-10px] mb-4 max-w-none ${
-            activeTab === 'code' && !renderError ? '!hidden' : ''
+            activeTab === 'code' || language === 'html' || renderError ? '!hidden' : ''
           }`}
         ></div>
+        {language === 'html' && (
+          <iframe
+            sandbox="allow-scripts"
+            srcDoc={codeText}
+            className={`min-h-[450px] w-full border-0 ${activeTab === 'code' || renderError ? '!hidden' : ''}`}
+            title="HTML Preview"
+          ></iframe>
+        )}
       </div>
     </div>
   );
