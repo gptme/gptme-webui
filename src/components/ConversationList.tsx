@@ -9,6 +9,7 @@ import type { ConversationResponse } from '@/types/api';
 import type { MessageRole } from '@/types/conversation';
 
 import type { FC } from 'react';
+import { use$ } from '@legendapp/state/react';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
@@ -40,7 +41,8 @@ export const ConversationList: FC<Props> = ({
   error,
   onRetry,
 }) => {
-  const { api, isConnected } = useApi();
+  const { api, isConnected$ } = useApi();
+  const isConnected = use$(isConnected$);
 
   if (!conversations) {
     return null;

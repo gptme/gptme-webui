@@ -1,7 +1,9 @@
 import { createApiClient } from '@/utils/api';
 import type { ApiClient } from '@/utils/api';
+import { type Observable, observable } from '@legendapp/state';
+import { use$, useObserveEffect } from '@legendapp/state/react';
 import type { QueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 interface ConnectionConfig {
@@ -12,7 +14,7 @@ interface ConnectionConfig {
 
 interface ApiContextType {
   api: ApiClient;
-  isConnected: boolean;
+  isConnected$: Observable<boolean>;
   connectionConfig: ConnectionConfig;
   updateConfig: (config: Partial<ConnectionConfig>) => void;
   connect: (config?: Partial<ConnectionConfig>) => Promise<void>;
@@ -62,6 +64,32 @@ export function connectionConfigFromHash(hash: string) {
   };
 }
 
+const connectionConfig$ = observable(connectionConfigFromHash(window.location.hash.substring(1)));
+
+let api = createApiClient(
+  connectionConfig$.baseUrl.get(),
+  connectionConfig$.useAuthToken.get() && connectionConfig$.authToken.get()
+    ? `Bearer ${connectionConfig$.authToken.get()}`
+    : null
+);
+const isConnecting$ = observable(false);
+
+const updateConfig = (newConfig: Partial<ConnectionConfig>) => {
+  connectionConfig$.set((prev) => {
+    const updated = { ...prev, ...newConfig };
+
+    // Update localStorage
+    localStorage.setItem('gptme_baseUrl', updated.baseUrl);
+    if (updated.authToken && updated.useAuthToken) {
+      localStorage.setItem('gptme_userToken', updated.authToken);
+    } else {
+      localStorage.removeItem('gptme_userToken');
+    }
+
+    return updated;
+  });
+};
+
 export function ApiProvider({
   children,
   queryClient,
@@ -69,67 +97,49 @@ export function ApiProvider({
   children: ReactNode;
   queryClient: QueryClient;
 }) {
-  // Initialize connection configuration
-  const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>(() => {
-    // Get URL fragment parameters if they exist
-    const hash = window.location.hash.substring(1);
-    return connectionConfigFromHash(hash);
-  });
-
-  const [api, setApi] = useState(() =>
-    createApiClient(
-      connectionConfig.baseUrl,
-      connectionConfig.useAuthToken && connectionConfig.authToken
-        ? `Bearer ${connectionConfig.authToken}`
-        : null
-    )
-  );
-  const [isConnected, setIsConnected] = useState(false);
-
-  // Update connection configuration
-  const updateConfig = useCallback((newConfig: Partial<ConnectionConfig>) => {
-    setConnectionConfig((prev) => {
-      const updated = { ...prev, ...newConfig };
-
-      // Update localStorage
-      localStorage.setItem('gptme_baseUrl', updated.baseUrl);
-      if (updated.authToken && updated.useAuthToken) {
-        localStorage.setItem('gptme_userToken', updated.authToken);
-      } else {
-        localStorage.removeItem('gptme_userToken');
-      }
-
-      return updated;
-    });
-  }, []);
+  console.log('[Rendering] [ApiContext]');
 
   // Connect to API
   const connect = useCallback(
     async (config?: Partial<ConnectionConfig>) => {
-      try {
+      if (config) {
         // Update config if provided
-        if (config) {
-          updateConfig(config);
+        updateConfig(config);
+
+        // Update API client if config has changed
+        const { baseUrl, authToken, useAuthToken } = config;
+        if (
+          api.baseUrl !== baseUrl ||
+          api.authHeader !== (useAuthToken && authToken ? `Bearer ${authToken}` : null)
+        ) {
+          console.log('[ApiContext] Creating new API client');
+          api = createApiClient(baseUrl, useAuthToken && authToken ? `Bearer ${authToken}` : null);
+          isConnecting$.set(false);
         }
+      }
 
-        const { baseUrl, authToken, useAuthToken } = config || connectionConfig;
+      if (api.isConnected$.get()) {
+        console.log('[ApiContext] Already connected, skipping connection');
+        return;
+      }
 
-        // Create new API client
-        const newApi = createApiClient(
-          baseUrl,
-          useAuthToken && authToken ? `Bearer ${authToken}` : null
-        );
+      if (isConnecting$.get()) {
+        console.log('[ApiContext] Already connecting, skipping connection');
+        return;
+      }
 
+      console.log('[ApiContext] Connecting to API');
+      isConnecting$.set(true);
+      try {
         // Test connection
-        const connected = await newApi.checkConnection();
+        const connected = await api.checkConnection();
+        console.log('[ApiContext] Connected:', connected);
         if (!connected) {
           throw new Error('Failed to connect to API');
         }
 
         // Update state
-        newApi.setConnected(true);
-        setApi(newApi);
-        setIsConnected(true);
+        api.setConnected(true);
 
         // Refresh queries
         await queryClient.invalidateQueries();
@@ -141,7 +151,7 @@ export function ApiProvider({
         toast.success('Connected to gptme server');
       } catch (error) {
         console.error('Failed to connect to API:', error);
-        setIsConnected(false);
+        api.setConnected(false);
 
         let errorMessage = 'Could not connect to gptme instance.';
         if (error instanceof Error) {
@@ -155,14 +165,17 @@ export function ApiProvider({
         }
         toast.error(errorMessage);
         throw error;
+      } finally {
+        isConnecting$.set(false);
       }
     },
-    [connectionConfig, queryClient, updateConfig]
+    [queryClient]
   );
 
   // Attempt initial connection
   useEffect(() => {
     const attemptInitialConnection = async () => {
+      console.log('[ApiContext] Attempting initial connection');
       try {
         // Always try to connect on startup
         await connect();
@@ -175,11 +188,19 @@ export function ApiProvider({
     void attemptInitialConnection();
   }, [connect]);
 
+  // Reconnect on config change
+  useObserveEffect(connectionConfig$, async ({ value }) => {
+    console.log('[ApiContext] Reconnecting on config change', value);
+    await connect(value);
+  });
+
+  const connectionConfig = use$(connectionConfig$);
+
   return (
     <ApiContext.Provider
       value={{
         api,
-        isConnected,
+        isConnected$: api.isConnected$,
         connectionConfig,
         updateConfig,
         connect,

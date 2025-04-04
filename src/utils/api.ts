@@ -5,6 +5,8 @@ import type {
   SendMessageRequest,
 } from '@/types/api';
 import type { Message, ToolUse } from '@/types/conversation';
+import { type Observable } from '@legendapp/state';
+import { observable } from '@legendapp/state';
 
 const DEFAULT_API_URL = 'http://127.0.0.1:5700';
 
@@ -51,7 +53,8 @@ export interface ToolConfirmationRequest {
 export class ApiClient {
   public baseUrl: string;
   public authHeader: string | null = null;
-  private _isConnected: boolean = false;
+  public readonly isConnected$: Observable<boolean> = observable(false);
+  private identifier: string;
   private controller: AbortController | null = null;
   private sessions: Map<string, string> = new Map(); // Map conversation IDs to session IDs
   private eventSources: Map<string, EventSource> = new Map(); // Map conversation IDs to EventSource instances
@@ -60,6 +63,8 @@ export class ApiClient {
   constructor(baseUrl: string = DEFAULT_API_URL, authHeader: string | null = null) {
     this.baseUrl = baseUrl;
     this.authHeader = authHeader;
+    this.identifier = crypto.randomUUID();
+    console.log(`[ApiClient] Identifier: ${this.identifier}`);
   }
 
   private async fetchWithTimeout(
@@ -68,7 +73,10 @@ export class ApiClient {
     timeoutMs: number = 5000
   ): Promise<Response> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutId = setTimeout(() => {
+      console.log('[ApiClient] Fetch timeout, aborting request');
+      controller.abort('timeout');
+    }, timeoutMs);
 
     let headers = {
       ...options.headers,
@@ -87,9 +95,11 @@ export class ApiClient {
         headers,
         signal: controller.signal,
       });
+      console.log('[ApiClient] Fetch completed, clearing timeout');
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
+      console.log('[ApiClient] Fetch error, clearing timeout');
       clearTimeout(timeoutId);
       throw error;
     }
@@ -130,7 +140,7 @@ export class ApiClient {
     try {
       this.isCleaningUp = true;
       if (this.controller) {
-        this.controller.abort();
+        this.controller.abort('cancelPendingRequests called');
         // Wait a bit for abort event handlers to complete
         await new Promise<void>((resolve) => {
           setTimeout(resolve, 50);
@@ -148,18 +158,18 @@ export class ApiClient {
     }
   }
 
-  get isConnected(): boolean {
-    return this._isConnected;
+  private get isConnected(): boolean {
+    return this.isConnected$.get();
   }
 
   async checkConnection(): Promise<boolean> {
     try {
       // Check the API
+      console.log('[ApiClient] Checking connection to', this.baseUrl);
       const response = await this.fetchWithTimeout(`${this.baseUrl}/api/v2`, {}, 3000);
-
       if (!response.ok) {
         console.error('API endpoint returned non-OK status:', response.status);
-        this._isConnected = false;
+        this.isConnected$.set(false);
         return false;
       }
 
@@ -167,30 +177,30 @@ export class ApiClient {
       try {
         await response.json();
       } catch (parseError) {
-        console.error('Failed to parse API response:', parseError);
-        this._isConnected = false;
+        console.error('[ApiClient] Failed to parse API response:', parseError);
+        this.isConnected$.set(false);
         return false;
       }
 
-      this._isConnected = true;
+      this.isConnected$.set(true);
       return true;
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        console.error('Network error - server may be down or CORS not configured');
+        console.error('[ApiClient] Network error - server may be down or CORS not configured');
       } else {
-        console.error('Connection check failed:', error);
+        console.error('[ApiClient] Connection check failed:', error);
       }
-      this._isConnected = false;
+      this.isConnected$.set(false);
       return false;
     }
   }
 
   // Add method to explicitly set connection state
   setConnected(connected: boolean) {
-    if (connected && !this._isConnected) {
+    if (connected && !this.isConnected) {
       console.warn('Manually setting connected state without verification');
     }
-    this._isConnected = connected;
+    this.isConnected$.set(connected);
   }
 
   subscribeToEvents(
@@ -383,7 +393,7 @@ export class ApiClient {
   async getConversations(
     limit: number = 100
   ): Promise<{ name: string; modified: number; messages: number }[]> {
-    if (!this._isConnected) {
+    if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');
     }
     try {
@@ -399,7 +409,7 @@ export class ApiClient {
   }
 
   async getConversation(logfile: string): Promise<ConversationResponse> {
-    if (!this._isConnected) {
+    if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');
     }
     try {
@@ -414,6 +424,7 @@ export class ApiClient {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw new ApiClientError('Request aborted', 499);
       }
+      console.log('[ApiClient] getConversation error:', error);
       throw error;
     }
   }
@@ -422,7 +433,7 @@ export class ApiClient {
     logfile: string,
     messages: Message[]
   ): Promise<{ status: string; session_id: string }> {
-    if (!this._isConnected) {
+    if (!this.isConnected) {
       console.error('Attempted to create conversation while disconnected');
       throw new ApiClientError('Not connected to API');
     }
@@ -452,7 +463,7 @@ export class ApiClient {
   }
 
   async sendMessage(logfile: string, message: Message, branch: string = 'main'): Promise<void> {
-    if (!this._isConnected) {
+    if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');
     }
     try {
@@ -476,7 +487,7 @@ export class ApiClient {
     stream: boolean = true,
     branch: string = 'main'
   ): Promise<void> {
-    if (!this._isConnected) {
+    if (!this.isConnected) {
       throw new Error('Not connected to API');
     }
 
@@ -536,7 +547,7 @@ export class ApiClient {
       count?: number;
     }
   ): Promise<void> {
-    if (!this._isConnected) {
+    if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');
     }
 
@@ -585,7 +596,7 @@ export class ApiClient {
   }
 
   async interruptGeneration(logfile: string): Promise<void> {
-    if (!this._isConnected) {
+    if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');
     }
 

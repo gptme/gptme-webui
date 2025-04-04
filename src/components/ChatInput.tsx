@@ -14,7 +14,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
-import { Computed, useObserveEffect } from '@legendapp/state/react';
+import { Computed, use$, useObserveEffect } from '@legendapp/state/react';
 
 export interface ChatOptions {
   model?: string;
@@ -43,17 +43,18 @@ export const ChatInput: FC<Props> = ({
   const [message, setMessage] = useState('');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
-  const api = useApi();
+  const { isConnected$ } = useApi();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const isDisabled = isReadOnly || !api.isConnected;
+  const isConnected = use$(isConnected$);
+  const isDisabled = isReadOnly || !isConnected;
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {
-    if (autoFocus && textareaRef.current && !isReadOnly && api.isConnected) {
+    if (autoFocus && textareaRef.current && !isReadOnly && isConnected) {
       textareaRef.current.focus();
     }
-  }, [autoFocus, isReadOnly, api.isConnected]);
+  }, [autoFocus, isReadOnly, isConnected]);
 
   // Global keyboard shortcut for interrupting generation with Escape key
   useObserveEffect(() => {
@@ -104,7 +105,7 @@ export const ChatInput: FC<Props> = ({
 
   const placeholder = isReadOnly
     ? 'This is a demo conversation (read-only)'
-    : api.isConnected
+    : isConnected
       ? 'Send a message...'
       : 'Connect to gptme to send messages';
 

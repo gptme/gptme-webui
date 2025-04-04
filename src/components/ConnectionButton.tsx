@@ -16,15 +16,17 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-
+import { use$ } from '@legendapp/state/react';
 export const ConnectionButton: FC = () => {
   const [open, setOpen] = useState(false);
-  const { connectionConfig, connect, isConnected } = useApi();
+  const { connectionConfig, connect, isConnected$ } = useApi();
   const [formState, setFormState] = useState({
     baseUrl: connectionConfig.baseUrl,
     authToken: connectionConfig.authToken || '',
     useAuthToken: connectionConfig.useAuthToken,
   });
+
+  const isConnected = use$(isConnected$);
 
   const features = [
     'Create new conversations',

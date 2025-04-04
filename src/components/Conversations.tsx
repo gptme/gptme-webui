@@ -10,6 +10,7 @@ import type { ConversationItem } from '@/components/ConversationList';
 import { toConversationItems } from '@/utils/conversation';
 import { demoConversations, type DemoConversation } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { use$ } from '@legendapp/state/react';
 
 interface Props {
   className?: string;
@@ -25,8 +26,11 @@ const Conversations: FC<Props> = ({ route }) => {
   const [selectedConversation, setSelectedConversation] = useState<string>(
     conversationParam || demoConversations[0].name
   );
-  const { api, isConnected, connectionConfig } = useApi();
+  const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
+  const isConnected = use$(isConnected$);
+
+  console.log('[Rendering] [Conversations] isConnected', isConnected);
 
   // Update selected conversation when URL param changes
   useEffect(() => {

@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import type { FC } from 'react';
+import { use$ } from '@legendapp/state/react';
 
 interface Props {
   isOpen: boolean;
@@ -35,7 +36,8 @@ export const LeftSidebar: FC<Props> = ({
   onRetry,
   route,
 }) => {
-  const { api, isConnected } = useApi();
+  const { api, isConnected$ } = useApi();
+  const isConnected = use$(isConnected$);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
