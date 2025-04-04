@@ -70,39 +70,76 @@ export class ApiClient {
   private async fetchWithTimeout(
     url: string,
     options: RequestInit = {},
-    timeoutMs: number = 5000
+    timeoutMs: number = 5000,
+    maxRetries: number = 5,
+    initialBackoffMs: number = 500
   ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('[ApiClient] Fetch timeout, aborting request');
-      controller.abort('timeout');
-    }, timeoutMs);
+    let retryCount = 0;
+    let lastError: Error | null = null;
 
-    let headers = {
-      ...options.headers,
-    };
+    while (retryCount <= maxRetries) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('[ApiClient] Fetch timeout, aborting request');
+        controller.abort('timeout');
+      }, timeoutMs);
 
-    if (this.authHeader) {
-      headers = {
-        ...headers,
-        Authorization: this.authHeader,
+      let headers = {
+        ...options.headers,
       };
+
+      if (this.authHeader) {
+        headers = {
+          ...headers,
+          Authorization: this.authHeader,
+        };
+      }
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+        console.log('[ApiClient] Fetch completed, clearing timeout');
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error: unknown) {
+        console.log('[ApiClient] Fetch error, clearing timeout');
+        clearTimeout(timeoutId);
+
+        // Save the error for potential re-throwing
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Check if error can be retried - using type narrowing for safety
+        const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+        const isTimeout = isAbortError && error.message === 'timeout';
+        const isTypeError = error instanceof TypeError;
+
+        // Don't retry if the request was deliberately aborted or for certain error types
+        if (
+          (isAbortError && !isTimeout) ||
+          isTypeError || // for CORS, etc.
+          retryCount >= maxRetries
+        ) {
+          break;
+        }
+
+        // Calculate backoff with exponential increase
+        const backoffTime = initialBackoffMs * Math.pow(2, retryCount);
+
+        console.log(
+          `[ApiClient] Retrying fetch (${retryCount + 1}/${maxRetries + 1}) after ${backoffTime.toFixed(0)}ms`
+        );
+        retryCount++;
+
+        // Wait for the backoff period
+        await new Promise((resolve) => setTimeout(resolve, backoffTime));
+      }
     }
 
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-        signal: controller.signal,
-      });
-      console.log('[ApiClient] Fetch completed, clearing timeout');
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      console.log('[ApiClient] Fetch error, clearing timeout');
-      clearTimeout(timeoutId);
-      throw error;
-    }
+    // If we've reached this point, all retries have failed
+    throw lastError || new Error('Request failed after multiple retries');
   }
 
   private async fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
