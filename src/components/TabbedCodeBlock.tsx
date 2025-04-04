@@ -30,10 +30,10 @@ export const TabbedCodeBlock: React.FC<TabbedCodeBlockProps> = ({ language, code
   const emoji = getCodeBlockEmoji(language || '');
 
   // Check if this is a markdown code block
-  const isMarkdown = language === 'md' || language === 'markdown';
+  const isMarkdown = language?.toLowerCase() === 'md' || language?.toLowerCase() === 'markdown';
 
   // Determine if preview should be available - only for markdown or HTML
-  const hasPreview = isMarkdown || language === 'html';
+  const hasPreview = isMarkdown || language?.toLowerCase() === 'html';
 
   // Handle markdown rendering when the preview tab is selected
   useEffect(() => {

@@ -6,6 +6,19 @@ import { createRoot } from 'react-dom/client';
 import { TabbedCodeBlock } from '@/components/TabbedCodeBlock';
 
 /**
+ * Checks if the language is markdown or html
+ * @param language - The language of the code block
+ * @returns True if the language is markdown or html, false otherwise
+ */
+function isMarkdownOrHtml(language: string | null | undefined): boolean {
+  return (
+    language?.toLowerCase() === 'md' ||
+    language?.toLowerCase() === 'markdown' ||
+    language?.toLowerCase() === 'html'
+  );
+}
+
+/**
  * CustomRendererData extends the default renderer data with additional properties
  * for tracking code blocks, their language, and content.
  */
@@ -92,7 +105,7 @@ export function customRenderer(
       if (useReactTabbed && data.placeholder && data.code && data.lang && data.codeText) {
         const langFromInfo = data.lang ? data.lang.split('.').pop() : undefined;
         // Only render for markdown and html
-        if (langFromInfo !== 'md' && langFromInfo !== 'markdown' && langFromInfo !== 'html') return;
+        if (!isMarkdownOrHtml(langFromInfo)) return;
         try {
           // Create React root and render the component
           const reactRoot = createRoot(data.placeholder);
@@ -132,12 +145,8 @@ export function customRenderer(
         }
         data.nodes[data.index].innerHTML = highlighted.code;
 
-        const isMarkdownOrHtml =
-          highlighted.language === 'md' ||
-          highlighted.language === 'markdown' ||
-          highlighted.language === 'html';
         // Store code text for React tabbed component
-        if (useReactTabbed && data.placeholder && isMarkdownOrHtml) {
+        if (useReactTabbed && data.placeholder && isMarkdownOrHtml(highlighted.language)) {
           data.codeText += text;
         } else {
           data.placeholder = null;
