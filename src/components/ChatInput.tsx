@@ -14,7 +14,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
-import { Computed, use$, useObserveEffect } from '@legendapp/state/react';
+import { Computed, useObservable, use$ } from '@legendapp/state/react';
 
 export interface ChatOptions {
   model?: string;
@@ -26,6 +26,7 @@ interface Props {
   onInterrupt?: () => void;
   isReadOnly?: boolean;
   isGenerating$: Observable<boolean>;
+  hasSession$: Observable<boolean>;
   defaultModel?: string;
   availableModels?: string[];
   autoFocus$: Observable<boolean>;
@@ -36,6 +37,7 @@ export const ChatInput: FC<Props> = ({
   onInterrupt,
   isReadOnly,
   isGenerating$,
+  hasSession$,
   defaultModel = '',
   availableModels = [],
   autoFocus$,
@@ -47,8 +49,33 @@ export const ChatInput: FC<Props> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isConnected = use$(isConnected$);
-  const isDisabled = isReadOnly || !isConnected;
   const autoFocus = use$(autoFocus$);
+
+  // Get placeholder text
+  const placeholder$ = useObservable(() => {
+    if (isReadOnly) {
+      return 'This is a demo conversation (read-only)';
+    }
+
+    if (!isConnected) {
+      return 'Connect to gptme to send messages';
+    }
+
+    if (!hasSession$.get()) {
+      return 'Waiting for session to be established...';
+    }
+
+    return 'Send a message...';
+  });
+
+  // Check if input should be disabled
+  const isDisabled$ = useObservable(() => {
+    const isReadOnlyOrDisconnected = isReadOnly || !isConnected;
+    if (!isReadOnlyOrDisconnected) {
+      return !hasSession$.get();
+    }
+    return isReadOnlyOrDisconnected;
+  });
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {
@@ -61,7 +88,7 @@ export const ChatInput: FC<Props> = ({
   }, [autoFocus, isReadOnly, isConnected]);
 
   // Global keyboard shortcut for interrupting generation with Escape key
-  useObserveEffect(() => {
+  useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape' && isGenerating$.get() && onInterrupt) {
         console.log('[ChatInput] Global Escape pressed, interrupting generation...');
@@ -73,7 +100,7 @@ export const ChatInput: FC<Props> = ({
     return () => {
       document.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  });
+  }, [isGenerating$, onInterrupt]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -108,82 +135,82 @@ export const ChatInput: FC<Props> = ({
     }
   };
 
-  const placeholder = isReadOnly
-    ? 'This is a demo conversation (read-only)'
-    : isConnected
-      ? 'Send a message...'
-      : 'Connect to gptme to send messages';
-
   return (
     <form onSubmit={handleSubmit} className="border-t p-4">
       <div className="mx-auto flex max-w-2xl flex-col">
         <div className="flex">
           <div className="flex flex-1">
-            <div className="relative flex flex-1">
-              <Textarea
-                ref={textareaRef}
-                value={message}
-                onChange={(e) => {
-                  setMessage(e.target.value);
-                  // Auto-adjust height
-                  e.target.style.height = 'auto';
-                  e.target.style.height = `${Math.min(e.target.scrollHeight, 400)}px`;
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                className="max-h-[400px] min-h-[60px] resize-none overflow-y-auto pb-8 pr-16"
-                disabled={isDisabled}
-              />
-              <div className="absolute bottom-1.5 left-1.5">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-all hover:bg-accent hover:text-muted-foreground hover:opacity-100"
-                      disabled={isDisabled}
-                    >
-                      <Settings className="mr-0.5 h-2.5 w-2.5" />
-                      Options
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80" align="start">
-                    <div className="space-y-8">
-                      <div className="space-y-1">
-                        <Label htmlFor="model-select">Model</Label>
-                        <Select
-                          value={selectedModel}
-                          onValueChange={setSelectedModel}
-                          disabled={isDisabled}
-                        >
-                          <SelectTrigger id="model-select">
-                            <SelectValue placeholder="Default model" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="default">Default model</SelectItem>
-                            {availableModels.map((model) => (
-                              <SelectItem key={model} value={model}>
-                                {model}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+            <Computed>
+              {() => {
+                return (
+                  <div className="relative flex flex-1">
+                    <Textarea
+                      ref={textareaRef}
+                      value={message}
+                      onChange={(e) => {
+                        setMessage(e.target.value);
+                        // Auto-adjust height
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 400)}px`;
+                      }}
+                      onKeyDown={handleKeyDown}
+                      placeholder={placeholder$.get()}
+                      className="max-h-[400px] min-h-[60px] resize-none overflow-y-auto pb-8 pr-16"
+                      disabled={isDisabled$.get()}
+                    />
+                    <div className="absolute bottom-1.5 left-1.5">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-all hover:bg-accent hover:text-muted-foreground hover:opacity-100"
+                            disabled={isDisabled$.get()}
+                          >
+                            <Settings className="mr-0.5 h-2.5 w-2.5" />
+                            Options
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80" align="start">
+                          <div className="space-y-8">
+                            <div className="space-y-1">
+                              <Label htmlFor="model-select">Model</Label>
+                              <Select
+                                value={selectedModel}
+                                onValueChange={setSelectedModel}
+                                disabled={isDisabled$.get()}
+                              >
+                                <SelectTrigger id="model-select">
+                                  <SelectValue placeholder="Default model" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Default model</SelectItem>
+                                  {availableModels.map((model) => (
+                                    <SelectItem key={model} value={model}>
+                                      {model}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="streaming-toggle">Enable streaming</Label>
-                        <Switch
-                          id="streaming-toggle"
-                          checked={streamingEnabled}
-                          onCheckedChange={setStreamingEnabled}
-                          disabled={isDisabled}
-                        />
-                      </div>
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="streaming-toggle">Enable streaming</Label>
+                              <Switch
+                                id="streaming-toggle"
+                                checked={streamingEnabled}
+                                onCheckedChange={setStreamingEnabled}
+                                disabled={isDisabled$.get()}
+                              />
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
+                  </div>
+                );
+              }}
+            </Computed>
             <div className="relative h-full">
               <Computed>
                 {() => {
@@ -197,7 +224,7 @@ export const ChatInput: FC<Props> = ({
                       : 'h-10 w-10 bg-green-600 text-green-100'
                   }
                 `}
-                      disabled={isDisabled}
+                      disabled={isDisabled$.get()}
                     >
                       {isGenerating$.get() ? (
                         <div className="flex items-center gap-2">

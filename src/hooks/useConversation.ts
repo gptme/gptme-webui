@@ -7,7 +7,7 @@ import type { ConversationItem } from '@/components/ConversationList';
 import { demoConversations } from '@/democonversations';
 import type { DemoConversation } from '@/democonversations';
 import type { ChatOptions } from '@/components/ChatInput';
-import { use$, useObservable } from '@legendapp/state/react';
+import { use$, useObservable, useObserveEffect } from '@legendapp/state/react';
 import { type Observable, syncState } from '@legendapp/state';
 
 // New type for pending tools
@@ -27,6 +27,7 @@ interface UseConversationResult {
     options?: { content?: string; count?: number }
   ) => Promise<void>;
   interruptGeneration: () => Promise<void>;
+  hasSession$: Observable<boolean>;
 }
 
 function getDemo(name: string): DemoConversation | undefined {
@@ -34,10 +35,17 @@ function getDemo(name: string): DemoConversation | undefined {
 }
 
 export function useConversation(conversation: ConversationItem): UseConversationResult {
-  const api = useApi();
+  const { api } = useApi();
   const { toast } = useToast();
   const isGenerating$ = useObservable<boolean>(false);
   const pendingTool$ = useObservable<PendingTool | null>(null);
+  const hasSession$ = useObservable<boolean>(
+    conversation.readonly ? true : api.sessions$.get(conversation.name).get() !== undefined
+  );
+
+  useObserveEffect(api.sessions$.get(conversation.name), ({ value }) => {
+    hasSession$.set(value !== undefined);
+  });
 
   console.log('[useConversation] conversation.name', conversation.name);
 
@@ -243,6 +251,25 @@ export function useConversation(conversation: ConversationItem): UseConversation
       message,
       options,
     });
+
+    // Ensure we have a session before proceeding
+    if (!conversation.readonly && !api.hasSession(conversation.name)) {
+      console.log('[useConversation] Waiting for session before sending message');
+
+      try {
+        // This will throw an error if the session can't be established
+        await api.getSessionId(conversation.name);
+      } catch (error) {
+        console.error('[useConversation] Failed to get session:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Session Error',
+          description: 'Could not establish a session. Please try reconnecting.',
+        });
+        return;
+      }
+    }
+
     isGenerating$.set(true);
 
     // Create user message (non-streaming)
@@ -390,5 +417,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
     pendingTool$,
     confirmTool,
     interruptGeneration,
+    hasSession$,
   };
 }
