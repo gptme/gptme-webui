@@ -252,24 +252,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
       options,
     });
 
-    // Ensure we have a session before proceeding
-    if (!conversation.readonly && !api.hasSession(conversation.name)) {
-      console.log('[useConversation] Waiting for session before sending message');
-
-      try {
-        // This will throw an error if the session can't be established
-        await api.getSessionId(conversation.name);
-      } catch (error) {
-        console.error('[useConversation] Failed to get session:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Session Error',
-          description: 'Could not establish a session. Please try reconnecting.',
-        });
-        return;
-      }
-    }
-
     isGenerating$.set(true);
 
     // Create user message (non-streaming)
@@ -305,9 +287,6 @@ export function useConversation(conversation: ConversationItem): UseConversation
     }
 
     try {
-      // Ensure we're ready to receive events
-      console.log('[useConversation] Ensuring event stream is ready');
-
       isGenerating$.set(true);
 
       // Initial generation
