@@ -29,6 +29,9 @@ interface ApiContextType {
   // Add event stream methods
   subscribeToEvents: ApiClient['subscribeToEvents'];
   closeEventStream: ApiClient['closeEventStream'];
+  // Add session methods
+  hasSession: ApiClient['hasSession'];
+  getSessionId: ApiClient['getSessionId'];
 }
 
 const ApiContext = createContext<ApiContextType | null>(null);
@@ -213,6 +216,9 @@ export function ApiProvider({
         cancelPendingRequests: api.cancelPendingRequests.bind(api),
         subscribeToEvents: api.subscribeToEvents.bind(api),
         closeEventStream: api.closeEventStream.bind(api),
+        // Add bindings for session methods
+        hasSession: api.hasSession.bind(api),
+        getSessionId: api.getSessionId.bind(api),
       }}
     >
       {children}

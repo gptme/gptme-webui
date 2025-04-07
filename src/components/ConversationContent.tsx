@@ -36,6 +36,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
     pendingTool$,
     confirmTool,
     interruptGeneration,
+    hasSession$,
   } = useConversation(conversation);
 
   // State to track when to auto-focus the input
@@ -223,6 +224,7 @@ export const ConversationContent: FC<Props> = ({ conversation }) => {
         }}
         isReadOnly={conversation.readonly}
         isGenerating$={isGenerating$}
+        hasSession$={hasSession$}
         availableModels={AVAILABLE_MODELS}
         defaultModel={AVAILABLE_MODELS[0]}
         autoFocus$={shouldFocus$}
