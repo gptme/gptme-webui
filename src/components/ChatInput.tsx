@@ -102,6 +102,7 @@ export const ChatInput: FC<Props> = ({
       handleSubmit(e);
     } else if (e.key === 'Escape' && isGenerating$.get() && onInterrupt) {
       e.preventDefault();
+      e.stopPropagation(); // Prevent bubbling up to the global keyboard shortcut
       console.log('[ChatInput] Escape pressed, interrupting generation...');
       onInterrupt();
     }
