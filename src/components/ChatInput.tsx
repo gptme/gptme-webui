@@ -14,7 +14,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
-import { Computed, useObservable, use$ } from '@legendapp/state/react';
+import { Computed, use$ } from '@legendapp/state/react';
+import { conversations$ } from '@/stores/conversations';
 
 export interface ChatOptions {
   model?: string;
@@ -22,22 +23,20 @@ export interface ChatOptions {
 }
 
 interface Props {
+  conversationId: string;
   onSend: (message: string, options?: ChatOptions) => void;
   onInterrupt?: () => void;
   isReadOnly?: boolean;
-  isGenerating$: Observable<boolean>;
-  hasSession$: Observable<boolean>;
   defaultModel?: string;
   availableModels?: string[];
   autoFocus$: Observable<boolean>;
 }
 
 export const ChatInput: FC<Props> = ({
+  conversationId,
   onSend,
   onInterrupt,
   isReadOnly,
-  isGenerating$,
-  hasSession$,
   defaultModel = '',
   availableModels = [],
   autoFocus$,
@@ -50,32 +49,16 @@ export const ChatInput: FC<Props> = ({
 
   const isConnected = use$(isConnected$);
   const autoFocus = use$(autoFocus$);
+  const conversation = use$(conversations$.get(conversationId));
+  const isGenerating = conversation?.isGenerating || false;
 
-  // Get placeholder text
-  const placeholder$ = useObservable(() => {
-    if (isReadOnly) {
-      return 'This is a demo conversation (read-only)';
-    }
+  const placeholder = isReadOnly
+    ? 'This is a demo conversation (read-only)'
+    : !isConnected
+      ? 'Connect to gptme to send messages'
+      : 'Send a message...';
 
-    if (!isConnected) {
-      return 'Connect to gptme to send messages';
-    }
-
-    if (!hasSession$.get()) {
-      return 'Waiting for session to be established...';
-    }
-
-    return 'Send a message...';
-  });
-
-  // Check if input should be disabled
-  const isDisabled$ = useObservable(() => {
-    const isReadOnlyOrDisconnected = isReadOnly || !isConnected;
-    if (!isReadOnlyOrDisconnected) {
-      return !hasSession$.get();
-    }
-    return isReadOnlyOrDisconnected;
-  });
+  const isDisabled = isReadOnly || !isConnected;
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {
@@ -87,29 +70,14 @@ export const ChatInput: FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocus, isReadOnly, isConnected]);
 
-  // Global keyboard shortcut for interrupting generation with Escape key
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape' && isGenerating$.get() && onInterrupt) {
-        console.log('[ChatInput] Global Escape pressed, interrupting generation...');
-        onInterrupt();
-      }
-    };
-
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-    };
-  }, [isGenerating$, onInterrupt]);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (isGenerating$.get() && onInterrupt) {
-      console.log('[ChatInput] Interrupting generation...', { isGenerating: isGenerating$.get() });
+    if (isGenerating && onInterrupt) {
+      console.log('[ChatInput] Interrupting generation...', { isGenerating });
       try {
         await onInterrupt();
         console.log('[ChatInput] Generation interrupted successfully', {
-          isGenerating: isGenerating$.get(),
+          isGenerating,
         });
       } catch (error) {
         console.error('[ChatInput] Error interrupting generation:', error);
@@ -127,9 +95,9 @@ export const ChatInput: FC<Props> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
-    } else if (e.key === 'Escape' && isGenerating$.get() && onInterrupt) {
+    } else if (e.key === 'Escape' && isGenerating && onInterrupt) {
       e.preventDefault();
-      e.stopPropagation(); // Prevent bubbling up to the global keyboard shortcut
+      e.stopPropagation();
       console.log('[ChatInput] Escape pressed, interrupting generation...');
       onInterrupt();
     }
@@ -154,9 +122,9 @@ export const ChatInput: FC<Props> = ({
                         e.target.style.height = `${Math.min(e.target.scrollHeight, 400)}px`;
                       }}
                       onKeyDown={handleKeyDown}
-                      placeholder={placeholder$.get()}
+                      placeholder={placeholder}
                       className="max-h-[400px] min-h-[60px] resize-none overflow-y-auto pb-8 pr-16"
-                      disabled={isDisabled$.get()}
+                      disabled={isDisabled}
                     />
                     <div className="absolute bottom-1.5 left-1.5">
                       <Popover>
@@ -165,7 +133,7 @@ export const ChatInput: FC<Props> = ({
                             variant="ghost"
                             size="sm"
                             className="h-5 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-all hover:bg-accent hover:text-muted-foreground hover:opacity-100"
-                            disabled={isDisabled$.get()}
+                            disabled={isDisabled}
                           >
                             <Settings className="mr-0.5 h-2.5 w-2.5" />
                             Options
@@ -178,7 +146,7 @@ export const ChatInput: FC<Props> = ({
                               <Select
                                 value={selectedModel}
                                 onValueChange={setSelectedModel}
-                                disabled={isDisabled$.get()}
+                                disabled={isDisabled}
                               >
                                 <SelectTrigger id="model-select">
                                   <SelectValue placeholder="Default model" />
@@ -200,7 +168,7 @@ export const ChatInput: FC<Props> = ({
                                 id="streaming-toggle"
                                 checked={streamingEnabled}
                                 onCheckedChange={setStreamingEnabled}
-                                disabled={isDisabled$.get()}
+                                disabled={isDisabled}
                               />
                             </div>
                           </div>
@@ -213,30 +181,28 @@ export const ChatInput: FC<Props> = ({
             </Computed>
             <div className="relative h-full">
               <Computed>
-                {() => {
-                  return (
-                    <Button
-                      type="submit"
-                      className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors
-                  ${
-                    isGenerating$.get()
-                      ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
-                      : 'h-10 w-10 bg-green-600 text-green-100'
-                  }
-                `}
-                      disabled={isDisabled$.get()}
-                    >
-                      {isGenerating$.get() ? (
-                        <div className="flex items-center gap-2">
-                          <span>Stop</span>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  );
-                }}
+                {() => (
+                  <Button
+                    type="submit"
+                    className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors
+                      ${
+                        isGenerating
+                          ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
+                          : 'h-10 w-10 bg-green-600 text-green-100'
+                      }
+                    `}
+                    disabled={isDisabled}
+                  >
+                    {isGenerating ? (
+                      <div className="flex items-center gap-2">
+                        <span>Stop</span>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
               </Computed>
             </div>
           </div>

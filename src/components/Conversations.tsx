@@ -145,7 +145,12 @@ const Conversations: FC<Props> = ({ route }) => {
       <Memo>
         {() => {
           const conversation = conversation$.get();
-          return conversation ? <ConversationContent conversation={conversation} /> : null;
+          return conversation ? (
+            <ConversationContent
+              conversationId={conversation.name}
+              isReadOnly={conversation.readonly}
+            />
+          ) : null;
         }}
       </Memo>
       <RightSidebar

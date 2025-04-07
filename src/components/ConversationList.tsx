@@ -1,4 +1,4 @@
-import { Clock, MessageSquare, Lock, Loader2 } from 'lucide-react';
+import { Clock, MessageSquare, Lock, Loader2, Signal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getRelativeTimeString } from '@/utils/time';
@@ -7,40 +7,39 @@ import { useApi } from '@/contexts/ApiContext';
 import { demoConversations } from '@/democonversations';
 import type { ConversationResponse } from '@/types/api';
 import type { MessageRole } from '@/types/conversation';
-
 import type { FC } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
+import { conversations$ } from '@/stores/conversations';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
 // UI-specific type for rendering conversations
 export interface ConversationItem {
   name: string;
-  lastUpdated: Date; // Converted from modified timestamp
-  messageCount: number; // From messages count
+  lastUpdated: Date;
+  messageCount: number;
   readonly?: boolean;
-  // Matches Conversation from API but with converted date
 }
 
 interface Props {
   conversations: ConversationItem[];
-  selectedId$: Observable<string | null>;
   onSelect: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
   error?: Error;
   onRetry?: () => void;
+  selectedId$?: Observable<string | null>;
 }
 
 export const ConversationList: FC<Props> = ({
   conversations,
-  selectedId$,
   onSelect,
   isLoading = false,
   isError = false,
   error,
   onRetry,
+  selectedId$,
 }) => {
   const { api, isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
@@ -88,7 +87,6 @@ export const ConversationList: FC<Props> = ({
         .sort(([a], [b]) => {
           const aIndex = order.indexOf(a as MessageRole);
           const bIndex = order.indexOf(b as MessageRole);
-          // Put known roles first in specified order, unknown roles after
           if (aIndex === -1 && bIndex === -1) return 0;
           if (aIndex === -1) return 1;
           if (bIndex === -1) return -1;
@@ -100,52 +98,79 @@ export const ConversationList: FC<Props> = ({
 
     return (
       <Computed>
-        {() => (
-          <div
-            className={`cursor-pointer rounded-lg p-3 transition-colors hover:bg-accent ${
-              selectedId$.get() === conv.name ? 'bg-accent' : ''
-            }`}
-            onClick={() => onSelect(conv.name)}
-          >
-            <div className="mb-1 font-medium">{stripDate(conv.name)}</div>
-            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-              <Tooltip>
-                <TooltipTrigger>
-                  <span className="flex items-center">
-                    <Clock className="mr-1 h-4 w-4" />
-                    {getRelativeTimeString(conv.lastUpdated)}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="flex items-center">
-                    <MessageSquare className="mr-1 h-4 w-4" />
-                    {conv.messageCount}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="whitespace-pre">
-                    {demoConv || messages?.log
-                      ? formatBreakdown(getMessageBreakdown())
-                      : 'Loading...'}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-              {conv.readonly && (
+        {() => {
+          const convState = conversations$.get(conv.name)?.get();
+          const isSelected = selectedId$?.get() === conv.name;
+
+          return (
+            <div
+              className={`cursor-pointer rounded-lg p-3 transition-colors hover:bg-accent ${
+                isSelected ? 'bg-accent' : ''
+              }`}
+              onClick={() => onSelect(conv.name)}
+            >
+              <div className="mb-1 font-medium">{stripDate(conv.name)}</div>
+              <div className="flex items-center space-x-3 text-sm text-muted-foreground">
                 <Tooltip>
                   <TooltipTrigger>
                     <span className="flex items-center">
-                      <Lock className="h-4 w-4" />
+                      <Clock className="mr-1 h-4 w-4" />
+                      {getRelativeTimeString(conv.lastUpdated)}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>This conversation is read-only</TooltipContent>
+                  <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
                 </Tooltip>
-              )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex items-center">
+                      <MessageSquare className="mr-1 h-4 w-4" />
+                      {conv.messageCount}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="whitespace-pre">
+                      {demoConv || messages?.log
+                        ? formatBreakdown(getMessageBreakdown())
+                        : 'Loading...'}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Show conversation state indicators */}
+                {convState?.isGenerating && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <span className="flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Generating...</TooltipContent>
+                  </Tooltip>
+                )}
+                {convState?.isConnected && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <span className="flex items-center">
+                        <Signal className="h-4 w-4 text-primary" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Connected</TooltipContent>
+                  </Tooltip>
+                )}
+                {conv.readonly && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <span className="flex items-center">
+                        <Lock className="h-4 w-4" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>This conversation is read-only</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        }}
       </Computed>
     );
   };

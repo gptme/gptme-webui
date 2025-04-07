@@ -1,341 +1,199 @@
 import { useEffect } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
-import type { ConversationResponse } from '@/types/api';
-import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
-import type { ConversationItem } from '@/components/ConversationList';
-import { demoConversations } from '@/democonversations';
-import type { DemoConversation } from '@/democonversations';
+import type { Message, StreamingMessage } from '@/types/conversation';
 import type { ChatOptions } from '@/components/ChatInput';
-import { use$, useObservable, useObserveEffect } from '@legendapp/state/react';
-import { type Observable, syncState } from '@legendapp/state';
+import { use$ } from '@legendapp/state/react';
+import {
+  conversations$,
+  updateConversation,
+  setGenerating,
+  setConnected,
+  setPendingTool,
+  addMessage,
+  initConversation,
+  selectedConversation$,
+} from '@/stores/conversations';
 
-// New type for pending tools
-export interface PendingTool {
-  id: string;
-  tooluse: ToolUse;
-}
+const MAX_CONNECTED_CONVERSATIONS = 3;
 
-interface UseConversationResult {
-  conversationData$: Observable<ConversationResponse | undefined>;
-  sendMessage: (messageInput: { message: string; options?: ChatOptions }) => Promise<void>;
-  isLoading$: Observable<boolean>;
-  isGenerating$: Observable<boolean>;
-  pendingTool$: Observable<PendingTool | null>;
-  confirmTool: (
-    action: 'confirm' | 'edit' | 'skip' | 'auto',
-    options?: { content?: string; count?: number }
-  ) => Promise<void>;
-  interruptGeneration: () => Promise<void>;
-  hasSession$: Observable<boolean>;
-}
-
-function getDemo(name: string): DemoConversation | undefined {
-  return demoConversations.find((conv) => conv.name === name);
-}
-
-export function useConversation(conversation: ConversationItem): UseConversationResult {
-  const { api } = useApi();
+export function useConversation(conversationId: string) {
+  const api = useApi();
   const { toast } = useToast();
-  const isGenerating$ = useObservable<boolean>(false);
-  const pendingTool$ = useObservable<PendingTool | null>(null);
-  const hasSession$ = useObservable<boolean>(
-    conversation.readonly ? true : api.sessions$.get(conversation.name).get() !== undefined
-  );
+  const conversation$ = conversations$.get(conversationId);
+  const isConnected = use$(api.isConnected$);
 
-  useObserveEffect(api.sessions$.get(conversation.name), ({ value }) => {
-    hasSession$.set(value !== undefined);
-  });
-
-  console.log('[useConversation] conversation.name', conversation.name);
-
-  const conversationData$ = useObservable<ConversationResponse>({
-    log: [],
-    logfile: conversation.name,
-    branches: {},
-  });
-
-  // Fetch conversation data
+  // Initialize conversation in store if needed
   useEffect(() => {
-    let isCancelled = false;
+    if (!conversation$) {
+      console.log(`[useConversation] Initializing conversation ${conversationId}`);
+      initConversation(conversationId);
+    }
+  }, [conversationId, conversation$]);
 
-    const fetchData = async () => {
+  // Load conversation data and connect to event stream
+  useEffect(() => {
+    if (!isConnected || conversation$?.isConnected.get()) {
+      return;
+    }
+
+    const loadAndConnect = async () => {
       try {
-        console.log('[useConversation] Querying conversation', conversation.name);
-        let newData: ConversationResponse;
+        // Load conversation data
+        const data = await api.getConversation(conversationId);
+        updateConversation(conversationId, { data });
 
-        if (conversation.readonly) {
-          const demo = getDemo(conversation.name);
-          newData = {
-            log: demo?.messages || [],
-            logfile: conversation.name,
-            branches: {},
-          };
-        } else {
-          const response = await api.getConversation(conversation.name);
-          if (!response?.log || !response?.branches) {
-            throw new Error('Invalid conversation data received');
+        // Check number of connected conversations
+        const connectedConvs = Array.from(conversations$.get().entries())
+          .filter(([_, state]) => state.isConnected)
+          .map(([id]) => id);
+
+        // If we're at the limit, disconnect the oldest one that isn't selected
+        if (connectedConvs.length >= MAX_CONNECTED_CONVERSATIONS) {
+          const selectedId = selectedConversation$.get();
+          const toDisconnect = connectedConvs
+            .filter((id) => id !== selectedId)
+            .slice(0, connectedConvs.length - MAX_CONNECTED_CONVERSATIONS + 1);
+
+          console.log(`[useConversation] Disconnecting old conversations:`, toDisconnect);
+          for (const id of toDisconnect) {
+            api.closeEventStream(id);
+            setConnected(id, false);
           }
-          newData = response;
         }
 
-        if (!isCancelled) {
-          conversationData$.set(newData);
-        }
+        // Connect to event stream
+        console.log(`[useConversation] Connecting to ${conversationId}`);
+        api.subscribeToEvents(conversationId, {
+          onMessageStart: () => {
+            console.log('[useConversation] Generation started');
+            setGenerating(conversationId, true);
+
+            // Add empty message placeholder if needed
+            const messages = conversation$?.data.log;
+            const lastMessage = messages?.[messages.length - 1];
+            if (
+              !lastMessage ||
+              lastMessage.role.get() !== 'assistant' ||
+              lastMessage.content.get() !== ''
+            ) {
+              const streamingMessage: StreamingMessage = {
+                role: 'assistant',
+                content: '',
+                timestamp: new Date().toISOString(),
+                isComplete: false,
+              };
+              addMessage(conversationId, streamingMessage);
+            }
+          },
+          onToken: (token) => {
+            const messages = conversation$?.data.log;
+            const lastMessage = messages?.[messages.length - 1];
+            if (lastMessage?.role.get() === 'assistant') {
+              lastMessage.content.set((prev) => prev + token);
+            }
+          },
+          onMessageComplete: (message) => {
+            console.log('[useConversation] Generation complete');
+            setGenerating(conversationId, false);
+
+            // Update the last message
+            const messages = conversation$?.data.log;
+            const lastMessage = messages?.[messages.length - 1];
+            if (lastMessage?.role.get() === 'assistant') {
+              lastMessage.content.set(message.content);
+              if ('isComplete' in lastMessage) {
+                lastMessage.isComplete.set(true);
+              }
+            }
+          },
+          onMessageAdded: (message) => {
+            console.log('[useConversation] Message added:', message);
+            addMessage(conversationId, message);
+          },
+          onToolPending: (toolId, tooluse, _auto_confirm) => {
+            console.log('[useConversation] Tool pending:', { toolId, tooluse });
+            setPendingTool(conversationId, toolId, tooluse);
+          },
+          onInterrupted: () => {
+            console.log('[useConversation] Generation interrupted');
+            setGenerating(conversationId, false);
+            setPendingTool(conversationId, null, null);
+
+            // Mark the last message as interrupted
+            const messages = conversation$?.data.log;
+            const lastMessage = messages?.[messages.length - 1];
+            if (lastMessage?.role.get() === 'assistant') {
+              const content = lastMessage.content.get();
+              if (!content.toLowerCase().includes('[interrupted]')) {
+                lastMessage.content.set(content + ' [INTERRUPTED]');
+              }
+            }
+          },
+          onError: (error) => {
+            console.error('[useConversation] Error:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: error,
+            });
+          },
+        });
+
+        setConnected(conversationId, true);
       } catch (error) {
-        console.error('Error fetching conversation:', error);
-        if (!isCancelled) {
-          conversationData$.set({
-            log: [],
-            logfile: conversation.name,
-            branches: {},
-          });
-        }
+        console.error('Error loading conversation:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to load conversation',
+        });
       }
     };
 
-    void fetchData();
+    void loadAndConnect();
 
+    // Cleanup function - only disconnect if page is being unloaded
     return () => {
-      isCancelled = true;
+      if (document.hidden) {
+        console.log(`[useConversation] Page hidden, disconnecting from ${conversationId}`);
+        api.closeEventStream(conversationId);
+        setConnected(conversationId, false);
+      }
     };
-  }, [conversation.name, conversation.readonly, api, conversationData$]);
-
-  const state$ = syncState(conversationData$);
-  const isLoading$ = useObservable(state$.isGetting);
-  const isConnected = use$(api.isConnected$);
-
-  // Subscribe to the event stream as soon as the conversation is loaded
-  useEffect(() => {
-    if (!conversation.readonly && isConnected && conversation.name) {
-      console.log(`[useConversation] Auto-subscribing to events for ${conversation.name}`);
-
-      // Subscribe to events
-      //
-      // NOTE: issues could occur if a client subscribes to a conversation that is already generating.
-      //
-      // i.e. if the client misses a message_start event (by connecting mid-generation),
-      // it will not know to set isGenerating to true, and will miss tokens at the start of the message.
-      //
-      // This could be mitigated by having the server keep events since message_start and send them when a client subscribes to an ongoing generation.
-      // Could also happen if there is latency between the conversation retrieval and subscribing to the event stream.
-      api.subscribeToEvents(conversation.name, {
-        onMessageStart: () => {
-          console.log('[useConversation] Received message start');
-          isGenerating$.set(true);
-
-          // Check if we already have placeholder message
-          const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
-          if (lastMessage$.role.get() === 'assistant' && lastMessage$.content.get() === '') {
-            return;
-          }
-
-          // Add a new assistant message
-          const streamingMessage: StreamingMessage = {
-            role: 'assistant',
-            content: '',
-            timestamp: new Date().toISOString(),
-            isComplete: false,
-          };
-          conversationData$.log.push(streamingMessage);
-        },
-        onToken: (token) => {
-          isGenerating$.set(true);
-
-          const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
-
-          // Update the UI when tokens come in
-          if (lastMessage$.role.get() === 'assistant') {
-            conversationData$.log[conversationData$.log.length - 1].content.set(
-              (prev) => prev + token
-            );
-          } else {
-            console.warn('Token without started message (should never happen)');
-          }
-        },
-        onMessageComplete: (message) => {
-          console.log('[useConversation] Received complete message');
-
-          // Update the conversation with the complete message
-          const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
-          if (lastMessage$.role.get() === 'assistant') {
-            lastMessage$.content.set(message.content);
-            // Type guard to check if message is StreamingMessage
-            const lastMessage = lastMessage$.get();
-            if ('isComplete' in lastMessage) {
-              (lastMessage$ as Observable<StreamingMessage>).isComplete.set(true);
-            }
-          } else {
-            console.warn("Message complete without assistant's message (should never happen)");
-            conversationData$.log.push(message);
-          }
-
-          isGenerating$.set(false);
-        },
-        onToolPending: (toolId, tooluse, auto_confirm) => {
-          console.log(`[useConversation] Received tool pending with ${toolId}:`, tooluse);
-          if (auto_confirm) {
-            throw new Error('Auto-confirmation not supported');
-          }
-          pendingTool$.set({
-            id: toolId,
-            tooluse,
-          });
-        },
-        onMessageAdded: (message) => {
-          console.log('[useConversation] Received message:', message);
-
-          // Check last 2 messages for duplicates
-          const recentMessages = conversationData$.log.slice(-2);
-          const isDuplicate = recentMessages.some(
-            (msg) => msg.role === message.role && msg.content === message.content
-          );
-          const isSystem = message.role === 'system';
-          if (isSystem) {
-            isGenerating$.set(false);
-          }
-
-          if (isDuplicate) {
-            console.log('[useConversation] Ignoring duplicate message:', message);
-            return;
-          }
-
-          console.log('[useConversation] Adding message to conversation:', message);
-          conversationData$.log.push(message);
-        },
-        onInterrupted: () => {
-          console.log('[useConversation] Generation interrupted');
-
-          // Clear generating state
-          isGenerating$.set(false);
-
-          // Clear any pending tool
-          if (pendingTool$.get()) {
-            pendingTool$.set(null);
-          }
-
-          // Mark the conversation as interrupted in the UI
-          const lastMessage$ = conversationData$.log[conversationData$.log.length - 1];
-
-          // Only add [interrupted] if it's not already there
-          if (
-            lastMessage$.role.get() === 'assistant' &&
-            !lastMessage$.content.get().toLowerCase().includes('[interrupted]')
-          ) {
-            lastMessage$.content.set((prev) => prev + ' [INTERRUPTED]');
-          }
-        },
-        onError: (error) => {
-          console.error('[useConversation] Error from event stream:', error);
-        },
-      });
-
-      // Cleanup function to close the event stream when unmounting
-      return () => {
-        console.log(`[useConversation] Closing event stream for ${conversation.name}`);
-        api.closeEventStream(conversation.name);
-      };
-    }
-  }, [
-    conversation.name,
-    conversation.readonly,
-    api,
-    isConnected,
-    conversationData$,
-    isGenerating$,
-    pendingTool$,
-  ]);
+  }, [conversationId, isConnected, api, conversation$, toast]);
 
   const sendMessage = async ({ message, options }: { message: string; options?: ChatOptions }) => {
-    console.log('[useConversation] sendMessage', {
-      message,
-      options,
-    });
+    if (!conversation$) {
+      throw new Error('Conversation not initialized');
+    }
 
-    isGenerating$.set(true);
+    console.log('[useConversation] Sending message:', { message, options });
 
-    // Create user message (non-streaming)
+    // Create user message
     const userMessage: Message = {
       role: 'user',
       content: message,
       timestamp: new Date().toISOString(),
     };
-    // Create assistant message (streaming)
-    const assistantMessage: StreamingMessage = {
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
-      isComplete: false,
-    };
 
-    // Optimistically update to the new value
-    conversationData$.log.push(userMessage, assistantMessage);
+    // Add message to conversation
+    addMessage(conversationId, userMessage);
 
     try {
-      // Send the user message first
-      await api.sendMessage(conversation.name, userMessage);
-    } catch (error) {
-      isGenerating$.set(false);
+      // Send the message
+      await api.sendMessage(conversationId, userMessage);
 
-      // Show error toast
+      // Start generation
+      await api.step(conversationId, options?.model, options?.stream);
+    } catch (error) {
+      console.error('Error sending message:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to send message or generate response',
-      });
-      console.error('Error in mutation:', error);
-    }
-
-    try {
-      isGenerating$.set(true);
-
-      // Initial generation
-      console.log('[useConversation] Starting generation');
-      await api.step(conversation.name, options?.model, options?.stream);
-
-      console.log('[useConversation] Generation started, waiting for events');
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        isGenerating$.set(false);
-      }
-
-      // Show error toast and rethrow
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to generate response',
+        description: 'Failed to send message',
       });
       throw error;
-    }
-  };
-
-  const interruptGeneration = async () => {
-    try {
-      console.log('Interrupting generation via API');
-
-      // First, clear any pending tool
-      if (pendingTool$.get()) {
-        pendingTool$.set(null);
-      }
-
-      // Interrupt the generation via API
-      try {
-        await api.interruptGeneration(conversation.name);
-        console.log('Interrupt API call successful');
-      } catch (error) {
-        // If the endpoint doesn't exist or other API error, just log and continue
-        const apiError = error as { status?: number };
-        console.warn(`Interrupt API call failed (status ${apiError?.status || 'unknown'}):`, error);
-      }
-
-      // Always update local state
-      isGenerating$.set(false);
-
-      console.log('Generation interrupted successfully');
-    } catch (error) {
-      console.error('Error in interrupt handler:', error);
-      // Still update local state even if something goes wrong
-      isGenerating$.set(false);
     }
   };
 
@@ -343,59 +201,45 @@ export function useConversation(conversation: ConversationItem): UseConversation
     action: 'confirm' | 'edit' | 'skip' | 'auto',
     options?: { content?: string; count?: number }
   ) => {
-    if (!pendingTool$.get()) {
+    const pendingTool = conversation$?.pendingTool.get();
+    if (!pendingTool) {
       console.warn('No pending tool to confirm');
       return;
     }
 
     try {
-      console.log(
-        `[useConversation] Confirming tool ${pendingTool$.get()?.id} with action: ${action}`
-      );
+      // Clear pending tool state immediately
+      setPendingTool(conversationId, null, null);
 
-      // Set generating state immediately to prevent showing the dialog again
-      isGenerating$.set(true);
-
-      // Store the pending tool info before clearing it
-      const toolId = pendingTool$.get()?.id;
-      if (!toolId) {
-        console.warn('No pending tool to confirm');
-        return;
-      }
-
-      // Clear the pending tool right away to prevent duplicate dialogs
-      pendingTool$.set(null);
-
-      // Call the API to confirm the tool - this will execute the tool on the server
-      console.log(`[useConversation] Calling tool confirm API with action: ${action}`);
-      await api.confirmTool(conversation.name, toolId, action, options);
-      console.log(
-        `[useConversation] Tool confirmation API call successful - waiting for output events`
-      );
-
-      console.log('[useConversation] Tool confirmation successful, waiting for tool output events');
+      // Confirm the tool
+      await api.confirmTool(conversationId, pendingTool.id, action, options);
     } catch (error) {
       console.error('Error confirming tool:', error);
-
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to confirm tool execution',
+        description: 'Failed to confirm tool',
       });
+    }
+  };
 
-      // Clear the pending tool to avoid getting stuck
-      pendingTool$.set(null);
+  const interruptGeneration = async () => {
+    try {
+      await api.interruptGeneration(conversationId);
+    } catch (error) {
+      console.error('Error interrupting generation:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to interrupt generation',
+      });
     }
   };
 
   return {
-    conversationData$,
+    conversation$,
     sendMessage,
-    isLoading$,
-    isGenerating$,
-    pendingTool$,
     confirmTool,
     interruptGeneration,
-    hasSession$,
   };
 }
