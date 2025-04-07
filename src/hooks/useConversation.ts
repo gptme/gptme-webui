@@ -109,6 +109,16 @@ export function useConversation(conversationId: string) {
           },
           onMessageAdded: (message) => {
             console.log('[useConversation] Message added:', message);
+            // Check if this message already exists (ignoring timestamp)
+            const messages = conversation$?.data.log;
+            const lastMessage = messages?.[messages.length - 1];
+            if (
+              lastMessage?.role.get() === message.role &&
+              lastMessage?.content.get() === message.content
+            ) {
+              console.log('[useConversation] Skipping duplicate message');
+              return;
+            }
             addMessage(conversationId, message);
           },
           onToolPending: (toolId, tooluse, _auto_confirm) => {

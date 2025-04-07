@@ -137,36 +137,50 @@ export const ConversationList: FC<Props> = ({
                 </Tooltip>
 
                 {/* Show conversation state indicators */}
-                {convState?.isGenerating && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <span className="flex items-center">
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Generating...</TooltipContent>
-                  </Tooltip>
-                )}
-                {convState?.isConnected && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <span className="flex items-center">
-                        <Signal className="h-4 w-4 text-primary" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Connected</TooltipContent>
-                  </Tooltip>
-                )}
-                {conv.readonly && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <span className="flex items-center">
-                        <Lock className="h-4 w-4" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>This conversation is read-only</TooltipContent>
-                  </Tooltip>
-                )}
+                <div className="flex items-center space-x-2">
+                  {convState?.isConnected && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <span className="flex items-center">
+                          <Signal className="h-4 w-4 text-primary" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Connected</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {convState?.isGenerating && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <span className="flex items-center">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Generating...</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {convState?.pendingTool && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <span className="flex items-center">
+                          <span className="text-lg">⚙️</span>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Pending tool: {convState.pendingTool.tooluse.tool}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {conv.readonly && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <span className="flex items-center">
+                          <Lock className="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>This conversation is read-only</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
             </div>
           );
