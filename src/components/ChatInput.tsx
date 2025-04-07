@@ -57,7 +57,8 @@ export const ChatInput: FC<Props> = ({
       // Reset autoFocus$ to false after focusing
       autoFocus$.set(false);
     }
-  }, [autoFocus, isReadOnly, isConnected, autoFocus$]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFocus, isReadOnly, isConnected]);
 
   // Global keyboard shortcut for interrupting generation with Escape key
   useObserveEffect(() => {

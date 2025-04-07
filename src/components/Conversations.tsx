@@ -94,7 +94,7 @@ const Conversations: FC<Props> = ({ route }) => {
       }
       // Cancel any pending queries for the previous conversation
       queryClient.cancelQueries({
-        queryKey: ['conversation', selectedConversation$],
+        queryKey: ['conversation', selectedConversation$.get()],
       });
       selectedConversation$.set(id);
       // Update URL with the new conversation ID
