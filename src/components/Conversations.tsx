@@ -1,17 +1,19 @@
-import { useMemo, type FC } from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { type FC } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { setDocumentTitle } from '@/utils/title';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
 import { ConversationContent } from '@/components/ConversationContent';
 import { useApi } from '@/contexts/ApiContext';
-import type { ConversationItem } from '@/components/ConversationList';
-import { toConversationItems } from '@/utils/conversation';
 import { demoConversations, type DemoConversation } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Memo, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
-import { initializeConversations } from '@/stores/conversations';
+import { use$, useObserveEffect } from '@legendapp/state/react';
+import {
+  initializeConversations,
+  selectedConversation$,
+  conversations$,
+} from '@/stores/conversations';
 
 interface Props {
   className?: string;
@@ -24,19 +26,33 @@ const Conversations: FC<Props> = ({ route }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const conversationParam = searchParams.get('conversation');
-  const selectedConversation$ = useObservable<string>(
-    conversationParam || demoConversations[0].name
-  );
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      if (id === selectedConversation$.get()) {
+        return;
+      }
+      // Cancel any pending queries for the previous conversation
+      queryClient.cancelQueries({
+        queryKey: ['conversation', selectedConversation$.get()],
+      });
+      selectedConversation$.set(id);
+      // Update URL with the new conversation ID
+      navigate(`${route}?conversation=${id}`);
+    },
+    [queryClient, navigate, route]
+  );
 
-  // Update selected conversation when URL param changes
+  // Initialize from URL param
   useEffect(() => {
     if (conversationParam) {
       selectedConversation$.set(conversationParam);
+    } else {
+      selectedConversation$.set(demoConversations[0].name);
     }
-  }, [conversationParam, selectedConversation$]);
+  }, [conversationParam]);
 
   // Fetch conversations from API with proper caching
   const {
@@ -54,7 +70,7 @@ const Conversations: FC<Props> = ({ route }) => {
         return [];
       }
       try {
-        const conversations = await api.getConversations();
+        const conversations = await api.getConversations(100);
         console.log('Fetched conversations:', conversations);
         return conversations;
       } catch (err) {
@@ -73,78 +89,64 @@ const Conversations: FC<Props> = ({ route }) => {
     console.error('Conversation query error:', error);
   }
 
-  // Combine demo and API conversations and initialize store
-  const allConversations: ConversationItem[] = useMemo(() => {
-    // Initialize API conversations in store
+  // Initialize store with demo and API conversations
+  useEffect(() => {
+    // Add demo conversations to store
+    demoConversations.forEach((conv: DemoConversation) => {
+      conversations$.set(conv.name, {
+        data: { log: conv.messages, logfile: conv.name, branches: {} },
+        isGenerating: false,
+        isConnected: false,
+        pendingTool: null,
+        showInitialSystem: false,
+        readonly: true,
+        lastUpdated:
+          conv.lastUpdated instanceof Date ? conv.lastUpdated.getTime() : conv.lastUpdated,
+      });
+    });
+
+    // Add API conversations to store
     if (apiConversations.length) {
-      console.log('[Conversations] Initializing conversations in store');
+      console.log('[Conversations] Initializing API conversations in store:', apiConversations);
       void initializeConversations(
         api,
-        apiConversations.map((c) => c.name),
-        10
+        apiConversations, // Pass full conversation objects
+        10 // Preload limit
       );
     }
-
-    return [
-      // Convert demo conversations to ConversationItems
-      ...demoConversations.map((conv: DemoConversation) => ({
-        name: conv.name,
-        lastUpdated: conv.lastUpdated,
-        messageCount: conv.messages.length,
-        readonly: true,
-      })),
-      // Convert API conversations to ConversationItems
-      ...toConversationItems(apiConversations),
-    ];
   }, [apiConversations, api]);
 
-  const handleSelectConversation = useCallback(
-    (id: string) => {
-      if (id === selectedConversation$.get()) {
-        return;
-      }
-      // Cancel any pending queries for the previous conversation
+  // Cancel pending queries when switching conversations
+  const prevConversation = useRef(selectedConversation$.get());
+  useObserveEffect(selectedConversation$, () => {
+    const currentConversation = selectedConversation$.get();
+    if (currentConversation && currentConversation !== prevConversation.current) {
+      // Cancel queries for previous conversation
       queryClient.cancelQueries({
-        queryKey: ['conversation', selectedConversation$.get()],
+        queryKey: ['conversation', prevConversation.current],
       });
-      selectedConversation$.set(id);
-      // Update URL with the new conversation ID
-      console.log(`[Conversations] [handleSelectConversation] id: ${id}`);
-      navigate(`${route}?conversation=${id}`);
-    },
-    [selectedConversation$, queryClient, navigate, route]
-  );
-
-  const conversation$ = useObservable<ConversationItem | undefined>(undefined);
-
-  // Update conversation$ when selectedConversation$ changes
-  useObserveEffect(selectedConversation$, ({ value: selectedConversation }) => {
-    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation));
+      prevConversation.current = currentConversation;
+    }
   });
 
-  // Update conversation$ when allConversations changes
-  useEffect(() => {
-    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation$.get()));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allConversations]);
-
   // Update document title when selected conversation changes
-  useObserveEffect(conversation$, ({ value: conversation }) => {
-    if (conversation) {
-      setDocumentTitle(conversation.name);
+  useObserveEffect(selectedConversation$, () => {
+    const currentConversation = selectedConversation$.get();
+    if (currentConversation) {
+      setDocumentTitle(currentConversation);
     } else {
       setDocumentTitle();
     }
     return () => setDocumentTitle(); // Reset title on unmount
   });
 
+  const selectedId = selectedConversation$.get();
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <LeftSidebar
         isOpen={leftSidebarOpen}
         onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
-        conversations={allConversations}
-        selectedConversationId$={selectedConversation$}
         onSelectConversation={handleSelectConversation}
         isLoading={isLoading}
         isError={isError}
@@ -152,17 +154,13 @@ const Conversations: FC<Props> = ({ route }) => {
         onRetry={() => refetch()}
         route={route}
       />
-      <Memo>
-        {() => {
-          const conversation = conversation$.get();
-          return conversation ? (
-            <ConversationContent
-              conversationId={conversation.name}
-              isReadOnly={conversation.readonly}
-            />
-          ) : null;
-        }}
-      </Memo>
+      {selectedId && (
+        <ConversationContent
+          conversationId={selectedId}
+          isReadOnly={!!conversations$.get(selectedId)?.readonly}
+        />
+      )}
+      {/* Right sidebar doesn't need reactivity yet */}
       <RightSidebar
         isOpen={rightSidebarOpen}
         onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}

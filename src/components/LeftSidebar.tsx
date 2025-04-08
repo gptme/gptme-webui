@@ -4,19 +4,15 @@ import { ConversationList } from './ConversationList';
 import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-import type { ConversationItem } from './ConversationList';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
 import type { FC } from 'react';
 import { use$ } from '@legendapp/state/react';
-import { type Observable } from '@legendapp/state';
+import { selectedConversation$ } from '@/stores/conversations';
 
 interface Props {
   isOpen: boolean;
   onToggle: () => void;
-  conversations: ConversationItem[];
-  selectedConversationId$: Observable<string | null>;
   onSelectConversation: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
@@ -28,9 +24,6 @@ interface Props {
 export const LeftSidebar: FC<Props> = ({
   isOpen,
   onToggle,
-  conversations,
-  selectedConversationId$,
-  onSelectConversation,
   isLoading = false,
   isError = false,
   error,
@@ -105,9 +98,8 @@ export const LeftSidebar: FC<Props> = ({
         </div>
         <div className="flex flex-1 flex-col overflow-hidden">
           <ConversationList
-            conversations={conversations}
-            selectedId$={selectedConversationId$}
-            onSelect={onSelectConversation}
+            selectedId$={selectedConversation$}
+            onSelect={(id) => selectedConversation$.set(id)}
             isLoading={isLoading}
             isError={isError}
             error={error}

@@ -9,7 +9,7 @@ import type { MessageRole } from '@/types/conversation';
 import type { FC } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
-import { conversations$ } from '@/stores/conversations';
+import { conversations$, getConversationItems } from '@/stores/conversations';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
@@ -22,7 +22,6 @@ export interface ConversationItem {
 }
 
 interface Props {
-  conversations: ConversationItem[];
   onSelect: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
@@ -32,7 +31,6 @@ interface Props {
 }
 
 export const ConversationList: FC<Props> = ({
-  conversations,
   onSelect,
   isLoading = false,
   isError = false,
@@ -42,10 +40,6 @@ export const ConversationList: FC<Props> = ({
 }) => {
   const { isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
-
-  if (!conversations) {
-    return null;
-  }
 
   // strip leading YYYY-MM-DD from name if present
   function stripDate(name: string) {
@@ -134,7 +128,10 @@ export const ConversationList: FC<Props> = ({
                     }
 
                     const breakdown = getMessageBreakdown();
-                    const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0);
+                    const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0) || 0;
+                    const breakdownText = Object.keys(breakdown).length
+                      ? formatBreakdown(breakdown)
+                      : 'No messages';
 
                     return (
                       <Tooltip>
@@ -145,7 +142,7 @@ export const ConversationList: FC<Props> = ({
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <div className="whitespace-pre">{formatBreakdown(breakdown)}</div>
+                          <div className="whitespace-pre">{breakdownText}</div>
                         </TooltipContent>
                       </Tooltip>
                     );
@@ -225,19 +222,35 @@ export const ConversationList: FC<Props> = ({
           )}
         </div>
       )}
-      {!isLoading && !isError && !isConnected && conversations.length === 0 && (
-        <div className="p-2 text-sm text-muted-foreground">
-          Not connected to API. Use the connect button to load conversations.
-        </div>
-      )}
-      {!isLoading && !isError && isConnected && conversations.length === 0 && (
-        <div className="p-2 text-sm text-muted-foreground">
-          No conversations found. Start a new conversation to get started.
-        </div>
-      )}
-      {!isLoading &&
-        !isError &&
-        conversations.map((conv) => <ConversationItem key={conv.name} conv={conv} />)}
+      <Computed>
+        {() => {
+          if (isLoading || isError) return null;
+          const items = getConversationItems();
+          if (items.length === 0) {
+            if (!isConnected) {
+              return (
+                <div className="p-2 text-sm text-muted-foreground">
+                  Not connected to API. Use the connect button to load conversations.
+                </div>
+              );
+            }
+            return (
+              <div className="p-2 text-sm text-muted-foreground">
+                No conversations found. Start a new conversation to get started.
+              </div>
+            );
+          }
+          return null;
+        }}
+      </Computed>
+      <Computed>
+        {() => {
+          if (isLoading || isError) return null;
+          const items = getConversationItems();
+          console.log('[ConversationList] Rendering items:', items);
+          return items.map((conv) => <ConversationItem key={conv.name} conv={conv} />);
+        }}
+      </Computed>
     </div>
   );
 };
