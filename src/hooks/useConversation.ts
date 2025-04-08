@@ -3,6 +3,7 @@ import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
 import type { Message, StreamingMessage } from '@/types/conversation';
 import type { ChatOptions } from '@/components/ChatInput';
+import { demoConversations } from '@/democonversations';
 import { use$ } from '@legendapp/state/react';
 import {
   conversations$,
@@ -39,7 +40,22 @@ export function useConversation(conversationId: string) {
 
     const loadAndConnect = async () => {
       try {
-        // Load conversation data
+        // Check if this is a demo conversation
+        const demoConv = demoConversations.find((conv) => conv.name === conversationId);
+        if (demoConv) {
+          // Initialize with demo data
+          updateConversation(conversationId, {
+            data: {
+              log: demoConv.messages,
+              logfile: conversationId,
+              branches: {},
+            },
+          });
+          setConnected(conversationId, true);
+          return;
+        }
+
+        // Load conversation data from API
         const data = await api.getConversation(conversationId);
         updateConversation(conversationId, { data });
 
@@ -121,9 +137,17 @@ export function useConversation(conversationId: string) {
             }
             addMessage(conversationId, message);
           },
-          onToolPending: (toolId, tooluse, _auto_confirm) => {
-            console.log('[useConversation] Tool pending:', { toolId, tooluse });
-            setPendingTool(conversationId, toolId, tooluse);
+          onToolPending: (toolId, tooluse, auto_confirm) => {
+            console.log('[useConversation] Tool pending:', { toolId, tooluse, auto_confirm });
+            if (auto_confirm) {
+              // Auto-confirm immediately if requested
+              api.confirmTool(conversationId, toolId, 'confirm').catch((error) => {
+                console.error('[useConversation] Error auto-confirming tool:', error);
+              });
+            } else {
+              // Only set pending tool state if we need confirmation
+              setPendingTool(conversationId, toolId, tooluse);
+            }
           },
           onInterrupted: () => {
             console.log('[useConversation] Generation interrupted');

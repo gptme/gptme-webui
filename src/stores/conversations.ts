@@ -1,6 +1,8 @@
 import { observable } from '@legendapp/state';
 import type { ConversationResponse } from '@/types/api';
 import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
+import { demoConversations } from '@/democonversations';
+import type { DemoConversation } from '@/democonversations';
 
 export interface PendingTool {
   id: string;
@@ -18,6 +20,8 @@ export interface ConversationState {
   pendingTool: PendingTool | null;
   // Last received message
   lastMessage?: Message;
+  // Whether to show the initial system message
+  showInitialSystem: boolean;
 }
 
 // Central store for all conversations
@@ -65,8 +69,81 @@ export function initConversation(id: string, data?: ConversationResponse) {
     isGenerating: false,
     isConnected: false,
     pendingTool: null,
+    showInitialSystem: false,
   };
-  const next = new Map(conversations$.get());
-  next.set(id, initial);
-  conversations$.set(next);
+  conversations$.set(id, initial);
+}
+
+// Update conversation data in the store
+export function updateConversationData(id: string, data: ConversationResponse) {
+  conversations$.get(id)?.data.set(data);
+}
+
+// Bulk initialize conversations with their data
+export async function initializeConversations(
+  api: { getConversation: (id: string) => Promise<ConversationResponse> },
+  conversationIds: string[],
+  limit: number = 10
+) {
+  // Initialize all conversations in store first
+  conversationIds.forEach((id) => {
+    if (!conversations$.get(id)) {
+      // Check if this is a demo conversation
+      const demoConv = demoConversations.find((conv: DemoConversation) => conv.name === id);
+      if (demoConv) {
+        initConversation(id, {
+          log: demoConv.messages,
+          logfile: id,
+          branches: {},
+        });
+        return;
+      }
+      initConversation(id);
+    }
+  });
+
+  // Then load data for the first N non-demo conversations
+  const toLoad = conversationIds
+    .filter((id) => !demoConversations.some((conv) => conv.name === id))
+    .slice(0, limit);
+
+  if (toLoad.length === 0) {
+    console.log('[conversations] No non-demo conversations to load');
+    return;
+  }
+
+  console.log(`[conversations] Loading ${toLoad.length} conversations into store`);
+
+  // Load conversations in parallel
+  const results = await Promise.allSettled(
+    toLoad.map(async (id) => {
+      try {
+        const data = await api.getConversation(id);
+        updateConversationData(id, data);
+        return id;
+      } catch (error) {
+        console.error(`Failed to load conversation ${id}:`, error);
+        throw error;
+      }
+    })
+  );
+
+  // Log results
+  const succeeded = results.filter(
+    (r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled'
+  );
+  const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+
+  if (succeeded.length) {
+    console.log(
+      `[conversations] Loaded ${succeeded.length} conversations:`,
+      succeeded.map((r) => r.value)
+    );
+  }
+  if (failed.length) {
+    console.warn(
+      `[conversations] Failed to load ${failed.length} conversations:`,
+      failed.map((r) => r.reason)
+    );
+  }
 }

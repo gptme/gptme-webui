@@ -2,15 +2,15 @@ import { Clock, MessageSquare, Lock, Loader2, Signal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getRelativeTimeString } from '@/utils/time';
-import { useQuery } from '@tanstack/react-query';
 import { useApi } from '@/contexts/ApiContext';
 import { demoConversations } from '@/democonversations';
-import type { ConversationResponse } from '@/types/api';
+
 import type { MessageRole } from '@/types/conversation';
 import type { FC } from 'react';
+import { useEffect } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
-import { conversations$ } from '@/stores/conversations';
+import { conversations$, initializeConversations } from '@/stores/conversations';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
@@ -44,6 +44,22 @@ export const ConversationList: FC<Props> = ({
   const { api, isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
 
+  // Pre-load conversations when connected and list is available
+  useEffect(() => {
+    if (isConnected && conversations?.length) {
+      // Filter out demo conversations before pre-loading
+      const nonDemoConversations = conversations.filter((c) => !c.readonly);
+      if (nonDemoConversations.length) {
+        console.log('[ConversationList] Pre-loading conversations');
+        void initializeConversations(
+          api,
+          nonDemoConversations.map((c) => c.name),
+          10
+        );
+      }
+    }
+  }, [api, isConnected, conversations]);
+
   if (!conversations) {
     return null;
   }
@@ -59,12 +75,6 @@ export const ConversationList: FC<Props> = ({
     const demoConv = demoConversations.find((dc) => dc.name === conv.name);
 
     // For API conversations, fetch messages
-    const { data: messages } = useQuery<ConversationResponse>({
-      queryKey: ['conversation', conv.name],
-      queryFn: () => api.getConversation(conv.name),
-      enabled: isConnected && !demoConv,
-    });
-
     const getMessageBreakdown = (): MessageBreakdown => {
       if (demoConv) {
         return demoConv.messages.reduce((acc: MessageBreakdown, msg) => {
@@ -73,12 +83,18 @@ export const ConversationList: FC<Props> = ({
         }, {});
       }
 
-      if (!messages?.log) return {};
+      // Get messages from store
+      const storeConv = conversations$.get(conv.name)?.get();
+      // Return empty breakdown if conversation or data is not loaded yet
+      if (!storeConv?.data?.log) return {};
 
-      return messages.log.reduce((acc: MessageBreakdown, msg) => {
-        acc[msg.role] = (acc[msg.role] || 0) + 1;
+      return storeConv.data.log.reduce((acc: MessageBreakdown, msg$) => {
+        const role = msg$.role;
+        if (role && typeof role === 'string') {
+          acc[role as MessageRole] = (acc[role as MessageRole] || 0) + 1;
+        }
         return acc;
-      }, {});
+      }, {} as MessageBreakdown);
     };
 
     const formatBreakdown = (breakdown: MessageBreakdown) => {
@@ -120,21 +136,38 @@ export const ConversationList: FC<Props> = ({
                   </TooltipTrigger>
                   <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
                 </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex items-center">
-                      <MessageSquare className="mr-1 h-4 w-4" />
-                      {conv.messageCount}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="whitespace-pre">
-                      {demoConv || messages?.log
-                        ? formatBreakdown(getMessageBreakdown())
-                        : 'Loading...'}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <Computed>
+                  {() => {
+                    const storeConv = conversations$.get(conv.name)?.get();
+                    const isLoaded = storeConv?.data?.log?.length > 0;
+
+                    if (!isLoaded) {
+                      return (
+                        <span className="flex items-center">
+                          <MessageSquare className="mr-1 h-4 w-4" />
+                          {conv.messageCount}
+                        </span>
+                      );
+                    }
+
+                    const breakdown = getMessageBreakdown();
+                    const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0);
+
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="flex items-center">
+                            <MessageSquare className="mr-1 h-4 w-4" />
+                            {totalCount}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="whitespace-pre">{formatBreakdown(breakdown)}</div>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }}
+                </Computed>
 
                 {/* Show conversation state indicators */}
                 <div className="flex items-center space-x-2">
