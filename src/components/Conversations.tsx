@@ -64,6 +64,7 @@ const Conversations: FC<Props> = ({ route }) => {
     enabled: isConnected,
     staleTime: 0, // Always refetch when query is invalidated
     gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Log any query errors
