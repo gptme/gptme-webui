@@ -44,23 +44,29 @@ export const LeftSidebar: FC<Props> = ({
   const queryClient = useQueryClient();
 
   const handleNewConversation = async () => {
-    try {
-      const newId = Date.now().toString();
-      await api.createConversation(newId, []);
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      toast({
-        title: 'New conversation created',
-        description: 'Starting a fresh conversation',
+    const newId = Date.now().toString();
+    // Navigate immediately for instant UI feedback
+    navigate(`${route}?conversation=${newId}`);
+
+    // Create conversation in background
+    api
+      .createConversation(newId, [])
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        toast({
+          title: 'New conversation created',
+          description: 'Starting a fresh conversation',
+        });
+      })
+      .catch(() => {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to create new conversation',
+        });
+        // Optionally navigate back on error
+        navigate(route);
       });
-      console.log('newId', newId);
-      navigate(`${route}?conversation=${newId}`);
-    } catch {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to create new conversation',
-      });
-    }
   };
 
   return (
