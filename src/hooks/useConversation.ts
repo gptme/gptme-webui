@@ -51,7 +51,6 @@ export function useConversation(conversationId: string) {
               branches: {},
             },
           });
-          setConnected(conversationId, true);
           return;
         }
 
@@ -86,13 +85,9 @@ export function useConversation(conversationId: string) {
             setGenerating(conversationId, true);
 
             // Add empty message placeholder if needed
-            const messages = conversation$?.data.log;
-            const lastMessage = messages?.[messages.length - 1];
-            if (
-              !lastMessage ||
-              lastMessage.role.get() !== 'assistant' ||
-              lastMessage.content.get() !== ''
-            ) {
+            const messages$ = conversation$?.data.log;
+            const lastMessage$ = messages$?.[messages$.length - 1];
+            if (lastMessage$.role.get() !== 'assistant' || lastMessage$.content.get() !== '') {
               const streamingMessage: StreamingMessage = {
                 role: 'assistant',
                 content: '',
@@ -103,10 +98,10 @@ export function useConversation(conversationId: string) {
             }
           },
           onToken: (token) => {
-            const messages = conversation$?.data.log;
-            const lastMessage = messages?.[messages.length - 1];
-            if (lastMessage?.role.get() === 'assistant') {
-              lastMessage.content.set((prev) => prev + token);
+            const messages$ = conversation$?.data.log;
+            const lastMessage$ = messages$?.[messages$.length - 1];
+            if (lastMessage$?.role.get() === 'assistant') {
+              lastMessage$.content.set((prev) => prev + token);
             }
           },
           onMessageComplete: (message) => {
@@ -114,23 +109,23 @@ export function useConversation(conversationId: string) {
             setGenerating(conversationId, false);
 
             // Update the last message
-            const messages = conversation$?.data.log;
-            const lastMessage = messages?.[messages.length - 1];
-            if (lastMessage?.role.get() === 'assistant') {
-              lastMessage.content.set(message.content);
-              if ('isComplete' in lastMessage) {
-                lastMessage.isComplete.set(true);
+            const messages$ = conversation$?.data.log;
+            const lastMessage$ = messages$?.[messages$.length - 1];
+            if (lastMessage$?.role.get() === 'assistant') {
+              lastMessage$.content.set(message.content);
+              if ('isComplete' in lastMessage$) {
+                lastMessage$.isComplete.set(true);
               }
             }
           },
           onMessageAdded: (message) => {
             console.log('[useConversation] Message added:', message);
             // Check if this message already exists (ignoring timestamp)
-            const messages = conversation$?.data.log;
-            const lastMessage = messages?.[messages.length - 1];
+            const messages$ = conversation$?.data.log;
+            const lastMessage$ = messages$?.[messages$.length - 1];
             if (
-              lastMessage?.role.get() === message.role &&
-              lastMessage?.content.get() === message.content
+              lastMessage$?.role.get() === message.role &&
+              lastMessage$?.content.get() === message.content
             ) {
               console.log('[useConversation] Skipping duplicate message');
               return;
@@ -155,12 +150,12 @@ export function useConversation(conversationId: string) {
             setPendingTool(conversationId, null, null);
 
             // Mark the last message as interrupted
-            const messages = conversation$?.data.log;
-            const lastMessage = messages?.[messages.length - 1];
-            if (lastMessage?.role.get() === 'assistant') {
-              const content = lastMessage.content.get();
+            const messages$ = conversation$?.data.log;
+            const lastMessage$ = messages$?.[messages$.length - 1];
+            if (lastMessage$?.role.get() === 'assistant') {
+              const content = lastMessage$.content.get();
               if (!content.toLowerCase().includes('[interrupted]')) {
-                lastMessage.content.set(content + ' [INTERRUPTED]');
+                lastMessage$.content.set(content + ' [INTERRUPTED]');
               }
             }
           },

@@ -32,13 +32,17 @@ export const selectedConversation$ = observable<string | null>(null);
 
 // Helper functions
 export function updateConversation(id: string, update: Partial<ConversationState>) {
-  const current = conversations$.get(id)?.get() || {
-    data: { log: [], logfile: id, branches: {} },
-    isGenerating: false,
-    isConnected: false,
-    pendingTool: null,
-  };
-  conversations$.get(id)?.set({ ...current, ...update });
+  if (!conversations$.get(id)) {
+    // Initialize with defaults if conversation doesn't exist
+    conversations$.set(id, {
+      data: { log: [], logfile: id, branches: {} },
+      isGenerating: false,
+      isConnected: false,
+      pendingTool: null,
+      showInitialSystem: false,
+    });
+  }
+  conversations$.get(id)?.assign(update);
 }
 
 export function addMessage(id: string, message: Message | StreamingMessage) {

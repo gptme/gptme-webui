@@ -11,6 +11,7 @@ import { toConversationItems } from '@/utils/conversation';
 import { demoConversations, type DemoConversation } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Memo, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
+import { initializeConversations } from '@/stores/conversations';
 
 interface Props {
   className?: string;
@@ -72,9 +73,19 @@ const Conversations: FC<Props> = ({ route }) => {
     console.error('Conversation query error:', error);
   }
 
-  // Combine demo and API conversations
-  const allConversations: ConversationItem[] = useMemo(
-    () => [
+  // Combine demo and API conversations and initialize store
+  const allConversations: ConversationItem[] = useMemo(() => {
+    // Initialize API conversations in store
+    if (apiConversations.length) {
+      console.log('[Conversations] Initializing conversations in store');
+      void initializeConversations(
+        api,
+        apiConversations.map((c) => c.name),
+        10
+      );
+    }
+
+    return [
       // Convert demo conversations to ConversationItems
       ...demoConversations.map((conv: DemoConversation) => ({
         name: conv.name,
@@ -84,9 +95,8 @@ const Conversations: FC<Props> = ({ route }) => {
       })),
       // Convert API conversations to ConversationItems
       ...toConversationItems(apiConversations),
-    ],
-    [apiConversations]
-  );
+    ];
+  }, [apiConversations, api]);
 
   const handleSelectConversation = useCallback(
     (id: string) => {

@@ -7,10 +7,9 @@ import { demoConversations } from '@/democonversations';
 
 import type { MessageRole } from '@/types/conversation';
 import type { FC } from 'react';
-import { useEffect } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
-import { conversations$, initializeConversations } from '@/stores/conversations';
+import { conversations$ } from '@/stores/conversations';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
@@ -41,24 +40,8 @@ export const ConversationList: FC<Props> = ({
   onRetry,
   selectedId$,
 }) => {
-  const { api, isConnected$ } = useApi();
+  const { isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
-
-  // Pre-load conversations when connected and list is available
-  useEffect(() => {
-    if (isConnected && conversations?.length) {
-      // Filter out demo conversations before pre-loading
-      const nonDemoConversations = conversations.filter((c) => !c.readonly);
-      if (nonDemoConversations.length) {
-        console.log('[ConversationList] Pre-loading conversations');
-        void initializeConversations(
-          api,
-          nonDemoConversations.map((c) => c.name),
-          10
-        );
-      }
-    }
-  }, [api, isConnected, conversations]);
 
   if (!conversations) {
     return null;
