@@ -38,6 +38,8 @@ jobs:
       run: npm run build
 
     - name: Start gptme-server in background
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
         pipx install gptme[server]
         gptme-server --cors-origin="http://localhost:5701" &  # run in background
