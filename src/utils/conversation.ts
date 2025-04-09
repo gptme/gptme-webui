@@ -7,7 +7,7 @@ import type { ConversationItem } from '@/stores/conversations';
 export function toConversationItem(conv: ConversationSummary): ConversationItem {
   return {
     id: conv.name,
-    lastUpdated: new Date(conv.modified * 1000), // Convert Unix timestamp to Date
+    lastUpdated: new Date(conv.modified), // API sends timestamps in milliseconds
     messageCount: conv.messages,
     readonly: false, // This could be determined by other factors
   };

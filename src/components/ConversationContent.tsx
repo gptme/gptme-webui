@@ -22,7 +22,12 @@ const AVAILABLE_MODELS = [
 
 export const ConversationContent: FC = observer(() => {
   const selectedId = use$(store$.selectedId);
-  const selectedConv = selectedId ? store$.conversations.get(selectedId) : null;
+  // Get the conversation from the store and ensure we get its value
+  const selectedConv = use$(() => {
+    if (!selectedId) return null;
+    const conv = store$.conversations.get(selectedId);
+    return conv ? conv.peek() : null;
+  });
 
   if (!selectedId || !selectedConv) {
     return (

@@ -49,8 +49,11 @@ export const ChatInput: FC<Props> = ({
 
   const isConnected = use$(isConnected$);
   const autoFocus = use$(autoFocus$);
-  const conversation = use$(conversations$.get(conversationId));
-  const isGenerating = conversation?.isGenerating || false;
+  // Only track the isGenerating property we need
+  const isGenerating = use$(() => {
+    const conv = conversations$.get(conversationId);
+    return conv ? conv.isGenerating.get() : false;
+  });
 
   const placeholder = isReadOnly
     ? 'This is a demo conversation (read-only)'

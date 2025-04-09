@@ -5,8 +5,7 @@ import { getRelativeTimeString } from '@/utils/time';
 import { useApi } from '@/contexts/ApiContext';
 import type { MessageRole } from '@/types/conversation';
 import type { FC } from 'react';
-import { observable, Observable } from '@legendapp/state';
-import { Computed, For, Memo, observer, use$ } from '@legendapp/state/react';
+import { Computed, Memo, observer, use$ } from '@legendapp/state/react';
 import { store$, actions, type ConversationItem } from '@/stores/conversations';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
@@ -36,13 +35,14 @@ export const ConversationList: FC<Props> = observer(
       conv: ConversationItem;
     }) {
       const isSelected = conv.id === selectedId;
+      // Get the conversation from store
       const conversation = store$.conversations.get(conv.id);
 
       const getMessageBreakdown = (): MessageBreakdown => {
-        if (!conversation?.data?.log) return {};
+        if (!conversation?.data?.log?.length) return {};
 
-        return conversation.data.log.reduce((acc: MessageBreakdown, msg$) => {
-          const role = msg$.role.get();
+        return conversation.data.log.reduce((acc: MessageBreakdown, msg) => {
+          const role = msg.role?.get();
           if (role) {
             acc[role] = (acc[role] || 0) + 1;
           }
@@ -72,21 +72,23 @@ export const ConversationList: FC<Props> = observer(
           }`}
           onClick={() => actions.selectConversation(conv.id)}
         >
-          <div className="mb-1 font-medium">{stripDate(conv.id)}</div>
+          <div className="mb-1 font-medium" data-testid="conversation-title">
+            {stripDate(conv.id)}
+          </div>
           <div className="flex items-center space-x-3 text-sm text-muted-foreground">
             <Tooltip>
               <TooltipTrigger>
-                <span className="flex items-center">
+                <time className="flex items-center" dateTime={conv.lastUpdated.toISOString()}>
                   <Clock className="mr-1 h-4 w-4" />
                   {getRelativeTimeString(conv.lastUpdated)}
-                </span>
+                </time>
               </TooltipTrigger>
               <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
             </Tooltip>
             <Computed>
               {() => {
-                const storeConv = store$.conversations.get(conv.id);
-                const isLoaded = storeConv?.data?.log?.length > 0;
+                const conversation = store$.conversations.get(conv.id);
+                const isLoaded = conversation?.data?.log?.length > 0;
 
                 if (!isLoaded) {
                   return (
@@ -121,48 +123,67 @@ export const ConversationList: FC<Props> = observer(
 
             {/* Show conversation state indicators */}
             <div className="flex items-center space-x-2">
-              {conversation?.isConnected.get() && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="flex items-center">
-                      <Signal className="h-4 w-4 text-primary" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Connected</TooltipContent>
-                </Tooltip>
-              )}
-              {conversation?.isGenerating.get() && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="flex items-center">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Generating...</TooltipContent>
-                </Tooltip>
-              )}
-              {conversation?.pendingTool.get() && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="flex items-center">
-                      <span className="text-lg">⚙️</span>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Pending tool: {conversation.pendingTool.get()?.tooluse.tool}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {conversation?.readonly.get() && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="flex items-center">
-                      <Lock className="h-4 w-4" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>This conversation is read-only</TooltipContent>
-                </Tooltip>
-              )}
+              <Computed>
+                {() => {
+                  if (!conversation) return null;
+                  const isConnected = conversation.isConnected?.get();
+                  const isGenerating = conversation.isGenerating?.get();
+                  const pendingTool = conversation.pendingTool?.get();
+                  const readonly = conversation.readonly?.get();
+
+                  // Early return if no values
+                  if (!isConnected && !isGenerating && !pendingTool && !readonly) {
+                    return null;
+                  }
+
+                  return (
+                    <>
+                      {isConnected && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="flex items-center">
+                              <Signal className="h-4 w-4 text-primary" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Connected</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {isGenerating && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="flex items-center">
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Generating...</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {pendingTool && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="flex items-center">
+                              <span className="text-lg">⚙️</span>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Pending tool: {pendingTool?.tooluse?.tool ?? 'Unknown'}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {readonly && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="flex items-center">
+                              <Lock className="h-4 w-4" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>This conversation is read-only</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </>
+                  );
+                }}
+              </Computed>
             </div>
           </div>
         </div>
@@ -214,35 +235,41 @@ export const ConversationList: FC<Props> = observer(
     });
 
     const ConversationItems = observer(() => {
-      const items = use$(store$.conversations);
       if (isLoading || isError) return null;
 
-      // Convert Map entries to array of ConversationItems
-      // Convert Map entries to array and create observable array
-      const conversationItems: Observable<ConversationItem[]> = observable(
-        Array.from(items.entries()).map(
-          ([id, conv]): ConversationItem => ({
-            id,
-            readonly: conv.readonly ?? false,
-            lastUpdated: new Date(conv.lastUpdated.get() || Date.now()),
-            messageCount: conv.data.log.length,
-          })
-        )
-      );
-
       return (
-        <For each={conversationItems}>
-          {(conv$) => (
-            <Memo>
-              <ConversationItem conv={conv$.get()} />
-            </Memo>
-          )}
-        </For>
+        <div>
+          <Computed>
+            {() => {
+              // Get the conversations Map (need reactivity to update when conversations are added)
+              const conversations = store$.conversations.get();
+
+              // Convert to array and sort by lastUpdated
+              const items = Array.from(conversations.entries())
+                .map(([id, conv]): ConversationItem => {
+                  const lastUpdated = conv.lastUpdated || Date.now();
+                  return {
+                    id,
+                    readonly: conv.readonly ?? false,
+                    lastUpdated: new Date(lastUpdated),
+                    messageCount: conv.data?.log?.length ?? 0,
+                  };
+                })
+                .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+
+              return items.map((conv) => (
+                <Memo key={conv.id}>
+                  <ConversationItem conv={conv} />
+                </Memo>
+              ));
+            }}
+          </Computed>
+        </div>
       );
     });
 
     return (
-      <div className="h-full space-y-2 overflow-y-auto p-4">
+      <div data-testid="conversation-list" className="h-full space-y-2 overflow-y-auto p-4">
         <LoadingState />
         <ErrorState />
         <EmptyState />

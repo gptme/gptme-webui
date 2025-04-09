@@ -24,10 +24,11 @@ export interface ConversationStateData {
   pendingTool: PendingTool | null;
   lastMessage?: Message;
   showInitialSystem: boolean;
-  readonly?: boolean;
-  lastUpdated?: number;
+  readonly: boolean;
+  lastUpdated: number;
 }
 
+// Type for the observable conversation state
 export type ConversationState = ObservableObject<ConversationStateData>;
 
 export interface StoreData {
@@ -46,19 +47,38 @@ export interface StoreData {
   };
 }
 
+// The store itself will be observable
 export type Store = ObservableObject<StoreData>;
 
 // Helper function used by conversationList$
 function getLastUpdated(convState: ConversationState): Date {
+  const now = Date.now();
+
+  // Get message timestamps (ISO strings, need to parse)
   const log = convState.data.log.get();
-  const timestamps = log.map((msg) => {
-    return msg.timestamp ? new Date(msg.timestamp).getTime() : 0;
+  const messageTimestamps = log.map((msg) => {
+    const ts = msg.timestamp ? new Date(msg.timestamp).getTime() : 0;
+    return ts;
   });
 
+  // Get the most recent message timestamp
+  const latestMessageTime = messageTimestamps.length > 0 ? Math.max(...messageTimestamps) : 0;
+
+  // Get the conversation's lastUpdated (already in milliseconds)
   const lastUpdated = convState.lastUpdated.get();
-  return timestamps.length > 0
-    ? new Date(Math.max(...timestamps))
-    : new Date(lastUpdated || Date.now());
+
+  // Use the most recent timestamp
+  const timestamp = Math.max(latestMessageTime, lastUpdated);
+  console.log(`getLastUpdated for ${convState.data.logfile.get()}:`, {
+    now: new Date(now).toISOString(),
+    messageTimestamps: messageTimestamps.map((ts) => new Date(ts).toISOString()),
+    latestMessageTime: latestMessageTime ? new Date(latestMessageTime).toISOString() : 'none',
+    lastUpdated: new Date(lastUpdated).toISOString(),
+    using: new Date(timestamp).toISOString(),
+    diffSeconds: Math.floor((now - timestamp) / 1000),
+  });
+
+  return new Date(timestamp);
 }
 
 // Create root store
@@ -81,15 +101,6 @@ export const store$ = observable<StoreData>({
 // For backward compatibility during migration
 export const conversations$ = store$.conversations;
 export const selectedConversation$ = store$.selectedId;
-
-// Debug logging
-store$.conversations.onChange(({ value }) => {
-  console.log('[conversations] Map updated:', Array.from(value.keys()));
-});
-
-store$.selectedId.onChange(({ value }) => {
-  console.log('[conversations] Selected conversation changed:', value);
-});
 
 // Store actions
 export const actions = {
@@ -159,6 +170,7 @@ function createInitialState(id: string): ConversationState {
     pendingTool: null,
     showInitialSystem: false,
     lastUpdated: Date.now(),
+    readonly: false,
   });
 }
 
@@ -202,11 +214,20 @@ export function setPendingTool(id: string, toolId: string | null, tooluse: ToolU
   actions.setPendingTool(id, toolId, tooluse);
 }
 
+// TODO: Gradually migrate away from these compatibility exports
+// Prefer using initialization.initConversation directly
+export function initConversation(
+  id: string,
+  data?: ConversationResponse,
+  readonly: boolean = false
+) {
+  initialization.initConversation(id, data, readonly);
+}
+
 // Initialize and load conversations
 export const initialization = {
   // Initialize a single conversation
   initConversation(id: string, data?: ConversationResponse, readonly: boolean = false) {
-    console.log('[conversations] Initializing conversation:', id);
     const initial = createInitialState(id);
     if (data) {
       // Create observable data with observable messages
@@ -244,7 +265,8 @@ export const initialization = {
         ),
       });
       conv.data.set(obsData);
-      conv.lastUpdated.set(Date.now());
+      // Don't update the timestamp, keep using the one from initial load
+      // conv.lastUpdated is already set correctly from initializeConversations
     }
   },
 
@@ -258,26 +280,25 @@ export const initialization = {
     store$.loading.error.set(null);
 
     try {
-      console.log(
-        `[conversations] Initializing ${conversationList.length} conversations, preloading ${preloadLimit}`
-      );
-
-      // Initialize metadata for all conversations
       conversationList.forEach((conv) => {
         if (!store$.conversations.get(conv.name)) {
           initialization.initConversation(conv.name, undefined, false);
           const conversation = store$.conversations.get(conv.name);
           if (conversation) {
-            conversation.lastUpdated.set(conv.modified);
+            // API sends timestamps in seconds, convert to milliseconds
+            const timestamp = typeof conv.modified === 'number' ? conv.modified * 1000 : Date.now();
+            console.log(`Setting lastUpdated for ${conv.name}:`, {
+              modified: conv.modified,
+              timestampMs: timestamp,
+              date: new Date(timestamp).toISOString(),
+            });
+            conversation.lastUpdated.set(timestamp);
           }
         }
       });
 
-      // Preload recent conversations
       const toPreload = conversationList.slice(0, preloadLimit);
       if (toPreload.length > 0) {
-        console.log(`[conversations] Preloading ${toPreload.length} conversations`);
-
         const results = await Promise.allSettled(
           toPreload.map(async (conv) => {
             try {
@@ -292,23 +313,12 @@ export const initialization = {
         );
 
         // Log results
-        const succeeded = results.filter(
-          (r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled'
-        );
         const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-
-        if (succeeded.length) {
-          console.log(
-            `[conversations] Loaded ${succeeded.length} conversations:`,
-            succeeded.map((r) => r.value)
-          );
-        }
         if (failed.length) {
-          console.warn(
-            `[conversations] Failed to load ${failed.length} conversations:`,
+          console.error(
+            `Failed to load ${failed.length} conversations:`,
             failed.map((r) => r.reason)
           );
-          // Set error if any preload failed
           store$.loading.error.set(failed[0].reason);
         }
       }
