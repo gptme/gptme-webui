@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Connecting', () => {
-  test('should connect and conversations', async ({ page }) => {
+  test('should connect and list conversations', async ({ page }) => {
     // Go to the app
     await page.goto('/');
 
@@ -50,17 +50,20 @@ test.describe('Connecting', () => {
     const apiConversations = conversationTitles.filter((title) => /^\d+$/.test(title));
 
     expect(demoConversations.length).toBeGreaterThan(0);
-    expect(apiConversations.length).toBeGreaterThan(0);
 
-    // Verify timestamps
-    const timestamps = await conversationList.getByRole('button').locator('time').allTextContents();
-
-    // Only check for historical timestamps if we have API conversations
     if (apiConversations.length > 0) {
+      // Check for historical timestamps if we have API conversations
+      const timestamps = await conversationList
+        .getByRole('button')
+        .locator('time')
+        .allTextContents();
+      expect(timestamps.length).toBeGreaterThan(1);
+
       // There should be some timestamps that aren't "just now"
       const nonJustNowTimestamps = timestamps.filter((t) => t !== 'just now');
       expect(nonJustNowTimestamps.length).toBeGreaterThan(0);
     } else {
+      // This happens when e2e tests are run in CI with a fresh gptme-server
       console.log('No API conversations found, skipping timestamp check');
     }
   });
