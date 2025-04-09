@@ -5,27 +5,27 @@ import type { Message, StreamingMessage } from '@/types/conversation';
 import type { ChatOptions } from '@/components/ChatInput';
 import { demoConversations } from '@/democonversations';
 import { use$ } from '@legendapp/state/react';
-import { store$, actions, initialization } from '@/stores/conversations';
+import { store$, initConversation } from '@/stores/conversations';
 
 const MAX_CONNECTED_CONVERSATIONS = 3;
 
 export function useConversation(conversationId: string) {
   const api = useApi();
   const { toast } = useToast();
-  const conversation$ = store$.conversations.get(conversationId);
+  const conversation$ = store$.conversations.get().get(conversationId);
   const isConnected = use$(api.isConnected$);
 
   // Initialize conversation in store if needed
   useEffect(() => {
     if (!conversation$) {
       console.log(`[useConversation] Initializing conversation ${conversationId}`);
-      initialization.initConversation(conversationId);
+      initConversation(conversationId);
     }
   }, [conversationId, conversation$]);
 
   // Load conversation data and connect to event stream
   useEffect(() => {
-    if (!isConnected || conversation$?.isConnected.get()) {
+    if (!isConnected || conversation$?.isConnected.get() || !conversation$) {
       return;
     }
 
@@ -35,23 +35,21 @@ export function useConversation(conversationId: string) {
         const demoConv = demoConversations.find((conv) => conv.name === conversationId);
         if (demoConv) {
           // Initialize with demo data
-          actions.updateConversation(conversationId, {
-            data: {
-              log: demoConv.messages,
-              logfile: conversationId,
-              branches: {},
-            },
+          store$.conversations.get(conversationId).updateData({
+            log: demoConv.messages,
+            logfile: conversationId,
+            branches: {},
           });
           return;
         }
 
         // Load conversation data from API
         const data = await api.getConversation(conversationId);
-        actions.updateConversation(conversationId, { data });
+        conversation$?.updateData(data);
 
         // Check number of connected conversations
         const connectedConvs = Array.from(store$.conversations.get().entries())
-          .filter(([_, state]) => state.isConnected)
+          .filter(([_, state]) => state.isConnected.get())
           .map(([id]) => id);
 
         // If we're at the limit, disconnect the oldest one that isn't selected
@@ -64,7 +62,7 @@ export function useConversation(conversationId: string) {
           console.log(`[useConversation] Disconnecting old conversations:`, toDisconnect);
           for (const id of toDisconnect) {
             api.closeEventStream(id);
-            actions.setConnected(id, false);
+            conversation$.setConnected(false);
           }
         }
 
@@ -73,7 +71,7 @@ export function useConversation(conversationId: string) {
         api.subscribeToEvents(conversationId, {
           onMessageStart: () => {
             console.log('[useConversation] Generation started');
-            actions.setGenerating(conversationId, true);
+            conversation$.setGenerating(true);
 
             // Add empty message placeholder if needed
             const messages$ = conversation$?.data.log;
@@ -85,7 +83,7 @@ export function useConversation(conversationId: string) {
                 timestamp: new Date().toISOString(),
                 isComplete: false,
               };
-              actions.addMessage(conversationId, streamingMessage);
+              conversation$.addMessage(streamingMessage);
             }
           },
           onToken: (token) => {
@@ -97,7 +95,7 @@ export function useConversation(conversationId: string) {
           },
           onMessageComplete: (message) => {
             console.log('[useConversation] Generation complete');
-            actions.setGenerating(conversationId, false);
+            conversation$.setGenerating(false);
 
             // Update the last message
             const messages$ = conversation$?.data.log;
@@ -121,7 +119,7 @@ export function useConversation(conversationId: string) {
               console.log('[useConversation] Skipping duplicate message');
               return;
             }
-            actions.addMessage(conversationId, message);
+            conversation$.addMessage(message);
           },
           onToolPending: (toolId, tooluse, auto_confirm) => {
             console.log('[useConversation] Tool pending:', { toolId, tooluse, auto_confirm });
@@ -132,13 +130,13 @@ export function useConversation(conversationId: string) {
               });
             } else {
               // Only set pending tool state if we need confirmation
-              actions.setPendingTool(conversationId, toolId, tooluse);
+              conversation$.setPendingTool(toolId, tooluse);
             }
           },
           onInterrupted: () => {
             console.log('[useConversation] Generation interrupted');
-            actions.setGenerating(conversationId, false);
-            actions.setPendingTool(conversationId, null, null);
+            conversation$.setGenerating(false);
+            conversation$.setPendingTool(null, null);
 
             // Mark the last message as interrupted
             const messages$ = conversation$?.data.log;
@@ -160,7 +158,7 @@ export function useConversation(conversationId: string) {
           },
         });
 
-        actions.setConnected(conversationId, true);
+        conversation$.setConnected(true);
       } catch (error) {
         console.error('Error loading conversation:', error);
         toast({
@@ -178,7 +176,7 @@ export function useConversation(conversationId: string) {
       if (document.hidden) {
         console.log(`[useConversation] Page hidden, disconnecting from ${conversationId}`);
         api.closeEventStream(conversationId);
-        actions.setConnected(conversationId, false);
+        conversation$.setConnected(false);
       }
     };
   }, [conversationId, isConnected, api, conversation$, toast]);
@@ -198,7 +196,7 @@ export function useConversation(conversationId: string) {
     };
 
     // Add message to conversation
-    actions.addMessage(conversationId, userMessage);
+    conversation$.addMessage(userMessage);
 
     try {
       // Send the message
@@ -229,7 +227,7 @@ export function useConversation(conversationId: string) {
 
     try {
       // Clear pending tool state immediately
-      actions.setPendingTool(conversationId, null, null);
+      conversation$?.setPendingTool(null, null);
 
       // Confirm the tool
       await api.confirmTool(conversationId, pendingTool.id, action, options);

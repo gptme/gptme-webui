@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getRelativeTimeString } from '@/utils/time';
 import { useApi } from '@/contexts/ApiContext';
-import type { MessageRole } from '@/types/conversation';
+import type { Message, MessageRole } from '@/types/conversation';
 import type { FC } from 'react';
 import { Computed, Memo, observer, use$ } from '@legendapp/state/react';
-import { store$, actions, type ConversationItem } from '@/stores/conversations';
+import { Observable } from '@legendapp/state';
+import { store$, type ConversationItem } from '@/stores/conversations';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
@@ -36,13 +37,13 @@ export const ConversationList: FC<Props> = observer(
     }) {
       const isSelected = conv.id === selectedId;
       // Get the conversation from store
-      const conversation = store$.conversations.get(conv.id);
+      const conversation = store$.conversations.get().get(conv.id);
 
       const getMessageBreakdown = (): MessageBreakdown => {
         if (!conversation?.data?.log?.length) return {};
 
-        return conversation.data.log.reduce((acc: MessageBreakdown, msg) => {
-          const role = msg.role?.get();
+        return conversation.data.log.reduce((acc: MessageBreakdown, msg$: Observable<Message>) => {
+          const role = msg$.role?.get() as MessageRole;
           if (role) {
             acc[role] = (acc[role] || 0) + 1;
           }
@@ -70,7 +71,7 @@ export const ConversationList: FC<Props> = observer(
           className={`cursor-pointer rounded-lg p-3 transition-colors hover:bg-accent ${
             isSelected ? 'bg-accent' : ''
           }`}
-          onClick={() => actions.selectConversation(conv.id)}
+          onClick={() => store$.selectConversation(conv.id)}
         >
           <div className="mb-1 font-medium" data-testid="conversation-title">
             {stripDate(conv.id)}
@@ -87,8 +88,8 @@ export const ConversationList: FC<Props> = observer(
             </Tooltip>
             <Computed>
               {() => {
-                const conversation = store$.conversations.get(conv.id);
-                const isLoaded = conversation?.data?.log?.length > 0;
+                const conversation = store$.conversations.get().get(conv.id);
+                const isLoaded = conversation?.data?.log?.length ?? 0 > 0;
 
                 if (!isLoaded) {
                   return (
@@ -241,23 +242,10 @@ export const ConversationList: FC<Props> = observer(
         <div>
           <Computed>
             {() => {
-              // Get the conversations Map (need reactivity to update when conversations are added)
-              const conversations = store$.conversations.get();
+              const items = Array.from(store$.conversationList.get())
+                .sort((a: ConversationItem, b: ConversationItem) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
 
-              // Convert to array and sort by lastUpdated
-              const items = Array.from(conversations.entries())
-                .map(([id, conv]): ConversationItem => {
-                  const lastUpdated = conv.lastUpdated || Date.now();
-                  return {
-                    id,
-                    readonly: conv.readonly ?? false,
-                    lastUpdated: new Date(lastUpdated),
-                    messageCount: conv.data?.log?.length ?? 0,
-                  };
-                })
-                .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
-
-              return items.map((conv) => (
+              return items.map((conv: ConversationItem) => (
                 <Memo key={conv.id}>
                   <ConversationItem conv={conv} />
                 </Memo>

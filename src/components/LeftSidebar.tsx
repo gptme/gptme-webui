@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { FC } from 'react';
 import { use$ } from '@legendapp/state/react';
-import { store$, actions, initialization } from '@/stores/conversations';
+import { store$, initConversation } from '@/stores/conversations';
 
 interface Props {
   isOpen: boolean;
@@ -33,8 +33,8 @@ export const LeftSidebar: FC<Props> = ({
     const newId = Date.now().toString();
 
     // Initialize in store first
-    initialization.initConversation(newId);
-    actions.selectConversation(newId);
+    initConversation(newId);
+    store$.selectConversation(newId);
 
     try {
       // Create on server

@@ -9,7 +9,7 @@ import { useApi } from '@/contexts/ApiContext';
 import { demoConversations } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Memo, observer, use$, useObserveEffect } from '@legendapp/state/react';
-import { store$, actions, initialization } from '@/stores/conversations';
+import { store$, initConversation } from '@/stores/conversations';
 
 interface Props {
   className?: string;
@@ -52,7 +52,7 @@ const Conversations: FC<Props> = observer(({ route }) => {
   // Initialize store with demo conversations
   useEffect(() => {
     demoConversations.forEach((conv) => {
-      initialization.initConversation(
+      initConversation(
         conv.name,
         {
           log: conv.messages,
@@ -67,7 +67,7 @@ const Conversations: FC<Props> = observer(({ route }) => {
   // Initialize API conversations when loaded
   useEffect(() => {
     if (apiConversations.length) {
-      void initialization.initializeConversations(api, apiConversations, 10);
+      void store$.initializeConversations(api, apiConversations, 10);
     }
   }, [apiConversations, api]);
 
@@ -75,9 +75,9 @@ const Conversations: FC<Props> = observer(({ route }) => {
   useEffect(() => {
     const conversationId = searchParams.get('conversation');
     if (conversationId) {
-      actions.selectConversation(conversationId);
+      store$.selectConversation(conversationId);
     } else {
-      actions.selectConversation(demoConversations[0].name);
+      store$.selectConversation(demoConversations[0].name);
     }
   }, [searchParams]);
 
@@ -122,7 +122,7 @@ const Conversations: FC<Props> = observer(({ route }) => {
         {() => (
           <LeftSidebar
             isOpen={store$.ui.leftSidebarOpen.get()}
-            onToggle={() => actions.toggleSidebar('left')}
+            onToggle={() => store$.toggleSidebar('left')}
             isLoading={isLoading}
             isError={isError}
             onRetry={() => refetch()}
@@ -136,7 +136,7 @@ const Conversations: FC<Props> = observer(({ route }) => {
         {() => (
           <RightSidebar
             isOpen={store$.ui.rightSidebarOpen.get()}
-            onToggle={() => actions.toggleSidebar('right')}
+            onToggle={() => store$.toggleSidebar('right')}
           />
         )}
       </Memo>

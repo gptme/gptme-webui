@@ -7,7 +7,9 @@ import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { ToolConfirmationDialog } from './ToolConfirmationDialog';
 import { For, Memo, observer, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
+import { Observable } from '@legendapp/state';
 import { store$ } from '@/stores/conversations';
+import type { Message, StreamingMessage } from '@/types/conversation';
 
 // This can be replaced with an API call to fetch available models from the server
 const AVAILABLE_MODELS = [
@@ -25,7 +27,7 @@ export const ConversationContent: FC = observer(() => {
   // Get the conversation from the store and ensure we get its value
   const selectedConv = use$(() => {
     if (!selectedId) return null;
-    const conv = store$.conversations.get(selectedId);
+    const conv = store$.conversations.get().get(selectedId);
     return conv ? conv.peek() : null;
   });
 
@@ -51,7 +53,7 @@ export const ConversationChat: FC = observer(() => {
   });
 
   // Get selected conversation
-  const selectedConv = selectedId ? store$.conversations.get(selectedId) : null;
+  const selectedConv = selectedId ? store$.conversations.get().get(selectedId) : null;
   if (!selectedConv) return null;
 
   // Update focus when conversation changes
@@ -63,7 +65,7 @@ export const ConversationChat: FC = observer(() => {
   useObserveEffect(
     () => {
       if (!selectedConv) return;
-      const index = selectedConv.data.log.findIndex((msg$) => msg$.role.get() === 'system');
+      const index = selectedConv.data.log.findIndex((msg) => msg.role.get() === 'system');
       local$.firstNonSystemIndex.set(index === -1 ? 0 : index);
     },
     { deps: [selectedConv?.data.log] }
@@ -179,7 +181,7 @@ export const ConversationChat: FC = observer(() => {
         {/* Messages */}
         {selectedConv && (
           <For each={selectedConv.data.log} optimized>
-            {(msg$, i) => (
+            {(msg$: Observable<Message | StreamingMessage>, i) => (
               <Memo>
                 {() => {
                   const index = Number(i);

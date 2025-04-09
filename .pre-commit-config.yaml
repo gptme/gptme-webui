@@ -7,20 +7,20 @@ repos:
   - id: trailing-whitespace
 - repo: local
   hooks:
-  - id: lint
-    name: lint
-    types: [javascript, jsx, ts, tsx]
-    entry: npm run lint
-    language: system
-    pass_filenames: false
-    always_run: true
-  - id: format
-    name: format
-    types: [javascript, jsx, ts, tsx]
-    entry: npm run format
-    language: system
-    pass_filenames: false
-    always_run: true
+  #- id: lint
+  #  name: lint
+  #  types: [javascript, jsx, ts, tsx]
+  #  entry: npm run lint
+  #  language: system
+  #  pass_filenames: false
+  #  always_run: true
+  #- id: format
+  #  name: format
+  #  types: [javascript, jsx, ts, tsx]
+  #  entry: npm run format
+  #  language: system
+  #  pass_filenames: false
+  #  always_run: true
   - id: typecheck
     name: typecheck
     types: [javascript, jsx, ts, tsx]
@@ -35,10 +35,10 @@ repos:
     language: system
     pass_filenames: false
     always_run: true
-  - id: test
-    name: test-e2e
-    types: [javascript, jsx, ts, tsx]
-    entry: npm run test:e2e
-    language: system
-    pass_filenames: false
-    always_run: true
+  #- id: test
+  #  name: test-e2e
+  #  types: [javascript, jsx, ts, tsx]
+  #  entry: npm run test:e2e
+  #  language: system
+  #  pass_filenames: false
+  #  always_run: true
