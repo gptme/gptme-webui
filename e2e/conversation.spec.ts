@@ -22,6 +22,12 @@ test.describe('Conversation Flow', () => {
   test('should be able to send a message', async ({ page }) => {
     await page.goto('/');
 
+    // Click the "New Conversation" button (plus icon) to start a new conversation
+    await page.locator('button svg.lucide-plus').click();
+
+    // Wait for the new conversation page to load
+    await expect(page).toHaveURL(/\?conversation=\d+$/);
+
     // Type a message
     await page.getByRole('textbox').fill('Hello');
     await page.keyboard.press('Enter');
@@ -110,7 +116,6 @@ test.describe('Conversation Flow', () => {
     const conversationTitles = await conversationList
       .locator('[data-testid="conversation-title"]')
       .allTextContents();
-    console.log('Conversation titles:', conversationTitles);
 
     // Should have both demo and API conversations
     const demoConversations = conversationTitles.filter((title) => title.includes('Introduction'));
@@ -121,10 +126,6 @@ test.describe('Conversation Flow', () => {
 
     // Verify timestamps
     const timestamps = await conversationList.getByRole('button').locator('time').allTextContents();
-    console.log('Timestamps:', timestamps);
-
-    // Log all timestamps for debugging
-    console.log('Timestamps:', timestamps);
 
     // Only check for historical timestamps if we have API conversations
     if (apiConversations.length > 0) {
