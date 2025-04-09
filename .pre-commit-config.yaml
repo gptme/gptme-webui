@@ -5,24 +5,28 @@ repos:
   - id: check-yaml
   - id: end-of-file-fixer
   - id: trailing-whitespace
+
 - repo: local
   hooks:
   - id: lint
     name: lint
     stages: [commit]
     types: [javascript, jsx, ts, tsx]
-    entry: npm run lint
+    entry: npm run lint:fix
     language: system
     pass_filenames: false
     always_run: true
-  - id: format
-    name: format
-    stages: [commit]
-    types: [javascript, jsx, ts, tsx]
-    entry: npm run format
-    language: system
-    pass_filenames: false
-    always_run: true
+
+  # handled by lint:fix
+  #- id: format
+  #  name: format
+  #  stages: [commit]
+  #  types: [javascript, jsx, ts, tsx]
+  #  entry: npm run format
+  #  language: system
+  #  pass_filenames: false
+  #  always_run: true
+
   - id: typecheck
     name: typecheck
     stages: [commit]
