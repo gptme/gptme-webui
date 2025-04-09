@@ -1,3 +1,5 @@
+/* eslint-env node */
+
 import { defineConfig, devices } from '@playwright/test';
 
 const port = process.env.PORT || 5701;
