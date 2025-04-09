@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Conversation Flow', () => {
-  test('should show demo conversations and connect to server', async ({ page }) => {
+test.describe('Connecting', () => {
+  test('should connect and conversations', async ({ page }) => {
     // Go to the app
     await page.goto('/');
 
@@ -17,78 +17,6 @@ test.describe('Conversation Flow', () => {
 
     // Should show the conversation content
     await expect(page.getByText(/Hello! I'm gptme, your AI programming assistant/)).toBeVisible();
-  });
-
-  test('should be able to send a message', async ({ page }) => {
-    await page.goto('/');
-
-    // Click the "New Conversation" button (plus icon) to start a new conversation
-    await page.locator('button svg.lucide-plus').click();
-
-    // Wait for the new conversation page to load
-    await expect(page).toHaveURL(/\?conversation=\d+$/);
-
-    // Type a message
-    await page.getByRole('textbox').fill('Hello');
-    await page.keyboard.press('Enter');
-
-    // Should show the message in the conversation
-    // Look specifically for the user's message in a user message container
-    await expect(page.locator('.role-user', { hasText: 'Hello' })).toBeVisible();
-  });
-
-  test('should handle connection errors gracefully', async ({ page }) => {
-    // Start with server unavailable
-    await page.goto('/');
-
-    // Should still show demo conversations
-    await expect(page.getByText('Introduction to gptme')).toBeVisible();
-
-    // Click connect button and try to connect to non-existent server
-    const connectionButton = page.getByRole('button', { name: /Connect/i });
-    await connectionButton.click();
-
-    // Fill in invalid server URL and try to connect
-    await page.getByLabel('Server URL').fill('http://localhost:1');
-    await page.getByRole('button', { name: /^(Connect|Reconnect)$/ }).click();
-
-    // Wait for error toast to appear
-    await expect(page.getByText('Could not connect to gptme instance')).toBeVisible({
-      timeout: 10000,
-    });
-
-    // Close the connection dialog by clicking outside
-    await page.keyboard.press('Escape');
-
-    // Verify connection button is in disconnected state
-    await expect(connectionButton).toBeVisible();
-    await expect(connectionButton).not.toHaveClass(/text-green-600/);
-  });
-
-  test('should create a new conversation', async ({ page }) => {
-    await page.goto('/');
-
-    // Click the "New Conversation" button (plus icon)
-    await page.locator('button svg.lucide-plus').click();
-
-    // Should navigate to a new conversation with timestamp query parameter
-    await expect(page).toHaveURL(/\?conversation=\d+$/);
-
-    // Type a message to start a new conversation
-    await page.getByRole('textbox').fill('This is a new conversation');
-    await page.keyboard.press('Enter');
-
-    // Wait for the message to appear in the conversation
-    await expect(
-      page.locator('.role-user', { hasText: 'This is a new conversation' })
-    ).toBeVisible();
-
-    // The URL should remain the same after sending the message
-    const url = page.url();
-    await expect(page).toHaveURL(url);
-  });
-
-  test('should load API conversations on initial load', async ({ page }) => {
     await page.goto('/');
 
     // Should show demo conversations immediately
@@ -135,5 +63,78 @@ test.describe('Conversation Flow', () => {
     } else {
       console.log('No API conversations found, skipping timestamp check');
     }
+  });
+
+  test('should handle connection errors gracefully', async ({ page }) => {
+    // Start with server unavailable
+    await page.goto('/');
+
+    // Should still show demo conversations
+    await expect(page.getByText('Introduction to gptme')).toBeVisible();
+
+    // Click connect button and try to connect to non-existent server
+    const connectionButton = page.getByRole('button', { name: /Connect/i });
+    await connectionButton.click();
+
+    // Fill in invalid server URL and try to connect
+    await page.getByLabel('Server URL').fill('http://localhost:1');
+    await page.getByRole('button', { name: /^(Connect|Reconnect)$/ }).click();
+
+    // Wait for error toast to appear
+    await expect(page.getByText('Could not connect to gptme instance')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Close the connection dialog by clicking outside
+    await page.keyboard.press('Escape');
+
+    // Verify connection button is in disconnected state
+    await expect(connectionButton).toBeVisible();
+    await expect(connectionButton).not.toHaveClass(/text-green-600/);
+
+    // Should show demo conversations
+    await expect(page.getByText('Introduction to gptme')).toBeVisible();
+
+    // Should not show any API conversations
+    const conversationList = page.getByTestId('conversation-list');
+    const conversationTitles = await conversationList
+      .locator('[data-testid="conversation-title"]')
+      .allTextContents();
+
+    const apiConversations = conversationTitles.filter((title) => /^\d+$/.test(title));
+    expect(apiConversations.length).toBe(0);
+  });
+});
+
+test.describe('Conversation Flow', () => {
+  test('should be able to create a new conversation and send a message', async ({ page }) => {
+    await page.goto('/');
+
+    // Click the "New Conversation" button to start a new conversation
+    await page.locator('[data-testid="new-conversation-button"]').click();
+
+    // Wait for the new conversation page to load
+    await expect(page).toHaveURL(/\?conversation=\d+$/);
+
+    const message = 'Hello. We are testing, just say exactly "Hello world" without anything else.';
+
+    // Type a message
+    await page.getByRole('textbox').fill(message);
+    await page.keyboard.press('Enter');
+
+    // Should show the message in the conversation
+    // Look specifically for the user's message in a user message container
+    await expect(
+      page.locator('.role-user', {
+        hasText: message,
+      })
+    ).toBeVisible();
+
+    // Should show the AI's response
+    await expect(
+      page.locator('.role-assistant', {
+        hasText: 'Hello world',
+      })
+    ).toBeVisible();
   });
 });
