@@ -108,14 +108,16 @@ export const ConversationList: FC<Props> = ({
               }`}
               onClick={() => onSelect(conv.name)}
             >
-              <div className="mb-1 font-medium">{stripDate(conv.name)}</div>
+              <div data-testid="conversation-title" className="mb-1 font-medium">
+                {stripDate(conv.name)}
+              </div>
               <div className="flex items-center space-x-3 text-sm text-muted-foreground">
                 <Tooltip>
                   <TooltipTrigger>
-                    <span className="flex items-center">
+                    <time className="flex items-center" dateTime={conv.lastUpdated.toISOString()}>
                       <Clock className="mr-1 h-4 w-4" />
                       {getRelativeTimeString(conv.lastUpdated)}
-                    </span>
+                    </time>
                   </TooltipTrigger>
                   <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
                 </Tooltip>
@@ -206,7 +208,7 @@ export const ConversationList: FC<Props> = ({
   };
 
   return (
-    <div className="h-full space-y-2 overflow-y-auto p-4">
+    <div data-testid="conversation-list" className="h-full space-y-2 overflow-y-auto p-4">
       {isLoading && (
         <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
