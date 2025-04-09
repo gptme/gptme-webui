@@ -1,4 +1,4 @@
-import { observable } from '@legendapp/state';
+import { mergeIntoObservable, observable } from '@legendapp/state';
 import type { ConversationResponse } from '@/types/api';
 import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
 import { demoConversations } from '@/democonversations';
@@ -28,7 +28,7 @@ export interface ConversationState {
 export const conversations$ = observable(new Map<string, ConversationState>());
 
 // Currently selected conversation
-export const selectedConversation$ = observable<string | null>(null);
+export const selectedConversation$ = observable<string>(demoConversations[0].name);
 
 // Helper functions
 export function updateConversation(id: string, update: Partial<ConversationState>) {
@@ -42,7 +42,7 @@ export function updateConversation(id: string, update: Partial<ConversationState
       showInitialSystem: false,
     });
   }
-  conversations$.get(id)?.assign(update);
+  mergeIntoObservable(conversations$.get(id), update);
 }
 
 export function addMessage(id: string, message: Message | StreamingMessage) {

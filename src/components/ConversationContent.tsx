@@ -8,7 +8,6 @@ import { Label } from './ui/label';
 import { ToolConfirmationDialog } from './ToolConfirmationDialog';
 import { For, Memo, useObservable, useObserveEffect } from '@legendapp/state/react';
 import { getObservableIndex } from '@legendapp/state';
-import { conversations$ } from '@/stores/conversations';
 
 interface Props {
   conversationId: string;
@@ -29,8 +28,6 @@ const AVAILABLE_MODELS = [
 export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) => {
   const { conversation$, sendMessage, confirmTool, interruptGeneration } =
     useConversation(conversationId);
-  const convState = conversations$.get(conversationId);
-
   // State to track when to auto-focus the input
   const shouldFocus$ = useObservable(false);
   // Store the previous conversation ID to detect changes
@@ -47,13 +44,21 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
   }, [conversationId, shouldFocus$]);
 
   const firstNonSystemIndex$ = useObservable(() => {
-    return conversation$?.data.log.findIndex((msg) => msg.role.get() !== 'system') || 0;
+    return conversation$.get()?.data.log.findIndex((msg) => msg.role !== 'system') || 0;
   });
+
+  // Update the firstNonSystemIndex$ when the conversationId changes
+  useEffect(() => {
+    firstNonSystemIndex$.set(
+      conversation$.get()?.data.log.findIndex((msg) => msg.role !== 'system') || 0
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
 
   const showInitialSystem$ = useObservable<boolean>(false);
 
-  const hasSystemMessages$ = useObservable(() => {
-    return conversation$?.data.log.some((msg) => msg.role.get() === 'system') || false;
+  const hasInitialSystemMessages$ = useObservable(() => {
+    return firstNonSystemIndex$.get() > 0;
   });
 
   // Create a ref for the scroll container
@@ -66,32 +71,33 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
   const autoScrollAborted$ = useObservable(false);
 
   // Reset the autoScrollAborted flag when generation is complete or starts again
-  useObserveEffect(
-    () => convState?.isGenerating,
-    () => {
-      autoScrollAborted$.set(false);
-    }
-  );
+  useObserveEffect(conversation$?.isGenerating, () => {
+    autoScrollAborted$.set(false);
+  });
 
   // Scroll to the bottom when the conversation is updated
-  useObserveEffect(
-    () => {
-      const scrollToBottom = () => {
-        if (scrollContainerRef.current) {
-          isAutoScrolling$.set(true);
-          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-          requestAnimationFrame(() => {
-            isAutoScrolling$.set(false);
-          });
-        }
-      };
-
-      if (!autoScrollAborted$.get()) {
-        requestAnimationFrame(scrollToBottom);
+  useObserveEffect(conversation$.data.log, () => {
+    const scrollToBottom = () => {
+      if (scrollContainerRef.current) {
+        isAutoScrolling$.set(true);
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        requestAnimationFrame(() => {
+          isAutoScrolling$.set(false);
+        });
       }
-    },
-    { deps: [conversation$?.data.log] }
-  );
+    };
+
+    if (!autoScrollAborted$.get()) {
+      requestAnimationFrame(scrollToBottom);
+    }
+  });
+
+  // Scroll to the bottom when switching conversations
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [conversationId]);
 
   const handleSendMessage = (message: string, options?: ChatOptions) => {
     sendMessage({ message, options });
@@ -126,7 +132,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
     <main className="flex flex-1 flex-col overflow-hidden">
       {/* Tool Confirmation Dialog */}
       <ToolConfirmationDialog
-        pendingTool$={convState?.pendingTool}
+        pendingTool$={conversation$?.pendingTool}
         onConfirm={handleConfirmTool}
         onEdit={handleEditTool}
         onSkip={handleSkipTool}
@@ -150,16 +156,16 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
           }
         }}
       >
-        {hasSystemMessages$.get() && (
-          <Memo>
-            {() => (
+        <Memo>
+          {() =>
+            hasInitialSystemMessages$.get() && (
               <div className="flex w-full items-center bg-accent/50">
                 <div className="mx-auto flex max-w-3xl flex-1 items-center gap-2 p-4">
                   <Checkbox
                     id="showInitialSystem"
                     checked={showInitialSystem$.get()}
                     onCheckedChange={(checked) => {
-                      showInitialSystem$.set(checked as boolean);
+                      showInitialSystem$.set(checked === true);
                     }}
                   />
                   <Label
@@ -170,10 +176,9 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
                   </Label>
                 </div>
               </div>
-            )}
-          </Memo>
-        )}
-
+            )
+          }
+        </Memo>
         <For each={conversation$.data.log}>
           {(msg$) => {
             const index = getObservableIndex(msg$);

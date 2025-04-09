@@ -11,7 +11,7 @@ import { toConversationItems } from '@/utils/conversation';
 import { demoConversations, type DemoConversation } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Memo, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
-import { initializeConversations } from '@/stores/conversations';
+import { initializeConversations, selectedConversation$ } from '@/stores/conversations';
 
 interface Props {
   className?: string;
@@ -24,9 +24,6 @@ const Conversations: FC<Props> = ({ route }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const conversationParam = searchParams.get('conversation');
-  const selectedConversation$ = useObservable<string>(
-    conversationParam || demoConversations[0].name
-  );
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
@@ -36,7 +33,7 @@ const Conversations: FC<Props> = ({ route }) => {
     if (conversationParam) {
       selectedConversation$.set(conversationParam);
     }
-  }, [conversationParam, selectedConversation$]);
+  }, [conversationParam]);
 
   // Fetch conversations from API with proper caching
   const {
@@ -112,7 +109,7 @@ const Conversations: FC<Props> = ({ route }) => {
       console.log(`[Conversations] [handleSelectConversation] id: ${id}`);
       navigate(`${route}?conversation=${id}`);
     },
-    [selectedConversation$, queryClient, navigate, route]
+    [queryClient, navigate, route]
   );
 
   const conversation$ = useObservable<ConversationItem | undefined>(undefined);
