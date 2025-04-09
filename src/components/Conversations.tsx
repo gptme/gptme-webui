@@ -1,44 +1,29 @@
-import { useMemo, type FC } from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { type FC } from 'react';
+import { useEffect } from 'react';
 import { setDocumentTitle } from '@/utils/title';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
 import { ConversationContent } from '@/components/ConversationContent';
 import { useApi } from '@/contexts/ApiContext';
-import type { ConversationItem } from '@/components/ConversationList';
-import { toConversationItems } from '@/utils/conversation';
-import { demoConversations, type DemoConversation } from '@/democonversations';
+import { demoConversations } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Memo, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
-import { initializeConversations } from '@/stores/conversations';
+import { Memo, observer, use$, useObserveEffect } from '@legendapp/state/react';
+import { store$, initConversation } from '@/stores/conversations';
 
 interface Props {
   className?: string;
   route: string;
 }
 
-const Conversations: FC<Props> = ({ route }) => {
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+const Conversations: FC<Props> = observer(({ route }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const conversationParam = searchParams.get('conversation');
-  const selectedConversation$ = useObservable<string>(
-    conversationParam || demoConversations[0].name
-  );
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
 
-  // Update selected conversation when URL param changes
-  useEffect(() => {
-    if (conversationParam) {
-      selectedConversation$.set(conversationParam);
-    }
-  }, [conversationParam, selectedConversation$]);
-
-  // Fetch conversations from API with proper caching
+  // Fetch conversations from API
   const {
     data: apiConversations = [],
     isError,
@@ -48,127 +33,115 @@ const Conversations: FC<Props> = ({ route }) => {
   } = useQuery({
     queryKey: ['conversations', connectionConfig.baseUrl, isConnected],
     queryFn: async () => {
-      console.log('Fetching conversations, connection state:', isConnected);
       if (!isConnected) {
         console.warn('Attempting to fetch conversations while disconnected');
         return [];
       }
-      try {
-        const conversations = await api.getConversations();
-        console.log('Fetched conversations:', conversations);
-        return conversations;
-      } catch (err) {
-        console.error('Failed to fetch conversations:', err);
-        throw err;
-      }
+      return api.getConversations(100);
     },
     enabled: isConnected,
-    staleTime: 0, // Always refetch when query is invalidated
+    staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
-  // Log any query errors
   if (isError) {
-    console.error('Conversation query error:', error);
+    console.error('Error fetching conversations:', error);
   }
 
-  // Combine demo and API conversations and initialize store
-  const allConversations: ConversationItem[] = useMemo(() => {
-    // Initialize API conversations in store
-    if (apiConversations.length) {
-      console.log('[Conversations] Initializing conversations in store');
-      void initializeConversations(
-        api,
-        apiConversations.map((c) => c.name),
-        10
+  // Initialize store with demo conversations
+  useEffect(() => {
+    demoConversations.forEach((conv) => {
+      initConversation(
+        conv.name,
+        {
+          log: conv.messages,
+          logfile: conv.name,
+          branches: {},
+        },
+        true
       );
-    }
+    });
+  }, []);
 
-    return [
-      // Convert demo conversations to ConversationItems
-      ...demoConversations.map((conv: DemoConversation) => ({
-        name: conv.name,
-        lastUpdated: conv.lastUpdated,
-        messageCount: conv.messages.length,
-        readonly: true,
-      })),
-      // Convert API conversations to ConversationItems
-      ...toConversationItems(apiConversations),
-    ];
+  // Initialize API conversations when loaded
+  useEffect(() => {
+    if (apiConversations.length) {
+      void store$.initializeConversations(api, apiConversations, 10);
+    }
   }, [apiConversations, api]);
 
-  const handleSelectConversation = useCallback(
-    (id: string) => {
-      if (id === selectedConversation$.get()) {
-        return;
+  // URL sync
+  useEffect(() => {
+    const conversationId = searchParams.get('conversation');
+    if (conversationId) {
+      store$.selectConversation(conversationId);
+    } else {
+      store$.selectConversation(demoConversations[0].name);
+    }
+  }, [searchParams]);
+
+  // Update URL when selection changes
+  useObserveEffect(
+    () => {
+      const currentId = store$.selectedId.get();
+      if (currentId) {
+        navigate(`${route}?conversation=${currentId}`, { replace: true });
       }
-      // Cancel any pending queries for the previous conversation
-      queryClient.cancelQueries({
-        queryKey: ['conversation', selectedConversation$.get()],
-      });
-      selectedConversation$.set(id);
-      // Update URL with the new conversation ID
-      console.log(`[Conversations] [handleSelectConversation] id: ${id}`);
-      navigate(`${route}?conversation=${id}`);
     },
-    [selectedConversation$, queryClient, navigate, route]
+    { deps: [store$.selectedId] }
   );
 
-  const conversation$ = useObservable<ConversationItem | undefined>(undefined);
+  // Update document title
+  useObserveEffect(
+    () => {
+      const currentId = store$.selectedId.get();
+      setDocumentTitle(currentId || undefined);
+      return () => setDocumentTitle();
+    },
+    { deps: [store$.selectedId] }
+  );
 
-  // Update conversation$ when selectedConversation$ changes
-  useObserveEffect(selectedConversation$, ({ value: selectedConversation }) => {
-    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation));
-  });
-
-  // Update conversation$ when allConversations changes
-  useEffect(() => {
-    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation$.get()));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allConversations]);
-
-  // Update document title when selected conversation changes
-  useObserveEffect(conversation$, ({ value: conversation }) => {
-    if (conversation) {
-      setDocumentTitle(conversation.name);
-    } else {
-      setDocumentTitle();
-    }
-    return () => setDocumentTitle(); // Reset title on unmount
-  });
+  // Cancel pending queries when switching conversations
+  useObserveEffect(
+    () => {
+      const currentId = store$.selectedId.get();
+      const prevId = store$.selectedId.get();
+      if (currentId && prevId && currentId !== prevId) {
+        queryClient.cancelQueries({
+          queryKey: ['conversation', prevId],
+        });
+      }
+    },
+    { deps: [store$.selectedId] }
+  );
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <LeftSidebar
-        isOpen={leftSidebarOpen}
-        onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
-        conversations={allConversations}
-        selectedConversationId$={selectedConversation$}
-        onSelectConversation={handleSelectConversation}
-        isLoading={isLoading}
-        isError={isError}
-        error={error as Error}
-        onRetry={() => refetch()}
-        route={route}
-      />
       <Memo>
-        {() => {
-          const conversation = conversation$.get();
-          return conversation ? (
-            <ConversationContent
-              conversationId={conversation.name}
-              isReadOnly={conversation.readonly}
-            />
-          ) : null;
-        }}
+        {() => (
+          <LeftSidebar
+            isOpen={store$.ui.leftSidebarOpen.get()}
+            onToggle={() => store$.toggleSidebar('left')}
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={() => refetch()}
+          />
+        )}
       </Memo>
-      <RightSidebar
-        isOpen={rightSidebarOpen}
-        onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}
-      />
+
+      <ConversationContent />
+
+      <Memo>
+        {() => (
+          <RightSidebar
+            isOpen={store$.ui.rightSidebarOpen.get()}
+            onToggle={() => store$.toggleSidebar('right')}
+          />
+        )}
+      </Memo>
     </div>
   );
-};
+});
 
 export default Conversations;

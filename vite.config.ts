@@ -19,4 +19,11 @@ export default defineConfig(({ mode }) => ({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    // you might want to disable CSS since we're not using it in tests
+    css: false,
+  },
 }));

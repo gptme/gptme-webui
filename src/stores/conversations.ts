@@ -1,153 +1,202 @@
 import { observable } from '@legendapp/state';
-import type { ConversationResponse } from '@/types/api';
 import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
-import { demoConversations } from '@/democonversations';
-import type { DemoConversation } from '@/democonversations';
+import type { ConversationResponse } from '@/types/api';
 
+// Core types
 export interface PendingTool {
   id: string;
   tooluse: ToolUse;
 }
 
-export interface ConversationState {
-  // The conversation data
-  data: ConversationResponse;
-  // Whether this conversation is currently generating
-  isGenerating: boolean;
-  // Whether this conversation has an active event stream
-  isConnected: boolean;
-  // Any pending tool
-  pendingTool: PendingTool | null;
-  // Last received message
-  lastMessage?: Message;
-  // Whether to show the initial system message
-  showInitialSystem: boolean;
+export interface ConversationItem {
+  id: string;
+  lastUpdated: Date;
+  messageCount: number;
+  readonly?: boolean;
 }
 
-// Central store for all conversations
-export const conversations$ = observable(new Map<string, ConversationState>());
-
-// Currently selected conversation
-export const selectedConversation$ = observable<string | null>(null);
-
-// Helper functions
-export function updateConversation(id: string, update: Partial<ConversationState>) {
-  if (!conversations$.get(id)) {
-    // Initialize with defaults if conversation doesn't exist
-    conversations$.set(id, {
-      data: { log: [], logfile: id, branches: {} },
-      isGenerating: false,
-      isConnected: false,
-      pendingTool: null,
-      showInitialSystem: false,
-    });
-  }
-  conversations$.get(id)?.assign(update);
-}
-
-export function addMessage(id: string, message: Message | StreamingMessage) {
-  const conv = conversations$.get(id);
-  if (conv) {
-    conv.data.log.push(message);
-  }
-}
-
-export function setGenerating(id: string, isGenerating: boolean) {
-  updateConversation(id, { isGenerating });
-}
-
-export function setConnected(id: string, isConnected: boolean) {
-  updateConversation(id, { isConnected });
-}
-
-export function setPendingTool(id: string, toolId: string | null, tooluse: ToolUse | null) {
-  updateConversation(id, {
-    pendingTool: toolId && tooluse ? { id: toolId, tooluse } : null,
-  });
-}
-
-// Initialize a new conversation in the store
-export function initConversation(id: string, data?: ConversationResponse) {
-  const initial: ConversationState = {
-    data: data || { log: [], logfile: id, branches: {} },
+// Individual conversation store
+export function createConversationStore(id: string, initialData?: ConversationResponse) {
+  const conversation$ = observable({
+    // State
+    data: initialData || {
+      log: [],
+      logfile: id,
+      branches: {},
+    },
     isGenerating: false,
     isConnected: false,
-    pendingTool: null,
-    showInitialSystem: false,
-  };
-  conversations$.set(id, initial);
-}
+    pendingTool: null as PendingTool | null,
+    lastMessage: null as Message | null,
+    readonly: false,
+    lastUpdated: Date.now(),
 
-// Update conversation data in the store
-export function updateConversationData(id: string, data: ConversationResponse) {
-  conversations$.get(id)?.data.set(data);
-}
+    // Actions
+    setGenerating: (generating: boolean) => {
+      conversation$.isGenerating.set(generating);
+    },
 
-// Bulk initialize conversations with their data
-export async function initializeConversations(
-  api: { getConversation: (id: string) => Promise<ConversationResponse> },
-  conversationIds: string[],
-  limit: number = 10
-) {
-  // Initialize all conversations in store first
-  conversationIds.forEach((id) => {
-    if (!conversations$.get(id)) {
-      // Check if this is a demo conversation
-      const demoConv = demoConversations.find((conv: DemoConversation) => conv.name === id);
-      if (demoConv) {
-        initConversation(id, {
-          log: demoConv.messages,
-          logfile: id,
-          branches: {},
-        });
-        return;
-      }
-      initConversation(id);
-    }
+    setConnected: (connected: boolean) => {
+      conversation$.isConnected.set(connected);
+    },
+
+    setPendingTool: (toolId: string | null, tooluse: ToolUse | null) => {
+      conversation$.pendingTool.set(toolId && tooluse ? { id: toolId, tooluse } : null);
+    },
+
+    addMessage: (message: Message | StreamingMessage) => {
+      const obsMessage = observable(message);
+      conversation$.data.log.push(obsMessage);
+      conversation$.lastMessage.set(message);
+      conversation$.lastUpdated.set(Date.now());
+    },
+
+    updateData: (data: ConversationResponse) => {
+      conversation$.data.set(observable(data));
+    },
+
+    setReadonly: (readonly: boolean) => {
+      conversation$.readonly.set(readonly);
+    },
   });
 
-  // Then load data for the first N non-demo conversations
-  const toLoad = conversationIds
-    .filter((id) => !demoConversations.some((conv) => conv.name === id))
-    .slice(0, limit);
-
-  if (toLoad.length === 0) {
-    console.log('[conversations] No non-demo conversations to load');
-    return;
-  }
-
-  console.log(`[conversations] Loading ${toLoad.length} conversations into store`);
-
-  // Load conversations in parallel
-  const results = await Promise.allSettled(
-    toLoad.map(async (id) => {
-      try {
-        const data = await api.getConversation(id);
-        updateConversationData(id, data);
-        return id;
-      } catch (error) {
-        console.error(`Failed to load conversation ${id}:`, error);
-        throw error;
-      }
-    })
-  );
-
-  // Log results
-  const succeeded = results.filter(
-    (r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled'
-  );
-  const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-
-  if (succeeded.length) {
-    console.log(
-      `[conversations] Loaded ${succeeded.length} conversations:`,
-      succeeded.map((r) => r.value)
-    );
-  }
-  if (failed.length) {
-    console.warn(
-      `[conversations] Failed to load ${failed.length} conversations:`,
-      failed.map((r) => r.reason)
-    );
-  }
+  return conversation$;
 }
+
+// When trying to move this into the store, it doesn't work "This expression is not callable."
+export function initConversation(
+  id: string,
+  data?: ConversationResponse,
+  readonly: boolean = false
+) {
+  const conv = createConversationStore(id, data);
+  if (readonly) {
+    conv.setReadonly(readonly);
+  }
+  store$.conversations.get().set(id, conv);
+  return conv;
+}
+
+export type ConversationStore = ReturnType<typeof createConversationStore>;
+
+// Get underlying type for the observable
+export type Conversation = ReturnType<ConversationStore['get']>;
+
+// Root store
+export const store$ = observable({
+  // State
+  conversations: new Map<string, ConversationStore>(),
+  selectedId: null as string | null,
+  ui: {
+    leftSidebarOpen: true,
+    rightSidebarOpen: false,
+    showInitialSystem: false,
+    autoScrollAborted: false,
+    isAutoScrolling: false,
+  },
+  loading: {
+    isLoading: false,
+    error: null as Error | null,
+  },
+
+  // Computed values
+  get selectedConversation(): ConversationStore | null {
+    const id = store$.selectedId.get();
+    return id ? store$.conversations.get().get(id) || null : null;
+  },
+
+  get conversationList(): ConversationItem[] {
+    const convs = store$.conversations.get();
+    console.log(convs);
+    const ids = Array.from(convs.keys());
+    console.log(ids);
+    return ids.map((id) => {
+      const conv: Conversation = convs.get(id);
+      return {
+        id,
+        readonly: conv?.readonly || false,
+        lastUpdated: conv?.lastUpdated || new Date(0),
+        messageCount: conv?.data.log.length || 0,
+      };
+    });
+  },
+
+  // Actions
+  selectConversation(id: string) {
+    store$.selectedId.set(id);
+  },
+
+  toggleSidebar(side: 'left' | 'right') {
+    store$.ui[`${side}SidebarOpen`].toggle();
+  },
+
+  setAutoScroll(aborted: boolean) {
+    store$.ui.autoScrollAborted.set(aborted);
+  },
+
+  setAutoScrolling(scrolling: boolean) {
+    store$.ui.isAutoScrolling.set(scrolling);
+  },
+
+  getOrCreateConversation(id: string): ConversationStore {
+    let conv$ = store$.conversations.get().get(id);
+    if (!conv$) {
+      conv$ = createConversationStore(id);
+      store$.conversations.set(id, conv$);
+    }
+    return conv$;
+  },
+
+  initializeConversations: async (
+    api: { getConversation: (id: string) => Promise<ConversationResponse> },
+    conversationList: { name: string; modified: number; messages: number }[],
+    preloadLimit = 10
+  ) => {
+    store$.loading.isLoading.set(true);
+    store$.loading.error.set(null);
+
+    try {
+      // Initialize all conversations with basic data
+      conversationList.forEach((conv) => {
+        if (!store$.conversations.get().get(conv.name)) {
+          const conversation = initConversation(conv.name);
+          conversation.lastUpdated.set(conv.modified * 1000); // Convert to milliseconds
+        }
+      });
+
+      // Preload recent conversations
+      const toPreload = conversationList.slice(0, preloadLimit);
+      if (toPreload.length > 0) {
+        const results = await Promise.allSettled(
+          toPreload.map(async (conv) => {
+            try {
+              const data = await api.getConversation(conv.name);
+              const conversation = store$.conversations.get().get(conv.name);
+              if (conversation) {
+                conversation.updateData(data);
+              }
+              return conv.name;
+            } catch (error) {
+              console.error(`Failed to load conversation ${conv.name}:`, error);
+              throw error;
+            }
+          })
+        );
+
+        const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+        if (failed.length) {
+          console.error(
+            `Failed to load ${failed.length} conversations:`,
+            failed.map((r) => r.reason)
+          );
+          store$.loading.error.set(failed[0].reason);
+        }
+      }
+    } catch (error) {
+      console.error('[conversations] Error during initialization:', error);
+      store$.loading.error.set(error as Error);
+    } finally {
+      store$.loading.isLoading.set(false);
+    }
+  },
+});

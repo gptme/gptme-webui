@@ -1,6 +1,14 @@
 export function getRelativeTimeString(date: Date): string {
   const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const diffMs = date.getTime() - now.getTime();
+
+  // Handle future dates
+  if (diffMs > 0) {
+    console.log(`Future date detected: ${date.toISOString()} (${diffMs}ms in future)`);
+    return date.toLocaleDateString();
+  }
+
+  const diffInSeconds = Math.floor(Math.abs(diffMs) / 1000);
 
   if (diffInSeconds < 60) {
     return 'just now';

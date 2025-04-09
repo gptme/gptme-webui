@@ -3,70 +3,57 @@ import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
-import type { ConversationItem } from './ConversationList';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
 import type { FC } from 'react';
 import { use$ } from '@legendapp/state/react';
-import { type Observable } from '@legendapp/state';
+import { store$, initConversation } from '@/stores/conversations';
 
 interface Props {
   isOpen: boolean;
   onToggle: () => void;
-  conversations: ConversationItem[];
-  selectedConversationId$: Observable<string | null>;
-  onSelectConversation: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
-  error?: Error;
   onRetry?: () => void;
-  route: string;
 }
 
 export const LeftSidebar: FC<Props> = ({
   isOpen,
   onToggle,
-  conversations,
-  selectedConversationId$,
-  onSelectConversation,
   isLoading = false,
   isError = false,
-  error,
   onRetry,
-  route,
 }) => {
   const { api, isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
   const { toast } = useToast();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const handleNewConversation = async () => {
     const newId = Date.now().toString();
-    // Navigate immediately for instant UI feedback
-    navigate(`${route}?conversation=${newId}`);
 
-    // Create conversation in background
-    api
-      .createConversation(newId, [])
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['conversations'] });
-        toast({
-          title: 'New conversation created',
-          description: 'Starting a fresh conversation',
-        });
-      })
-      .catch(() => {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to create new conversation',
-        });
-        // Optionally navigate back on error
-        navigate(route);
+    // Initialize in store first
+    initConversation(newId);
+    store$.selectConversation(newId);
+
+    try {
+      // Create on server
+      await api.createConversation(newId, []);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast({
+        title: 'New conversation created',
+        description: 'Starting a fresh conversation',
       });
+    } catch (error) {
+      // Remove from store and show error
+      console.log('Error creating conversation:', error);
+      store$.conversations.delete(newId);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to create new conversation',
+      });
+    }
   };
 
   return (
@@ -104,15 +91,7 @@ export const LeftSidebar: FC<Props> = ({
           </div>
         </div>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <ConversationList
-            conversations={conversations}
-            selectedId$={selectedConversationId$}
-            onSelect={onSelectConversation}
-            isLoading={isLoading}
-            isError={isError}
-            error={error}
-            onRetry={onRetry}
-          />
+          <ConversationList isLoading={isLoading} isError={isError} onRetry={onRetry} />
           <div className="border-t p-2 text-xs text-muted-foreground">
             <div className="flex items-center justify-center space-x-4">
               <a

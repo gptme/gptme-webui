@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
 import { Computed, use$ } from '@legendapp/state/react';
-import { conversations$ } from '@/stores/conversations';
+import { store$ } from '@/stores/conversations';
 
 export interface ChatOptions {
   model?: string;
@@ -49,8 +49,11 @@ export const ChatInput: FC<Props> = ({
 
   const isConnected = use$(isConnected$);
   const autoFocus = use$(autoFocus$);
-  const conversation = use$(conversations$.get(conversationId));
-  const isGenerating = conversation?.isGenerating || false;
+  // Only track the isGenerating property we need
+  const isGenerating = use$(() => {
+    const conv = store$.conversations.get(conversationId);
+    return conv ? conv.isGenerating.get() : false;
+  });
 
   const placeholder = isReadOnly
     ? 'This is a demo conversation (read-only)'
