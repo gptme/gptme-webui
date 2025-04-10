@@ -8,6 +8,7 @@ import { Label } from './ui/label';
 import { ToolConfirmationDialog } from './ToolConfirmationDialog';
 import { For, Memo, useObservable, useObserveEffect } from '@legendapp/state/react';
 import { getObservableIndex } from '@legendapp/state';
+import { useApi } from '@/contexts/ApiContext';
 
 interface Props {
   conversationId: string;
@@ -32,6 +33,19 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
   const shouldFocus$ = useObservable(false);
   // Store the previous conversation ID to detect changes
   const prevConversationIdRef = useRef<string | null>(null);
+
+  const { api } = useApi();
+  const hasSession$ = useObservable<boolean>(false);
+
+  useObserveEffect(api.sessions$.get(conversationId), () => {
+    if (!isReadOnly) {
+      console.log(
+        '[ConversationContent] Session updated:',
+        api.sessions$.get(conversationId).get()
+      );
+      hasSession$.set(api.sessions$.get(conversationId).get() !== undefined);
+    }
+  });
 
   // Detect when the conversation changes and set focus
   useEffect(() => {
@@ -216,6 +230,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
         onSend={handleSendMessage}
         onInterrupt={interruptGeneration}
         isReadOnly={isReadOnly}
+        hasSession$={hasSession$}
         defaultModel={AVAILABLE_MODELS[0]}
         availableModels={AVAILABLE_MODELS}
         autoFocus$={shouldFocus$}

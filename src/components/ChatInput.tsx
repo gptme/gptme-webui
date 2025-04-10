@@ -30,6 +30,7 @@ interface Props {
   defaultModel?: string;
   availableModels?: string[];
   autoFocus$: Observable<boolean>;
+  hasSession$: Observable<boolean>;
 }
 
 export const ChatInput: FC<Props> = ({
@@ -40,6 +41,7 @@ export const ChatInput: FC<Props> = ({
   defaultModel = '',
   availableModels = [],
   autoFocus$,
+  hasSession$,
 }) => {
   const [message, setMessage] = useState('');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
@@ -51,14 +53,16 @@ export const ChatInput: FC<Props> = ({
   const autoFocus = use$(autoFocus$);
   const conversation = use$(conversations$.get(conversationId));
   const isGenerating = conversation?.isGenerating || false;
-
+  const hasSession = use$(hasSession$);
   const placeholder = isReadOnly
     ? 'This is a demo conversation (read-only)'
     : !isConnected
       ? 'Connect to gptme to send messages'
-      : 'Send a message...';
+      : !hasSession
+        ? 'Waiting for chat session to be established...'
+        : 'Send a message...';
 
-  const isDisabled = isReadOnly || !isConnected;
+  const isDisabled = isReadOnly || !isConnected || !hasSession;
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {
