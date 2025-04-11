@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/gptme/gptme-webui/actions/workflows/ci.yml/badge.svg)](https://github.com/gptme/gptme-webui/actions/workflows/ci.yml)
 
-A fancy web UI for [gptme][gptme], built with [lovable.dev](lovable.dev).
+A fancy web UI for [gptme][gptme], built with [lovable.dev](https://lovable.dev).
 
 An alternative to the minimal UI currently provided by `gptme`.
 
