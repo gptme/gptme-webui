@@ -39,10 +39,6 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
 
   useObserveEffect(api.sessions$.get(conversationId), () => {
     if (!isReadOnly) {
-      console.log(
-        '[ConversationContent] Session updated:',
-        api.sessions$.get(conversationId).get()
-      );
       hasSession$.set(api.sessions$.get(conversationId).get() !== undefined);
     }
   });
