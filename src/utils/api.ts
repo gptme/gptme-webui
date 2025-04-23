@@ -1,5 +1,6 @@
 import type {
   ApiError,
+  ChatConfig,
   ConversationResponse,
   CreateConversationRequest,
   SendMessageRequest,
@@ -684,6 +685,18 @@ export class ApiClient {
       }
       throw error;
     }
+  }
+
+  async getChatConfig(logfile: string): Promise<ChatConfig> {
+    if (!this.isConnected) {
+      throw new ApiClientError('Not connected to API');
+    }
+
+    const response = await this.fetchJson<ChatConfig>(
+      `${this.baseUrl}/api/v2/conversations/${logfile}/config`
+    );
+
+    return response;
   }
 }
 

@@ -1,5 +1,5 @@
 import { mergeIntoObservable, observable } from '@legendapp/state';
-import type { ConversationResponse } from '@/types/api';
+import type { ChatConfig, ConversationResponse } from '@/types/api';
 import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
 import { demoConversations } from '@/democonversations';
 import type { DemoConversation } from '@/democonversations';
@@ -22,6 +22,8 @@ export interface ConversationState {
   lastMessage?: Message;
   // Whether to show the initial system message
   showInitialSystem: boolean;
+  // The chat config
+  chatConfig: ChatConfig | null;
 }
 
 // Central store for all conversations
@@ -40,6 +42,7 @@ export function updateConversation(id: string, update: Partial<ConversationState
       isConnected: false,
       pendingTool: null,
       showInitialSystem: false,
+      chatConfig: null,
     });
   }
   mergeIntoObservable(conversations$.get(id), update);
@@ -74,6 +77,7 @@ export function initConversation(id: string, data?: ConversationResponse) {
     isConnected: false,
     pendingTool: null,
     showInitialSystem: false,
+    chatConfig: null,
   };
   conversations$.set(id, initial);
 }

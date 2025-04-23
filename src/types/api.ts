@@ -22,3 +22,36 @@ export interface ConversationResponse {
   logfile: string;
   branches: Record<string, Message[]>;
 }
+
+export enum ToolFormat {
+  MARKDOWN = 'markdown',
+  XML = 'xml',
+  TOOL = 'tool',
+}
+
+export interface McpServerConfig {
+  name: string;
+  enabled: boolean;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+export interface McpConfig {
+  enabled: boolean;
+  auto_start: boolean;
+  servers: McpServerConfig[];
+}
+
+export interface ChatConfig {
+  chat: {
+    model: string | null;
+    tools: string[] | null;
+    tool_format: ToolFormat | null;
+    stream: boolean;
+    interactive: boolean;
+    workspace: string;
+  };
+  env: Record<string, string>;
+  mcp: McpConfig;
+}

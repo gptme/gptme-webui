@@ -20,7 +20,7 @@ interface Props {
 
 const Conversations: FC<Props> = ({ route }) => {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const rightSidebarOpen$ = useObservable(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const conversationParam = searchParams.get('conversation');
@@ -153,17 +153,22 @@ const Conversations: FC<Props> = ({ route }) => {
         {() => {
           const conversation = conversation$.get();
           return conversation ? (
-            <ConversationContent
-              conversationId={conversation.name}
-              isReadOnly={conversation.readonly}
-            />
+            <>
+              <ConversationContent
+                conversationId={conversation.name}
+                isReadOnly={conversation.readonly}
+              />
+              <RightSidebar
+                isOpen$={rightSidebarOpen$}
+                onToggle={() => {
+                  rightSidebarOpen$.set(!rightSidebarOpen$.get());
+                }}
+                conversationId={conversation.name}
+              />
+            </>
           ) : null;
         }}
       </Memo>
-      <RightSidebar
-        isOpen={rightSidebarOpen}
-        onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}
-      />
     </div>
   );
 };
