@@ -121,7 +121,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
 
   // Renamed function, now handles form submission
   const onSubmit = async (values: FormSchema) => {
-    // Capture the state *before* attempting the update
     const originalConfig = chatConfig;
     if (!originalConfig) {
       console.error('Original chatConfig not found, cannot submit.');
@@ -129,15 +128,18 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       return;
     }
 
-    // Map { name: string }[] back to string[]
+    // Capture original tools for comparison later
+    const originalTools = originalConfig.chat.tools;
+
     const toolsStringArray = values.chat.tools?.map((tool) => tool.name);
+    const newTools = toolsStringArray && toolsStringArray.length > 0 ? toolsStringArray : null;
 
     const newConfig: ChatConfig = {
       ...originalConfig,
       chat: {
         ...originalConfig.chat,
         model: values.chat.model || null,
-        tools: toolsStringArray && toolsStringArray.length > 0 ? toolsStringArray : null,
+        tools: newTools,
         tool_format: values.chat.tool_format || null,
         stream: values.chat.stream,
         interactive: values.chat.interactive,
@@ -149,9 +151,23 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       // --- Attempt API Update ---
       await api.updateChatConfig(conversationId, newConfig);
 
-      // --- Success ---
-      updateConversation(conversationId, { chatConfig: newConfig });
-      // Reset form to the *new* state to clear dirty flag
+      // --- Success: Check if tools changed ---
+      const toolsChanged =
+        JSON.stringify(originalTools?.slice().sort()) !==
+        JSON.stringify(newConfig.chat.tools?.slice().sort());
+
+      if (toolsChanged) {
+        console.log('Tools changed, reloading conversation data...');
+        const conversationData = await api.getConversation(conversationId);
+        // Update with new conversation data *and* the new config
+        updateConversation(conversationId, { data: conversationData, chatConfig: newConfig });
+      } else {
+        console.log('Tools unchanged, updating local config only.');
+        // Only update the local config if tools didn't change
+        updateConversation(conversationId, { chatConfig: newConfig });
+      }
+
+      // Reset form to the *new* state regardless of reload
       reset({
         chat: {
           model: newConfig.chat.model || '',
@@ -167,17 +183,16 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       // --- Error Handling ---
       console.error('Failed to update chat config:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to update settings: ${errorMessage}`); // Error toast
+      toast.error(`Failed to update settings: ${errorMessage}`);
 
-      // Reset form back to the *original* state from before the submit attempt
       reset({
         chat: {
           model: originalConfig.chat.model || '',
           tools: originalConfig.chat.tools?.map((tool) => ({ name: tool })) || [],
-          tool_format: originalConfig.chat.tool_format || ToolFormat.MARKDOWN, // Re-apply default logic if null
-          stream: originalConfig.chat.stream ?? true, // Re-apply default logic if null
-          interactive: originalConfig.chat.interactive ?? false, // Re-apply default logic if null
-          workspace: originalConfig.chat.workspace || '', // Re-apply default logic if null
+          tool_format: originalConfig.chat.tool_format || ToolFormat.MARKDOWN,
+          stream: originalConfig.chat.stream ?? true,
+          interactive: originalConfig.chat.interactive ?? false,
+          workspace: originalConfig.chat.workspace || '',
         },
       });
     }
