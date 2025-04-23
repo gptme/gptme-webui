@@ -13,6 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import {
   Select,
@@ -20,10 +21,14 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'; // Assuming Select component exists
-import type { ChatConfig } from '@/types/api'; // Corrected import path
-import { Button } from '@/components/ui/button'; // Import Button
-import { Loader2 } from 'lucide-react'; // Import Loader icon
+} from '@/components/ui/select';
+import type { ChatConfig } from '@/types/api';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { ToolFormat } from '@/types/api';
+import { toast } from 'sonner';
 
 interface ConversationSettingsProps {
   conversationId: string;
@@ -32,7 +37,11 @@ interface ConversationSettingsProps {
 const formSchema = z.object({
   chat: z.object({
     model: z.string().optional(),
-    // Add other config fields here if needed in the future
+    tools: z.string().optional(),
+    tool_format: z.nativeEnum(ToolFormat).nullable().optional(),
+    stream: z.boolean(),
+    interactive: z.boolean(),
+    workspace: z.string().min(1, 'Workspace directory is required'),
   }),
   // Add other top-level config keys if needed
 });
@@ -44,11 +53,18 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
   const conversation$ = conversations$.get(conversationId);
   const chatConfig = use$(conversation$?.chatConfig);
 
+  console.log('chatConfig', chatConfig);
+
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       chat: {
         model: '',
+        tools: '',
+        tool_format: ToolFormat.MARKDOWN,
+        stream: true,
+        interactive: false,
+        workspace: '',
       },
     },
   });
@@ -63,7 +79,16 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
   // Reset form when chatConfig loads or changes
   useEffect(() => {
     if (chatConfig) {
-      reset({ chat: { model: chatConfig.chat.model || '' } });
+      reset({
+        chat: {
+          model: chatConfig.chat.model || '',
+          tools: chatConfig.chat.tools?.join(', ') || '',
+          tool_format: chatConfig.chat.tool_format || ToolFormat.MARKDOWN,
+          stream: chatConfig.chat.stream ?? true,
+          interactive: chatConfig.chat.interactive ?? false,
+          workspace: chatConfig.chat.workspace || '',
+        },
+      });
     }
   }, [chatConfig, reset]);
 
@@ -78,46 +103,81 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
 
   // Renamed function, now handles form submission
   const onSubmit = async (values: FormSchema) => {
-    if (!chatConfig) return;
+    // Capture the state *before* attempting the update
+    const originalConfig = chatConfig;
+    if (!originalConfig) {
+      console.error('Original chatConfig not found, cannot submit.');
+      toast.error('Cannot save settings: Original configuration missing.');
+      return;
+    }
 
-    // Construct the new config based on form values
+    const toolsArray = values.chat.tools
+      ? values.chat.tools
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : null;
+
     const newConfig: ChatConfig = {
-      ...chatConfig, // Keep existing config values
+      ...originalConfig,
       chat: {
-        ...chatConfig.chat, // Keep existing chat config values
-        model: values.chat.model || null, // Update model from form
-        // Update other fields from form values here if added
+        ...originalConfig.chat,
+        model: values.chat.model || null,
+        tools: toolsArray,
+        tool_format: values.chat.tool_format || null,
+        stream: values.chat.stream,
+        interactive: values.chat.interactive,
+        workspace: values.chat.workspace,
       },
-      // Update other top-level keys from form values here if added
     };
 
     try {
-      // TODO: Implement updateChatConfig in ApiClient (src/utils/api.ts)
-      // await api.updateChatConfig(conversationId, newConfig);
-      console.log('TODO: Call api.updateChatConfig', newConfig); // Placeholder
+      // --- Attempt API Update ---
+      await api.updateChatConfig(conversationId, newConfig);
 
-      // Simulate API delay for testing loader
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Update local state after "successful" API call
+      // --- Success ---
       updateConversation(conversationId, { chatConfig: newConfig });
-      reset({ chat: { model: newConfig.chat.model || '' } }); // Reset form to new state (marks it as not dirty)
-      console.log('Settings updated (simulated)');
+      // Reset form to the *new* state to clear dirty flag
+      reset({
+        chat: {
+          model: newConfig.chat.model || '',
+          tools: newConfig.chat.tools?.join(', ') || '',
+          tool_format: newConfig.chat.tool_format || null,
+          stream: newConfig.chat.stream,
+          interactive: newConfig.chat.interactive,
+          workspace: newConfig.chat.workspace,
+        },
+      });
+      toast.success('Settings updated successfully!'); // Success toast
     } catch (error) {
-      console.error('Failed to update chat config (API call commented out):', error);
-      // Optionally show error message to user
+      // --- Error Handling ---
+      console.error('Failed to update chat config:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to update settings: ${errorMessage}`); // Error toast
+
+      // Reset form back to the *original* state from before the submit attempt
+      reset({
+        chat: {
+          model: originalConfig.chat.model || '',
+          tools: originalConfig.chat.tools?.join(', ') || '',
+          tool_format: originalConfig.chat.tool_format || ToolFormat.MARKDOWN, // Re-apply default logic if null
+          stream: originalConfig.chat.stream ?? true, // Re-apply default logic if null
+          interactive: originalConfig.chat.interactive ?? false, // Re-apply default logic if null
+          workspace: originalConfig.chat.workspace || '', // Re-apply default logic if null
+        },
+      });
     }
   };
 
   return (
-    <div>
+    <div className="pb-4">
       <div className="mb-4 text-sm text-muted-foreground">
         Settings for the current conversation
       </div>
       {chatConfig && (
         <Form {...form}>
           {/* Pass onSubmit to handleSubmit */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={control} // Use control from useForm
               name="chat.model"
@@ -147,7 +207,121 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 </FormItem>
               )}
             />
-            {/* Add other settings fields here */}
+
+            {/* Tools Field */}
+            <FormField
+              control={control}
+              name="chat.tools"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tools (comma-separated)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. tool1, tool2"
+                      {...field}
+                      value={field.value || ''} // Ensure controlled component
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Tool Format Field */}
+            <FormField
+              control={control}
+              name="chat.tool_format"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tool Format</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value)}
+                    value={field.value ?? ''}
+                    disabled={isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select tool format" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {/* Use a unique, non-empty value for the default/null option */}
+                      {Object.values(ToolFormat).map((format) => (
+                        <SelectItem key={format} value={format}>
+                          {format}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Stream Field */}
+            <FormField
+              control={control}
+              name="chat.stream"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Stream Response</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Interactive Field */}
+            <FormField
+              control={control}
+              name="chat.interactive"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Interactive Mode</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Workspace Field */}
+            <FormField
+              control={control}
+              name="chat.workspace"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Workspace Directory</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., /path/to/project or ."
+                      {...field}
+                      value={field.value || ''} // Ensure controlled component
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    The directory on the server where the agent can read/write files. Use '.' for
+                    the default.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Add Save Button */}
             <Button type="submit" disabled={!isDirty || isSubmitting}>

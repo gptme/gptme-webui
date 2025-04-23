@@ -45,7 +45,7 @@ export const RightSidebar: FC<Props> = ({ isOpen$, onToggle, conversationId }) =
             </Button>
           </div>
 
-          <div className="h-[calc(100%-3rem)] overflow-hidden">
+          <div className="h-[calc(100%-3rem)] overflow-y-auto">
             <TabsContent value="settings" className="m-0 h-full p-4">
               <ConversationSettings conversationId={conversationId} />
             </TabsContent>

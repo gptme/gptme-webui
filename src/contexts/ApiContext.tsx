@@ -30,6 +30,7 @@ interface ApiContextType {
   subscribeToEvents: ApiClient['subscribeToEvents'];
   closeEventStream: ApiClient['closeEventStream'];
   getChatConfig: ApiClient['getChatConfig'];
+  updateChatConfig: ApiClient['updateChatConfig'];
 }
 
 const ApiContext = createContext<ApiContextType | null>(null);
@@ -215,6 +216,7 @@ export function ApiProvider({
         subscribeToEvents: api.subscribeToEvents.bind(api),
         closeEventStream: api.closeEventStream.bind(api),
         getChatConfig: api.getChatConfig.bind(api),
+        updateChatConfig: api.updateChatConfig.bind(api),
       }}
     >
       {children}

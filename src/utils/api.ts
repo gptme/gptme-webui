@@ -698,6 +698,21 @@ export class ApiClient {
 
     return response;
   }
+
+  async updateChatConfig(logfile: string, config: ChatConfig): Promise<void> {
+    if (!this.isConnected) {
+      throw new ApiClientError('Not connected to API');
+    }
+
+    await this.fetchJson<{ status: string }>(
+      `${this.baseUrl}/api/v2/conversations/${logfile}/config`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(config),
+        signal: this.controller?.signal,
+      }
+    );
+  }
 }
 
 export const createApiClient = (baseUrl?: string, authHeader?: string | null): ApiClient => {
