@@ -1,9 +1,9 @@
 import { use$ } from '@legendapp/state/react';
 import { conversations$, updateConversation } from '@/stores/conversations';
-import { useEffect, type FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { AVAILABLE_MODELS } from './ConversationContent';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -24,11 +24,12 @@ import {
 } from '@/components/ui/select';
 import type { ChatConfig } from '@/types/api';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ToolFormat } from '@/types/api';
 import { toast } from 'sonner';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 interface ConversationSettingsProps {
   conversationId: string;
@@ -37,7 +38,13 @@ interface ConversationSettingsProps {
 const formSchema = z.object({
   chat: z.object({
     model: z.string().optional(),
-    tools: z.string().optional(),
+    tools: z
+      .array(
+        z.object({
+          name: z.string().min(1, 'Tool name cannot be empty'),
+        })
+      )
+      .optional(),
     tool_format: z.nativeEnum(ToolFormat).nullable().optional(),
     stream: z.boolean(),
     interactive: z.boolean(),
@@ -53,6 +60,8 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
   const conversation$ = conversations$.get(conversationId);
   const chatConfig = use$(conversation$?.chatConfig);
 
+  const [toolsOpen, setToolsOpen] = useState(false);
+
   console.log('chatConfig', chatConfig);
 
   const form = useForm<FormSchema>({
@@ -60,7 +69,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     defaultValues: {
       chat: {
         model: '',
-        tools: '',
+        tools: [],
         tool_format: ToolFormat.MARKDOWN,
         stream: true,
         interactive: false,
@@ -76,13 +85,22 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     formState: { isDirty, isSubmitting }, // Get form state
   } = form;
 
+  // Initialize useFieldArray for tools
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'chat.tools',
+  });
+
+  // State for the new tool input
+  const [newToolName, setNewToolName] = useState('');
+
   // Reset form when chatConfig loads or changes
   useEffect(() => {
     if (chatConfig) {
       reset({
         chat: {
           model: chatConfig.chat.model || '',
-          tools: chatConfig.chat.tools?.join(', ') || '',
+          tools: chatConfig.chat.tools?.map((tool) => ({ name: tool })) || [],
           tool_format: chatConfig.chat.tool_format || ToolFormat.MARKDOWN,
           stream: chatConfig.chat.stream ?? true,
           interactive: chatConfig.chat.interactive ?? false,
@@ -111,19 +129,15 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       return;
     }
 
-    const toolsArray = values.chat.tools
-      ? values.chat.tools
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : null;
+    // Map { name: string }[] back to string[]
+    const toolsStringArray = values.chat.tools?.map((tool) => tool.name);
 
     const newConfig: ChatConfig = {
       ...originalConfig,
       chat: {
         ...originalConfig.chat,
         model: values.chat.model || null,
-        tools: toolsArray,
+        tools: toolsStringArray && toolsStringArray.length > 0 ? toolsStringArray : null,
         tool_format: values.chat.tool_format || null,
         stream: values.chat.stream,
         interactive: values.chat.interactive,
@@ -141,7 +155,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       reset({
         chat: {
           model: newConfig.chat.model || '',
-          tools: newConfig.chat.tools?.join(', ') || '',
+          tools: newConfig.chat.tools?.map((tool) => ({ name: tool })) || [],
           tool_format: newConfig.chat.tool_format || null,
           stream: newConfig.chat.stream,
           interactive: newConfig.chat.interactive,
@@ -159,13 +173,22 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       reset({
         chat: {
           model: originalConfig.chat.model || '',
-          tools: originalConfig.chat.tools?.join(', ') || '',
+          tools: originalConfig.chat.tools?.map((tool) => ({ name: tool })) || [],
           tool_format: originalConfig.chat.tool_format || ToolFormat.MARKDOWN, // Re-apply default logic if null
           stream: originalConfig.chat.stream ?? true, // Re-apply default logic if null
           interactive: originalConfig.chat.interactive ?? false, // Re-apply default logic if null
           workspace: originalConfig.chat.workspace || '', // Re-apply default logic if null
         },
       });
+    }
+  };
+
+  // Handler for adding a new tool
+  const handleAddTool = () => {
+    const trimmedName = newToolName.trim();
+    if (trimmedName) {
+      append({ name: trimmedName });
+      setNewToolName(''); // Clear input after adding
     }
   };
 
@@ -187,7 +210,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                   <Select
                     // Only update form state on change
                     onValueChange={field.onChange}
-                    value={field.value || ''}
+                    value={field.value ?? ''}
                     disabled={isSubmitting} // Disable while submitting
                   >
                     <FormControl>
@@ -208,22 +231,42 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
               )}
             />
 
-            {/* Tools Field */}
+            {/* Stream Field */}
             <FormField
               control={control}
-              name="chat.tools"
+              name="chat.stream"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tools (comma-separated)</FormLabel>
+                <FormItem className="flex flex-row items-center justify-between ">
+                  <div className="space-y-0.5">
+                    <FormLabel>Stream Response</FormLabel>
+                  </div>
                   <FormControl>
-                    <Input
-                      placeholder="e.g. tool1, tool2"
-                      {...field}
-                      value={field.value || ''} // Ensure controlled component
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
                       disabled={isSubmitting}
                     />
                   </FormControl>
-                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Interactive Field */}
+            <FormField
+              control={control}
+              name="chat.interactive"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between ">
+                  <div className="space-y-0.5">
+                    <FormLabel>Interactive Mode</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -246,7 +289,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {/* Use a unique, non-empty value for the default/null option */}
                       {Object.values(ToolFormat).map((format) => (
                         <SelectItem key={format} value={format}>
                           {format}
@@ -255,46 +297,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Stream Field */}
-            <FormField
-              control={control}
-              name="chat.stream"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                  <div className="space-y-0.5">
-                    <FormLabel>Stream Response</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isSubmitting}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {/* Interactive Field */}
-            <FormField
-              control={control}
-              name="chat.interactive"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                  <div className="space-y-0.5">
-                    <FormLabel>Interactive Mode</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isSubmitting}
-                    />
-                  </FormControl>
                 </FormItem>
               )}
             />
@@ -322,6 +324,67 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 </FormItem>
               )}
             />
+
+            {/* Tools Field Array Section */}
+            <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
+              <FormItem>
+                <CollapsibleTrigger>
+                  <div className="flex w-full items-center justify-start">
+                    <FormLabel>Tools</FormLabel>
+                    {toolsOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                  <FormDescription className=" mt-4">
+                    List of tool names the agent can use.
+                  </FormDescription>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-0">
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="flex items-center space-x-2">
+                        <span className="flex-grow ">{field.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                          disabled={isSubmitting}
+                          aria-label="Remove tool"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="my-2 flex items-center space-x-2">
+                    <Input
+                      placeholder="New tool name"
+                      value={newToolName}
+                      onChange={(e) => setNewToolName(e.target.value)}
+                      disabled={isSubmitting}
+                      onKeyDown={(e) => {
+                        // Optional: Add tool on Enter press
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTool();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button" // Prevent form submission
+                      variant="outline"
+                      onClick={handleAddTool}
+                      disabled={!newToolName.trim() || isSubmitting}
+                    >
+                      Add Tool
+                    </Button>
+                  </div>
+                </CollapsibleContent>
+              </FormItem>
+            </Collapsible>
 
             {/* Add Save Button */}
             <Button type="submit" disabled={!isDirty || isSubmitting}>
