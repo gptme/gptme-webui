@@ -420,34 +420,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             <h3 className="text-lg font-medium">Chat Configuration</h3>
-            <FormField
-              control={control}
-              name="chat.model"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Model</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value ?? ''}
-                    disabled={isSubmitting}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {AVAILABLE_MODELS.map((model) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             {/* Stream Field */}
             <FormField
@@ -489,27 +461,27 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
               )}
             />
 
-            {/* Tool Format Field */}
+            {/* Model Field */}
             <FormField
               control={control}
-              name="chat.tool_format"
+              name="chat.model"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tool Format</FormLabel>
+                  <FormLabel>Model</FormLabel>
                   <Select
-                    onValueChange={(value) => field.onChange(value)}
+                    onValueChange={field.onChange}
                     value={field.value ?? ''}
                     disabled={isSubmitting}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select tool format" />
+                        <SelectValue placeholder="Select a model" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.values(ToolFormat).map((format) => (
-                        <SelectItem key={format} value={format}>
-                          {format}
+                      {AVAILABLE_MODELS.map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -542,67 +514,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 </FormItem>
               )}
             />
-
-            {/* Tools Field Array Section */}
-            <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
-              <FormItem>
-                <CollapsibleTrigger>
-                  <div className="flex w-full items-center justify-start">
-                    <FormLabel>Tools</FormLabel>
-                    {toolsOpen ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </div>
-                  <FormDescription className=" mt-4">
-                    List of tool names the agent can use.
-                  </FormDescription>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="space-y-0">
-                    {toolFields.map((field, index) => (
-                      <div key={field.id} className="flex items-center space-x-2">
-                        <span className="flex-grow ">{field.name}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toolRemove(index)}
-                          disabled={isSubmitting}
-                          aria-label="Remove tool"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="my-2 flex items-center space-x-2">
-                    <Input
-                      placeholder="New tool name"
-                      value={newToolName}
-                      onChange={(e) => setNewToolName(e.target.value)}
-                      disabled={isSubmitting}
-                      onKeyDown={(e) => {
-                        // Optional: Add tool on Enter press
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddTool();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button" // Prevent form submission
-                      variant="outline"
-                      onClick={handleAddTool}
-                      disabled={!newToolName.trim() || isSubmitting}
-                    >
-                      Add Tool
-                    </Button>
-                  </div>
-                </CollapsibleContent>
-              </FormItem>
-            </Collapsible>
 
             {/* Env Vars Field Array Section */}
             <FormItem>
@@ -674,6 +585,99 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 </FormMessage>
               )}
             </FormItem>
+
+            <h3 className="text-lg font-medium">Tools</h3>
+
+            {/* Tool Format Field */}
+            <FormField
+              control={control}
+              name="chat.tool_format"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tool Format</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value)}
+                    value={field.value ?? ''}
+                    disabled={isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select tool format" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.values(ToolFormat).map((format) => (
+                        <SelectItem key={format} value={format}>
+                          {format}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Tools Field Array Section */}
+            <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
+              <FormItem>
+                <CollapsibleTrigger>
+                  <div className="flex w-full items-center justify-start">
+                    <FormLabel>Enabled Tools</FormLabel>
+                    {toolsOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                  <FormDescription className=" mt-4">
+                    List of tool names the agent can use.
+                  </FormDescription>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-0">
+                    {toolFields.map((field, index) => (
+                      <div key={field.id} className="flex items-center space-x-2">
+                        <span className="flex-grow ">{field.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toolRemove(index)}
+                          disabled={isSubmitting}
+                          aria-label="Remove tool"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="my-2 flex items-center space-x-2">
+                    <Input
+                      placeholder="New tool name"
+                      value={newToolName}
+                      onChange={(e) => setNewToolName(e.target.value)}
+                      disabled={isSubmitting}
+                      onKeyDown={(e) => {
+                        // Optional: Add tool on Enter press
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTool();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button" // Prevent form submission
+                      variant="outline"
+                      onClick={handleAddTool}
+                      disabled={!newToolName.trim() || isSubmitting}
+                    >
+                      Add Tool
+                    </Button>
+                  </div>
+                </CollapsibleContent>
+              </FormItem>
+            </Collapsible>
 
             {/* MCP Configuration Section */}
             <h3 className="text-lg font-medium">MCP Configuration</h3>
