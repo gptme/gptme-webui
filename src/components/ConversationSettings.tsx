@@ -87,6 +87,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
   const chatConfig = use$(conversation$?.chatConfig);
 
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [mcpOpen, setMcpOpen] = useState(false);
 
   console.log('chatConfig', chatConfig);
 
@@ -630,8 +631,8 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                       <ChevronRight className="h-4 w-4" />
                     )}
                   </div>
-                  <FormDescription className=" mt-4">
-                    List of tool names the agent can use.
+                  <FormDescription className="mt-3">
+                    List of tools that the agent can use.
                   </FormDescription>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
@@ -719,172 +720,199 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
               )}
             />
 
-            <FormItem>
-              <FormLabel>MCP Servers</FormLabel>
-              <div className="space-y-4">
-                {serverFields.map((serverField, serverIndex) => (
-                  <div key={serverField.id} className="relative space-y-4 rounded-lg border p-4">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => serverRemove(serverIndex)}
-                      disabled={isSubmitting}
-                      aria-label="Remove Server"
-                      className="absolute right-2 top-2 h-6 w-6"
-                    >
-                      {' '}
-                      <X className="h-4 w-4" />{' '}
-                    </Button>
-
-                    <FormField
-                      control={control}
-                      name={`mcp.servers.${serverIndex}.name`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Server Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="e.g., my_api_server"
-                              {...field}
-                              disabled={isSubmitting}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={control}
-                      name={`mcp.servers.${serverIndex}.enabled`}
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                          <div className="space-y-0.5">
-                            <FormLabel>Enabled</FormLabel>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isSubmitting}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={control}
-                      name={`mcp.servers.${serverIndex}.command`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Command</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., python" {...field} disabled={isSubmitting} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={control}
-                      name={`mcp.servers.${serverIndex}.args`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Arguments (comma-separated)</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="e.g., -m, my_module, --port, 8000"
-                              {...field}
-                              disabled={isSubmitting}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormItem>
-                      <FormLabel>Server Environment Variables</FormLabel>
-                      <div className="space-y-2 border-l-2 pl-4">
-                        {(getValues(`mcp.servers.${serverIndex}.env`) || []).map((_, envIndex) => (
-                          <div
-                            key={`${serverField.id}-env-${envIndex}`}
-                            className="flex items-center space-x-2"
-                          >
-                            <Input
-                              placeholder="Variable Name"
-                              {...register(`mcp.servers.${serverIndex}.env.${envIndex}.key`)}
-                              className="w-1/3"
-                              disabled={isSubmitting}
-                            />
-                            <Input
-                              placeholder="Value"
-                              {...register(`mcp.servers.${serverIndex}.env.${envIndex}.value`)}
-                              className="flex-grow"
-                              disabled={isSubmitting}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-2 flex items-center space-x-2 pl-4">
-                        <Input
-                          placeholder="New var name"
-                          value={newServerEnvInputs[serverIndex]?.key || ''}
-                          onChange={(e) =>
-                            handleServerEnvInputChange(serverIndex, 'key', e.target.value)
-                          }
-                          disabled={isSubmitting}
-                          className="w-1/3"
-                        />
-                        <Input
-                          placeholder="New var value"
-                          value={newServerEnvInputs[serverIndex]?.value || ''}
-                          onChange={(e) =>
-                            handleServerEnvInputChange(serverIndex, 'value', e.target.value)
-                          }
-                          disabled={isSubmitting}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddServerEnvVar(serverIndex);
-                            }
-                          }}
-                        />
+            <Collapsible open={mcpOpen} onOpenChange={setMcpOpen}>
+              <FormItem>
+                <CollapsibleTrigger>
+                  <div className="flex w-full items-center justify-start">
+                    <FormLabel>MCP Servers</FormLabel>
+                    {mcpOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                  <FormDescription className="mt-3">Add or remove MCP servers.</FormDescription>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-4">
+                    {serverFields.map((serverField, serverIndex) => (
+                      <div
+                        key={serverField.id}
+                        className="relative space-y-4 rounded-lg border p-4"
+                      >
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAddServerEnvVar(serverIndex)}
-                          disabled={!newServerEnvInputs[serverIndex]?.key?.trim() || isSubmitting}
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => serverRemove(serverIndex)}
+                          disabled={isSubmitting}
+                          aria-label="Remove Server"
+                          className="absolute right-2 top-2 h-6 w-6"
                         >
                           {' '}
-                          Add Server Var{' '}
+                          <X className="h-4 w-4" />{' '}
                         </Button>
+
+                        <FormField
+                          control={control}
+                          name={`mcp.servers.${serverIndex}.name`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Server Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., my_api_server"
+                                  {...field}
+                                  disabled={isSubmitting}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={control}
+                          name={`mcp.servers.${serverIndex}.enabled`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>Enabled</FormLabel>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  disabled={isSubmitting}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={control}
+                          name={`mcp.servers.${serverIndex}.command`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Command</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., python"
+                                  {...field}
+                                  disabled={isSubmitting}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={control}
+                          name={`mcp.servers.${serverIndex}.args`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Arguments (comma-separated)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., -m, my_module, --port, 8000"
+                                  {...field}
+                                  disabled={isSubmitting}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormItem>
+                          <FormLabel>Server Environment Variables</FormLabel>
+                          <div className="space-y-2 border-l-2 pl-4">
+                            {(getValues(`mcp.servers.${serverIndex}.env`) || []).map(
+                              (_, envIndex) => (
+                                <div
+                                  key={`${serverField.id}-env-${envIndex}`}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Input
+                                    placeholder="Variable Name"
+                                    {...register(`mcp.servers.${serverIndex}.env.${envIndex}.key`)}
+                                    className="w-1/3"
+                                    disabled={isSubmitting}
+                                  />
+                                  <Input
+                                    placeholder="Value"
+                                    {...register(
+                                      `mcp.servers.${serverIndex}.env.${envIndex}.value`
+                                    )}
+                                    className="flex-grow"
+                                    disabled={isSubmitting}
+                                  />
+                                </div>
+                              )
+                            )}
+                          </div>
+                          <div className="mt-2 flex items-center space-x-2 pl-4">
+                            <Input
+                              placeholder="New var name"
+                              value={newServerEnvInputs[serverIndex]?.key || ''}
+                              onChange={(e) =>
+                                handleServerEnvInputChange(serverIndex, 'key', e.target.value)
+                              }
+                              disabled={isSubmitting}
+                              className="w-1/3"
+                            />
+                            <Input
+                              placeholder="New var value"
+                              value={newServerEnvInputs[serverIndex]?.value || ''}
+                              onChange={(e) =>
+                                handleServerEnvInputChange(serverIndex, 'value', e.target.value)
+                              }
+                              disabled={isSubmitting}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddServerEnvVar(serverIndex);
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddServerEnvVar(serverIndex)}
+                              disabled={
+                                !newServerEnvInputs[serverIndex]?.key?.trim() || isSubmitting
+                              }
+                            >
+                              {' '}
+                              Add Server Var{' '}
+                            </Button>
+                          </div>
+                          {errors.mcp?.servers?.[serverIndex]?.env && (
+                            <FormMessage>Error in server environment variables.</FormMessage>
+                          )}
+                        </FormItem>
                       </div>
-                      {errors.mcp?.servers?.[serverIndex]?.env && (
-                        <FormMessage>Error in server environment variables.</FormMessage>
-                      )}
-                    </FormItem>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddServer}
-                className="mt-4"
-                disabled={isSubmitting}
-              >
-                {' '}
-                Add MCP Server{' '}
-              </Button>
-              <FormDescription> Configure external processes managed by MCP. </FormDescription>
-              {errors.mcp?.servers && (
-                <FormMessage>
-                  {errors.mcp.servers.message || errors.mcp.servers.root?.message}
-                </FormMessage>
-              )}
-            </FormItem>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddServer}
+                    className="mt-4"
+                    disabled={isSubmitting}
+                  >
+                    {' '}
+                    Add MCP Server{' '}
+                  </Button>
+                  <FormDescription> Configure external processes managed by MCP. </FormDescription>
+                  {errors.mcp?.servers && (
+                    <FormMessage>
+                      {errors.mcp.servers.message || errors.mcp.servers.root?.message}
+                    </FormMessage>
+                  )}
+                </CollapsibleContent>
+              </FormItem>
+            </Collapsible>
 
             {/* Submit Button */}
             <hr />
