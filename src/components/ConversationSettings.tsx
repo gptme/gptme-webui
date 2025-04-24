@@ -35,6 +35,21 @@ interface ConversationSettingsProps {
   conversationId: string;
 }
 
+const mcpServerSchema = z.object({
+  name: z.string().min(1, 'Server name cannot be empty'),
+  enabled: z.boolean(),
+  command: z.string().min(1, 'Command cannot be empty'),
+  args: z.string(),
+  env: z
+    .array(
+      z.object({
+        key: z.string().min(1, 'Variable name cannot be empty'),
+        value: z.string(),
+      })
+    )
+    .optional(),
+});
+
 const formSchema = z.object({
   chat: z.object({
     model: z.string().optional(),
@@ -45,17 +60,26 @@ const formSchema = z.object({
     workspace: z.string().min(1, 'Workspace directory is required'),
     env: z
       .array(
-        z.object({
-          key: z.string().min(1, 'Variable name cannot be empty'),
-          value: z.string(),
-        })
+        z.object({ key: z.string().min(1, 'Variable name cannot be empty'), value: z.string() })
       )
       .optional(),
   }),
-  // Add other top-level config keys if needed
+  mcp: z.object({
+    enabled: z.boolean(),
+    auto_start: z.boolean(),
+    servers: z.array(mcpServerSchema).optional(),
+  }),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
+
+const defaultMcpServer: z.infer<typeof mcpServerSchema> = {
+  name: '',
+  enabled: true,
+  command: '',
+  args: '',
+  env: [],
+};
 
 export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversationId }) => {
   const api = useApi();
@@ -78,6 +102,11 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
         workspace: '',
         env: [],
       },
+      mcp: {
+        enabled: false,
+        auto_start: false,
+        servers: [],
+      },
     },
   });
 
@@ -87,9 +116,10 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     control,
     register,
     formState: { isDirty, isSubmitting, errors },
+    getValues,
+    setValue,
   } = form;
 
-  // Initialize useFieldArray for tools
   const {
     fields: toolFields,
     append: toolAppend,
@@ -99,10 +129,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     name: 'chat.tools',
   });
 
-  // State for the new tool input
-  const [newToolName, setNewToolName] = useState('');
-
-  // useFieldArray for Env Vars
   const {
     fields: envFields,
     append: envAppend,
@@ -111,12 +137,27 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     control,
     name: 'chat.env',
   });
+
+  const {
+    fields: serverFields,
+    append: serverAppend,
+    remove: serverRemove,
+  } = useFieldArray({
+    control,
+    name: 'mcp.servers',
+  });
+
+  const [newToolName, setNewToolName] = useState('');
   const [newEnvKey, setNewEnvKey] = useState('');
   const [newEnvValue, setNewEnvValue] = useState('');
+  const [newServerEnvInputs, setNewServerEnvInputs] = useState<
+    Record<number, { key: string; value: string }>
+  >({});
 
   // Reset form when chatConfig loads or changes
   useEffect(() => {
     if (chatConfig) {
+      console.log('Resetting form with chatConfig:', chatConfig);
       reset({
         chat: {
           model: chatConfig.chat.model || '',
@@ -129,7 +170,26 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
             ? Object.entries(chatConfig.env).map(([key, value]) => ({ key, value }))
             : [],
         },
+        mcp: {
+          enabled: chatConfig.mcp?.enabled ?? false,
+          auto_start: chatConfig.mcp?.auto_start ?? false,
+          servers:
+            chatConfig.mcp?.servers?.map((server) => ({
+              name: server.name || '',
+              enabled: server.enabled ?? false,
+              command: server.command || '',
+              args: server.args?.join(', ') || '',
+              env: server.env
+                ? Object.entries(server.env).map(([key, value]) => ({ key, value }))
+                : [],
+            })) || [],
+        },
       });
+      const initialServerEnvState: Record<number, { key: string; value: string }> = {};
+      (chatConfig.mcp?.servers || []).forEach((_, index) => {
+        initialServerEnvState[index] = { key: '', value: '' };
+      });
+      setNewServerEnvInputs(initialServerEnvState);
     }
   }, [chatConfig, reset]);
 
@@ -142,7 +202,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     }
   }, [api, chatConfig, conversationId]);
 
-  // Renamed function, now handles form submission
   const onSubmit = async (values: FormSchema) => {
     const originalConfig = chatConfig;
     if (!originalConfig) {
@@ -154,21 +213,34 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     // Capture original tools for comparison later
     const originalTools = originalConfig.chat.tools;
 
-    // Map tools array
     const toolsStringArray = values.chat.tools?.map((tool) => tool.name);
-    const newTools = toolsStringArray && toolsStringArray.length > 0 ? toolsStringArray : null;
+    const newTools = toolsStringArray?.length ? toolsStringArray : null;
+    const newEnv =
+      values.chat.env?.reduce(
+        (acc, { key, value }) => {
+          if (key.trim()) acc[key.trim()] = value;
+          return acc;
+        },
+        {} as Record<string, string>
+      ) || {};
 
-    // Map env array back to Record<string, string>
-    const newEnv = values.chat.env?.reduce(
-      (acc, { key, value }) => {
-        // Ensure key is not empty before adding
-        if (key.trim()) {
-          acc[key.trim()] = value;
-        }
-        return acc;
-      },
-      {} as Record<string, string>
-    );
+    const newMcpServers = values.mcp?.servers?.map((server) => ({
+      name: server.name,
+      enabled: server.enabled,
+      command: server.command,
+      args: server.args
+        .split(',')
+        .map((arg) => arg.trim())
+        .filter(Boolean),
+      env:
+        server.env?.reduce(
+          (acc, { key, value }) => {
+            if (key.trim()) acc[key.trim()] = value;
+            return acc;
+          },
+          {} as Record<string, string>
+        ) || {},
+    }));
 
     const newConfig: ChatConfig = {
       ...originalConfig,
@@ -181,9 +253,15 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
         interactive: values.chat.interactive,
         workspace: values.chat.workspace,
       },
-      env: newEnv && Object.keys(newEnv).length > 0 ? newEnv : {},
-      mcp: originalConfig.mcp,
+      env: newEnv,
+      mcp: {
+        enabled: values.mcp.enabled,
+        auto_start: values.mcp.auto_start,
+        servers: newMcpServers || [],
+      },
     };
+
+    console.log('Submitting new config:', JSON.stringify(newConfig, null, 2));
 
     try {
       // --- Attempt API Update ---
@@ -204,8 +282,8 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
         // Only update the local config if tools didn't change
         updateConversation(conversationId, { chatConfig: newConfig });
       }
+      toast.success('Settings updated successfully!');
 
-      // Reset form to the *new* state regardless of reload
       reset({
         chat: {
           model: newConfig.chat.model || '',
@@ -218,10 +296,27 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
             ? Object.entries(newConfig.env).map(([key, value]) => ({ key, value }))
             : [],
         },
+        mcp: {
+          enabled: newConfig.mcp.enabled,
+          auto_start: newConfig.mcp.auto_start,
+          servers:
+            newConfig.mcp.servers?.map((server) => ({
+              name: server.name || '',
+              enabled: server.enabled ?? false,
+              command: server.command || '',
+              args: server.args?.join(', ') || '',
+              env: server.env
+                ? Object.entries(server.env).map(([key, value]) => ({ key, value }))
+                : [],
+            })) || [],
+        },
       });
-      toast.success('Settings updated successfully!'); // Success toast
+      const initialServerEnvState: Record<number, { key: string; value: string }> = {};
+      (newConfig.mcp?.servers || []).forEach((_, index) => {
+        initialServerEnvState[index] = { key: '', value: '' };
+      });
+      setNewServerEnvInputs(initialServerEnvState);
     } catch (error) {
-      // --- Error Handling ---
       console.error('Failed to update chat config:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to update settings: ${errorMessage}`);
@@ -238,7 +333,26 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
             ? Object.entries(originalConfig.env).map(([key, value]) => ({ key, value }))
             : [],
         },
+        mcp: {
+          enabled: originalConfig.mcp?.enabled ?? false,
+          auto_start: originalConfig.mcp?.auto_start ?? false,
+          servers:
+            originalConfig.mcp?.servers?.map((server) => ({
+              name: server.name || '',
+              enabled: server.enabled ?? false,
+              command: server.command || '',
+              args: server.args?.join(', ') || '',
+              env: server.env
+                ? Object.entries(server.env).map(([key, value]) => ({ key, value }))
+                : [],
+            })) || [],
+        },
       });
+      const originalServerEnvState: Record<number, { key: string; value: string }> = {};
+      (originalConfig.mcp?.servers || []).forEach((_, index) => {
+        originalServerEnvState[index] = { key: '', value: '' };
+      });
+      setNewServerEnvInputs(originalServerEnvState);
     }
   };
 
@@ -261,6 +375,42 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     }
   };
 
+  const handleAddServer = () => {
+    serverAppend(defaultMcpServer);
+    setNewServerEnvInputs((prev) => ({ ...prev, [serverFields.length]: { key: '', value: '' } }));
+  };
+
+  const handleAddServerEnvVar = (serverIndex: number) => {
+    const inputState = newServerEnvInputs[serverIndex];
+    if (inputState && inputState.key.trim()) {
+      const fieldArrayName = `mcp.servers.${serverIndex}.env` as const;
+      const currentServerEnv = getValues(fieldArrayName) || [];
+      setValue(fieldArrayName, [
+        ...currentServerEnv,
+        { key: inputState.key.trim(), value: inputState.value },
+      ]);
+
+      setNewServerEnvInputs((prev) => ({
+        ...prev,
+        [serverIndex]: { key: '', value: '' },
+      }));
+    }
+  };
+
+  const handleServerEnvInputChange = (
+    serverIndex: number,
+    field: 'key' | 'value',
+    value: string
+  ) => {
+    setNewServerEnvInputs((prev) => ({
+      ...prev,
+      [serverIndex]: {
+        ...(prev[serverIndex] || { key: '', value: '' }),
+        [field]: value,
+      },
+    }));
+  };
+
   return (
     <div className="pb-4">
       <div className="mb-4 text-sm text-muted-foreground">
@@ -268,19 +418,18 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       </div>
       {chatConfig && (
         <Form {...form}>
-          {/* Pass onSubmit to handleSubmit */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <h3 className="text-lg font-medium">Chat Configuration</h3>
             <FormField
-              control={control} // Use control from useForm
+              control={control}
               name="chat.model"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Model</FormLabel>
                   <Select
-                    // Only update form state on change
                     onValueChange={field.onChange}
                     value={field.value ?? ''}
-                    disabled={isSubmitting} // Disable while submitting
+                    disabled={isSubmitting}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -305,7 +454,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
               control={control}
               name="chat.stream"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between ">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                   <div className="space-y-0.5">
                     <FormLabel>Stream Response</FormLabel>
                   </div>
@@ -325,7 +474,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
               control={control}
               name="chat.interactive"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between ">
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                   <div className="space-y-0.5">
                     <FormLabel>Interactive Mode</FormLabel>
                   </div>
@@ -381,7 +530,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                     <Input
                       placeholder="e.g., /path/to/project or ."
                       {...field}
-                      value={field.value || ''} // Ensure controlled component
+                      value={field.value || ''}
                       disabled={isSubmitting}
                     />
                   </FormControl>
@@ -526,7 +675,215 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
               )}
             </FormItem>
 
-            {/* Add Save Button */}
+            {/* MCP Configuration Section */}
+            <h3 className="text-lg font-medium">MCP Configuration</h3>
+            <FormField
+              control={control}
+              name="mcp.enabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Enable MCP</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="mcp.auto_start"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Auto-Start MCP Servers</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormItem>
+              <FormLabel>MCP Servers</FormLabel>
+              <div className="space-y-4">
+                {serverFields.map((serverField, serverIndex) => (
+                  <div key={serverField.id} className="relative space-y-4 rounded-lg border p-4">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => serverRemove(serverIndex)}
+                      disabled={isSubmitting}
+                      aria-label="Remove Server"
+                      className="absolute right-2 top-2 h-6 w-6"
+                    >
+                      {' '}
+                      <X className="h-4 w-4" />{' '}
+                    </Button>
+
+                    <FormField
+                      control={control}
+                      name={`mcp.servers.${serverIndex}.name`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Server Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., my_api_server"
+                              {...field}
+                              disabled={isSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name={`mcp.servers.${serverIndex}.enabled`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>Enabled</FormLabel>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isSubmitting}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name={`mcp.servers.${serverIndex}.command`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Command</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., python" {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name={`mcp.servers.${serverIndex}.args`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Arguments (comma-separated)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., -m, my_module, --port, 8000"
+                              {...field}
+                              disabled={isSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormItem>
+                      <FormLabel>Server Environment Variables</FormLabel>
+                      <div className="space-y-2 border-l-2 pl-4">
+                        {(getValues(`mcp.servers.${serverIndex}.env`) || []).map((_, envIndex) => (
+                          <div
+                            key={`${serverField.id}-env-${envIndex}`}
+                            className="flex items-center space-x-2"
+                          >
+                            <Input
+                              placeholder="Variable Name"
+                              {...register(`mcp.servers.${serverIndex}.env.${envIndex}.key`)}
+                              className="w-1/3"
+                              disabled={isSubmitting}
+                            />
+                            <Input
+                              placeholder="Value"
+                              {...register(`mcp.servers.${serverIndex}.env.${envIndex}.value`)}
+                              className="flex-grow"
+                              disabled={isSubmitting}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 flex items-center space-x-2 pl-4">
+                        <Input
+                          placeholder="New var name"
+                          value={newServerEnvInputs[serverIndex]?.key || ''}
+                          onChange={(e) =>
+                            handleServerEnvInputChange(serverIndex, 'key', e.target.value)
+                          }
+                          disabled={isSubmitting}
+                          className="w-1/3"
+                        />
+                        <Input
+                          placeholder="New var value"
+                          value={newServerEnvInputs[serverIndex]?.value || ''}
+                          onChange={(e) =>
+                            handleServerEnvInputChange(serverIndex, 'value', e.target.value)
+                          }
+                          disabled={isSubmitting}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddServerEnvVar(serverIndex);
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddServerEnvVar(serverIndex)}
+                          disabled={!newServerEnvInputs[serverIndex]?.key?.trim() || isSubmitting}
+                        >
+                          {' '}
+                          Add Server Var{' '}
+                        </Button>
+                      </div>
+                      {errors.mcp?.servers?.[serverIndex]?.env && (
+                        <FormMessage>Error in server environment variables.</FormMessage>
+                      )}
+                    </FormItem>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddServer}
+                className="mt-4"
+                disabled={isSubmitting}
+              >
+                {' '}
+                Add MCP Server{' '}
+              </Button>
+              <FormDescription> Configure external processes managed by MCP. </FormDescription>
+              {errors.mcp?.servers && (
+                <FormMessage>
+                  {errors.mcp.servers.message || errors.mcp.servers.root?.message}
+                </FormMessage>
+              )}
+            </FormItem>
+
+            {/* Submit Button */}
+            <hr />
             <Button type="submit" disabled={!isDirty || isSubmitting}>
               {isSubmitting ? (
                 <>
