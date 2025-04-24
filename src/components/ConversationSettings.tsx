@@ -38,17 +38,19 @@ interface ConversationSettingsProps {
 const formSchema = z.object({
   chat: z.object({
     model: z.string().optional(),
-    tools: z
-      .array(
-        z.object({
-          name: z.string().min(1, 'Tool name cannot be empty'),
-        })
-      )
-      .optional(),
+    tools: z.array(z.object({ name: z.string().min(1, 'Tool name cannot be empty') })).optional(),
     tool_format: z.nativeEnum(ToolFormat).nullable().optional(),
     stream: z.boolean(),
     interactive: z.boolean(),
     workspace: z.string().min(1, 'Workspace directory is required'),
+    env: z
+      .array(
+        z.object({
+          key: z.string().min(1, 'Variable name cannot be empty'),
+          value: z.string(),
+        })
+      )
+      .optional(),
   }),
   // Add other top-level config keys if needed
 });
@@ -74,6 +76,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
         stream: true,
         interactive: false,
         workspace: '',
+        env: [],
       },
     },
   });
@@ -82,17 +85,34 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     handleSubmit,
     reset,
     control,
-    formState: { isDirty, isSubmitting }, // Get form state
+    register,
+    formState: { isDirty, isSubmitting, errors },
   } = form;
 
   // Initialize useFieldArray for tools
-  const { fields, append, remove } = useFieldArray({
+  const {
+    fields: toolFields,
+    append: toolAppend,
+    remove: toolRemove,
+  } = useFieldArray({
     control,
     name: 'chat.tools',
   });
 
   // State for the new tool input
   const [newToolName, setNewToolName] = useState('');
+
+  // useFieldArray for Env Vars
+  const {
+    fields: envFields,
+    append: envAppend,
+    remove: envRemove,
+  } = useFieldArray({
+    control,
+    name: 'chat.env',
+  });
+  const [newEnvKey, setNewEnvKey] = useState('');
+  const [newEnvValue, setNewEnvValue] = useState('');
 
   // Reset form when chatConfig loads or changes
   useEffect(() => {
@@ -105,6 +125,9 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
           stream: chatConfig.chat.stream ?? true,
           interactive: chatConfig.chat.interactive ?? false,
           workspace: chatConfig.chat.workspace || '',
+          env: chatConfig.env
+            ? Object.entries(chatConfig.env).map(([key, value]) => ({ key, value }))
+            : [],
         },
       });
     }
@@ -131,8 +154,21 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     // Capture original tools for comparison later
     const originalTools = originalConfig.chat.tools;
 
+    // Map tools array
     const toolsStringArray = values.chat.tools?.map((tool) => tool.name);
     const newTools = toolsStringArray && toolsStringArray.length > 0 ? toolsStringArray : null;
+
+    // Map env array back to Record<string, string>
+    const newEnv = values.chat.env?.reduce(
+      (acc, { key, value }) => {
+        // Ensure key is not empty before adding
+        if (key.trim()) {
+          acc[key.trim()] = value;
+        }
+        return acc;
+      },
+      {} as Record<string, string>
+    );
 
     const newConfig: ChatConfig = {
       ...originalConfig,
@@ -145,6 +181,8 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
         interactive: values.chat.interactive,
         workspace: values.chat.workspace,
       },
+      env: newEnv && Object.keys(newEnv).length > 0 ? newEnv : {},
+      mcp: originalConfig.mcp,
     };
 
     try {
@@ -176,6 +214,9 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
           stream: newConfig.chat.stream,
           interactive: newConfig.chat.interactive,
           workspace: newConfig.chat.workspace,
+          env: newConfig.env
+            ? Object.entries(newConfig.env).map(([key, value]) => ({ key, value }))
+            : [],
         },
       });
       toast.success('Settings updated successfully!'); // Success toast
@@ -193,6 +234,9 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
           stream: originalConfig.chat.stream ?? true,
           interactive: originalConfig.chat.interactive ?? false,
           workspace: originalConfig.chat.workspace || '',
+          env: originalConfig.env
+            ? Object.entries(originalConfig.env).map(([key, value]) => ({ key, value }))
+            : [],
         },
       });
     }
@@ -202,8 +246,18 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
   const handleAddTool = () => {
     const trimmedName = newToolName.trim();
     if (trimmedName) {
-      append({ name: trimmedName });
-      setNewToolName(''); // Clear input after adding
+      toolAppend({ name: trimmedName });
+      setNewToolName('');
+    }
+  };
+
+  // Handler for adding a new env var
+  const handleAddEnvVar = () => {
+    const trimmedKey = newEnvKey.trim();
+    if (trimmedKey) {
+      envAppend({ key: trimmedKey, value: newEnvValue });
+      setNewEnvKey('');
+      setNewEnvValue('');
     }
   };
 
@@ -358,14 +412,14 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-0">
-                    {fields.map((field, index) => (
+                    {toolFields.map((field, index) => (
                       <div key={field.id} className="flex items-center space-x-2">
                         <span className="flex-grow ">{field.name}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => remove(index)}
+                          onClick={() => toolRemove(index)}
                           disabled={isSubmitting}
                           aria-label="Remove tool"
                         >
@@ -400,6 +454,77 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 </CollapsibleContent>
               </FormItem>
             </Collapsible>
+
+            {/* Env Vars Field Array Section */}
+            <FormItem>
+              <FormLabel>Environment Variables</FormLabel>
+              <div className="space-y-2">
+                {envFields.map((field, index) => (
+                  <div key={field.id} className="flex items-center space-x-2">
+                    <Input
+                      placeholder="Variable Name"
+                      {...register(`chat.env.${index}.key`)}
+                      className="w-1/3"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      placeholder="Value"
+                      {...register(`chat.env.${index}.value`)}
+                      className="flex-grow"
+                      disabled={isSubmitting}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => envRemove(index)}
+                      disabled={isSubmitting}
+                      aria-label="Remove variable"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex items-center space-x-2">
+                <Input
+                  placeholder="New variable name"
+                  value={newEnvKey}
+                  onChange={(e) => setNewEnvKey(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-1/3"
+                />
+                <Input
+                  placeholder="New variable value"
+                  value={newEnvValue}
+                  onChange={(e) => setNewEnvValue(e.target.value)}
+                  disabled={isSubmitting}
+                  className="flex-grow"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddEnvVar();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddEnvVar}
+                  disabled={!newEnvKey.trim() || isSubmitting}
+                >
+                  Add Variable
+                </Button>
+              </div>
+              <FormDescription>
+                Environment variables available to the agent and tools.
+              </FormDescription>
+              {errors.chat?.env && (
+                <FormMessage>
+                  {errors.chat.env.message || errors.chat.env.root?.message}
+                </FormMessage>
+              )}
+            </FormItem>
 
             {/* Add Save Button */}
             <Button type="submit" disabled={!isDirty || isSubmitting}>
