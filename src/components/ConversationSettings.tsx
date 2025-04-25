@@ -272,9 +272,15 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       const toolsChanged =
         JSON.stringify(originalTools?.slice().sort()) !==
         JSON.stringify(newConfig.chat.tools?.slice().sort());
+      const mcpChanged =
+        originalConfig.mcp?.enabled !== newConfig.mcp?.enabled ||
+        originalConfig.mcp?.auto_start !== newConfig.mcp?.auto_start;
+      const mcpServersChanged =
+        JSON.stringify(originalConfig.mcp?.servers?.slice().sort()) !==
+        JSON.stringify(newConfig.mcp?.servers?.slice().sort());
 
-      if (toolsChanged) {
-        console.log('Tools changed, reloading conversation data...');
+      if (toolsChanged || mcpChanged || mcpServersChanged) {
+        console.log('Tools or MCP servers changed, reloading conversation data...');
         const conversationData = await api.getConversation(conversationId);
         // Update with new conversation data *and* the new config
         updateConversation(conversationId, { data: conversationData, chatConfig: newConfig });
