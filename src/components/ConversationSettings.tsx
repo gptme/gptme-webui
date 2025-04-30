@@ -118,7 +118,6 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     register,
     formState: { isDirty, isSubmitting, errors },
     getValues,
-    setValue,
   } = form;
 
   const {
@@ -143,6 +142,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     fields: serverFields,
     append: serverAppend,
     remove: serverRemove,
+    update: serverUpdate,
   } = useFieldArray({
     control,
     name: 'mcp.servers',
@@ -392,10 +392,10 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     if (inputState && inputState.key.trim()) {
       const fieldArrayName = `mcp.servers.${serverIndex}.env` as const;
       const currentServerEnv = getValues(fieldArrayName) || [];
-      setValue(fieldArrayName, [
-        ...currentServerEnv,
-        { key: inputState.key.trim(), value: inputState.value },
-      ]);
+      serverUpdate(serverIndex, {
+        ...getValues(`mcp.servers.${serverIndex}`),
+        env: [...currentServerEnv, { key: inputState.key.trim(), value: inputState.value }],
+      });
 
       setNewServerEnvInputs((prev) => ({
         ...prev,
@@ -416,6 +416,17 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
         [field]: value,
       },
     }));
+  };
+
+  // Handler for removing a server-specific env var
+  const handleRemoveServerEnvVar = (serverIndex: number, envIndex: number) => {
+    const fieldName = `mcp.servers.${serverIndex}.env` as const;
+    const currentEnvVars = getValues(fieldName) || [];
+    const newEnvVars = currentEnvVars.filter((_, idx) => idx !== envIndex);
+    serverUpdate(serverIndex, {
+      ...getValues(`mcp.servers.${serverIndex}`),
+      env: newEnvVars,
+    });
   };
 
   return (
@@ -854,6 +865,18 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                                       className="flex-grow"
                                       disabled={isSubmitting}
                                     />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() =>
+                                        handleRemoveServerEnvVar(serverIndex, envIndex)
+                                      }
+                                      disabled={isSubmitting}
+                                      aria-label="Remove server variable"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
                                   </div>
                                 )
                               )}
