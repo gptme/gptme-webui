@@ -68,7 +68,11 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
   const showInitialSystem$ = useObservable<boolean>(false);
 
   const hasInitialSystemMessages$ = useObservable(() => {
-    return firstNonSystemIndex$.get() > 0;
+    const log = conversation$.get()?.data.log;
+    if (!log || log.length === 0) {
+      return false;
+    }
+    return log[0].role === 'system';
   });
 
   // Create a ref for the scroll container
