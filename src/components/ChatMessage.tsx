@@ -216,12 +216,21 @@ export const ChatMessage: FC<Props> = ({
                   <div className={messageClasses$.get()}>
                     <div className="px-3 py-1.5">
                       <Memo>
-                        {() => (
-                          <div
-                            ref={contentRef}
-                            className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
-                          />
-                        )}
+                        {() => {
+                          const isEmptyAssistantMessage =
+                            message$.role.get() === 'assistant' && !message$.content.get();
+
+                          return (
+                            <div
+                              ref={contentRef}
+                              className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
+                            >
+                              {isEmptyAssistantMessage && (
+                                <span className="text-muted-foreground">Thinking...</span>
+                              )}
+                            </div>
+                          );
+                        }}
                       </Memo>
                       {renderFiles()}
                     </div>
