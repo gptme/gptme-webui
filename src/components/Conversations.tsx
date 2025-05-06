@@ -1,5 +1,6 @@
 import { useMemo, type FC } from 'react';
 import { useState, useCallback, useEffect } from 'react';
+import { WelcomeView } from '@/components/WelcomeView';
 import { setDocumentTitle } from '@/utils/title';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LeftSidebar } from '@/components/LeftSidebar';
@@ -32,6 +33,9 @@ const Conversations: FC<Props> = ({ route }) => {
   useEffect(() => {
     if (conversationParam) {
       selectedConversation$.set(conversationParam);
+    } else {
+      // Need to use empty string instead of null due to type constraints
+      selectedConversation$.set('');
     }
   }, [conversationParam]);
 
@@ -121,9 +125,10 @@ const Conversations: FC<Props> = ({ route }) => {
 
   // Update conversation$ when allConversations changes
   useEffect(() => {
-    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation$.get()));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allConversations]);
+    const selectedId = selectedConversation$.get();
+    const selectedConversation = allConversations.find((conv) => conv.name === selectedId);
+    conversation$.set(selectedConversation);
+  }, [allConversations, conversation$]);
 
   // Update document title when selected conversation changes
   useObserveEffect(conversation$, ({ value: conversation }) => {
@@ -134,6 +139,13 @@ const Conversations: FC<Props> = ({ route }) => {
     }
     return () => setDocumentTitle(); // Reset title on unmount
   });
+
+  // Hide left sidebar by default when no conversation is selected
+  useEffect(() => {
+    if (!selectedConversation$.get()) {
+      setLeftSidebarOpen(false);
+    }
+  }, [selectedConversation$.get()]);
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -166,7 +178,11 @@ const Conversations: FC<Props> = ({ route }) => {
                 conversationId={conversation.name}
               />
             </>
-          ) : null;
+          ) : (
+            <div className="flex-1">
+              <WelcomeView onToggleHistory={() => setLeftSidebarOpen(true)} />
+            </div>
+          );
         }}
       </Memo>
     </div>
