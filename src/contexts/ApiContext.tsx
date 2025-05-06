@@ -31,6 +31,7 @@ interface ApiContextType {
   closeEventStream: ApiClient['closeEventStream'];
   getChatConfig: ApiClient['getChatConfig'];
   updateChatConfig: ApiClient['updateChatConfig'];
+  deleteConversation: ApiClient['deleteConversation'];
 }
 
 const ApiContext = createContext<ApiContextType | null>(null);
@@ -217,6 +218,7 @@ export function ApiProvider({
         closeEventStream: api.closeEventStream.bind(api),
         getChatConfig: api.getChatConfig.bind(api),
         updateChatConfig: api.updateChatConfig.bind(api),
+        deleteConversation: api.deleteConversation.bind(api),
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-import { Clock, MessageSquare, Lock, Loader2, Signal } from 'lucide-react';
+import { Clock, MessageSquare, Lock, Loader2, Signal, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getRelativeTimeString } from '@/utils/time';
@@ -6,10 +6,11 @@ import { useApi } from '@/contexts/ApiContext';
 import { demoConversations } from '@/democonversations';
 
 import type { MessageRole } from '@/types/conversation';
-import type { FC } from 'react';
+import { useState, type FC } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
 import { conversations$ } from '@/stores/conversations';
+import { DeleteConversationConfirmationDialog } from './DeleteConversationConfrimationDialog';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
@@ -42,6 +43,8 @@ export const ConversationList: FC<Props> = ({
 }) => {
   const { isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
 
   if (!conversations) {
     return null;
@@ -198,6 +201,20 @@ export const ConversationList: FC<Props> = ({
                       <TooltipContent>This conversation is read-only</TooltipContent>
                     </Tooltip>
                   )}
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <span
+                        className="flex items-center"
+                        onClick={() => {
+                          setConversationToDelete(conv.name);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete conversation</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </div>
@@ -209,6 +226,14 @@ export const ConversationList: FC<Props> = ({
 
   return (
     <div data-testid="conversation-list" className="h-full space-y-2 overflow-y-auto p-4">
+      <DeleteConversationConfirmationDialog
+        conversationName={conversationToDelete ?? ''}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onDelete={() => {
+          setConversationToDelete(null);
+        }}
+      />
       {isLoading && (
         <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

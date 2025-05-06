@@ -714,6 +714,17 @@ export class ApiClient {
       }
     );
   }
+
+  async deleteConversation(logfile: string): Promise<void> {
+    if (!this.isConnected) {
+      throw new ApiClientError('Not connected to API');
+    }
+
+    await this.fetchJson<{ status: string }>(`${this.baseUrl}/api/v2/conversations/${logfile}`, {
+      method: 'DELETE',
+      signal: this.controller?.signal,
+    });
+  }
 }
 
 export const createApiClient = (baseUrl?: string, authHeader?: string | null): ApiClient => {
