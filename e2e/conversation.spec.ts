@@ -122,7 +122,7 @@ test.describe('Conversation Flow', () => {
     const message = 'Hello. We are testing, just say exactly "Hello world" without anything else.';
 
     // Type a message
-    await page.getByRole('textbox').fill(message);
+    await page.getByPlaceholder('Send a message...').fill(message);
     await page.keyboard.press('Enter');
 
     // Should show the message in the conversation
