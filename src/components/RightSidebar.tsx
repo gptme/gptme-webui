@@ -1,4 +1,4 @@
-import { PanelRightOpen, PanelRightClose, Monitor, Settings } from 'lucide-react';
+import { PanelRightOpen, PanelRightClose, Monitor, Settings, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ import type { FC } from 'react';
 import { type Observable } from '@legendapp/state';
 import { use$ } from '@legendapp/state/react';
 import { ConversationSettings } from './ConversationSettings';
+import { BrowserPreview } from './BrowserPreview';
 
 const VNC_URL = 'http://localhost:6080/vnc.html';
 
@@ -24,20 +25,28 @@ export const RightSidebar: FC<Props> = ({ isOpen$, onToggle, conversationId }) =
     <div className="relative h-full">
       <div
         className={`border-l transition-all duration-300 ${
-          isOpen ? (activeTab === 'computer' ? 'w-[48rem]' : 'w-[32rem]') : 'w-0'
+          isOpen
+            ? activeTab === 'computer' || activeTab === 'browser'
+              ? 'w-[48rem]'
+              : 'w-[32rem]'
+            : 'w-0'
         } h-full overflow-hidden`}
       >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
           <div className="flex h-12 items-center justify-between border-b px-4">
             <TabsList>
-              <TabsTrigger value="settings">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </TabsTrigger>
               <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="browser">
+                <Globe className="mr-2 h-4 w-4" />
+                Browser
+              </TabsTrigger>
               <TabsTrigger value="computer">
                 <Monitor className="mr-2 h-4 w-4" />
                 Computer
+              </TabsTrigger>
+              <TabsTrigger value="settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
               </TabsTrigger>
             </TabsList>
             <Button variant="ghost" size="icon" onClick={onToggle} className="ml-2">
@@ -59,10 +68,14 @@ export const RightSidebar: FC<Props> = ({ isOpen$, onToggle, conversationId }) =
             <TabsContent value="computer" className="m-0 h-full p-0">
               <iframe
                 src={VNC_URL}
-                className="h-full w-full border-0"
+                className="h-full w-full rounded-md border-0 p-1"
                 allow="clipboard-read; clipboard-write"
                 title="VNC Viewer"
               />
+            </TabsContent>
+
+            <TabsContent value="browser" className="m-0 h-full p-0">
+              <BrowserPreview />
             </TabsContent>
           </div>
         </Tabs>
