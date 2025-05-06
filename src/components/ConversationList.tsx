@@ -202,16 +202,19 @@ export const ConversationList: FC<Props> = ({
                     </Tooltip>
                   )}
                   <Tooltip>
-                    <TooltipTrigger>
-                      <span
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Delete conversation"
                         className="flex items-center"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setConversationToDelete(conv.name);
                           setDeleteDialogOpen(true);
                         }}
                       >
                         <Trash className="h-4 w-4" />
-                      </span>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>Delete conversation</TooltipContent>
                   </Tooltip>
