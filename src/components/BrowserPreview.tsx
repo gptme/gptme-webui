@@ -1,4 +1,4 @@
-import { RefreshCw, Smartphone, Monitor, Terminal } from 'lucide-react';
+import { RefreshCw, Smartphone, Monitor, Terminal, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect, useRef } from 'react';
@@ -17,15 +17,20 @@ interface Props {
 }
 
 export const BrowserPreview: FC<Props> = ({ defaultUrl = 'http://localhost:8080' }) => {
-  const [url, setUrl] = useState(defaultUrl);
+  const [inputValue, setInputValue] = useState(defaultUrl);
+  const [currentUrl, setCurrentUrl] = useState(defaultUrl);
   const [isMobile, setIsMobile] = useState(false);
-  const [key, setKey] = useState(0); // Used to force iframe refresh
   const [showConsole, setShowConsole] = useState(true);
   const [logs, setLogs] = useState<ConsoleMessage[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Clear logs when URL changes
+  useEffect(() => {
+    setLogs([]);
+  }, [currentUrl]);
+
   const handleRefresh = () => {
-    setKey((prev) => prev + 1);
+    setCurrentUrl(inputValue);
     setLogs([]); // Clear logs on refresh
   };
 
@@ -56,13 +61,14 @@ export const BrowserPreview: FC<Props> = ({ defaultUrl = 'http://localhost:8080'
   }, []);
 
   // Inject console proxy script when iframe loads
+  // NOTE: only works with same-origin URLs (we need a workaround to capture logs from cross-origin iframes)
   const handleIframeLoad = () => {
     const iframe = iframeRef.current;
     if (iframe?.contentWindow) {
       // Use Function constructor instead of eval for better type safety
       const script = new Function(consoleProxyScript);
       iframe.contentWindow.document.head.appendChild(
-        Object.assign(document.createElement('script'), {
+        Object.assign(iframe.contentWindow.document.createElement('script'), {
           textContent: `(${script.toString()})();`,
         })
       );
@@ -76,12 +82,20 @@ export const BrowserPreview: FC<Props> = ({ defaultUrl = 'http://localhost:8080'
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b p-2">
-        <Input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="flex-1"
-        />
+        <div className="relative flex-1">
+          <Globe className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleRefresh();
+              }
+            }}
+            className="flex-1 pl-8"
+          />
+        </div>
         <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh">
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -106,13 +120,13 @@ export const BrowserPreview: FC<Props> = ({ defaultUrl = 'http://localhost:8080'
         <div className="h-full border border-foreground/10 bg-muted/30 p-1">
           <iframe
             ref={iframeRef}
-            key={key}
-            src={url}
+            src={currentUrl}
             onLoad={handleIframeLoad}
             className={`h-full w-full rounded-sm bg-background shadow-md ${
               isMobile ? 'mx-auto w-[375px]' : 'w-full'
             }`}
             title="Browser Preview"
+            // sandbox="allow-scripts allow-same-origin"
           />
         </div>
       </div>
