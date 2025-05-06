@@ -2,6 +2,7 @@ import { useMemo, useRef, type FC } from 'react';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useCallback, useEffect } from 'react';
+import { WelcomeView } from '@/components/WelcomeView';
 import { setDocumentTitle } from '@/utils/title';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LeftSidebar } from '@/components/LeftSidebar';
@@ -54,6 +55,9 @@ const Conversations: FC<Props> = ({ route }) => {
     // Handle initial conversation selection
     if (conversationParam) {
       selectedConversation$.set(conversationParam);
+    } else {
+      // Need to use empty string instead of null due to type constraints
+      selectedConversation$.set('');
     }
   }, [conversationParam]);
 
@@ -150,8 +154,9 @@ const Conversations: FC<Props> = ({ route }) => {
 
   // Update conversation$ when available conversations change
   useEffect(() => {
-    const selected = selectedConversation$.get();
-    conversation$.set(allConversations.find((conv) => conv.name === selected));
+    const selectedId = selectedConversation$.get();
+    const selectedConversation = allConversations.find((conv) => conv.name === selectedId);
+    conversation$.set(selectedConversation);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allConversations]);
 
@@ -176,6 +181,13 @@ const Conversations: FC<Props> = ({ route }) => {
       setLeftPanelRef(null);
       setRightPanelRef(null);
     };
+  }, []);
+
+  // Hide left sidebar by default when no conversation is selected
+  useEffect(() => {
+    if (!selectedConversation$.get()) {
+      leftPanelRef.current?.collapse();
+    }
   }, []);
 
   return (
@@ -215,7 +227,11 @@ const Conversations: FC<Props> = ({ route }) => {
                   isReadOnly={conversation.readonly}
                 />
               </div>
-            ) : null;
+            ) : (
+              <div className="flex-1">
+                <WelcomeView onToggleHistory={() => leftPanelRef.current?.expand()} />
+              </div>
+            );
           }}
         </Memo>
       </ResizablePanel>

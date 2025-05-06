@@ -2,10 +2,8 @@ import { Plus, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { useApi } from '@/contexts/ApiContext';
-import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import type { ConversationItem } from './ConversationList';
-import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import type { FC } from 'react';
@@ -33,36 +31,15 @@ export const LeftSidebar: FC<Props> = ({
   onRetry,
   route,
 }) => {
-  const { api, isConnected$ } = useApi();
+  const { isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  const handleNewConversation = async () => {
-    const newId = Date.now().toString();
-    // Navigate immediately for instant UI feedback
-    navigate(`${route}?conversation=${newId}`);
-
-    // Create conversation in background
-    api
-      .createConversation(newId, [])
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['conversations'] });
-        toast({
-          title: 'New conversation created',
-          description: 'Starting a fresh conversation',
-        });
-      })
-      .catch(() => {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to create new conversation',
-        });
-        // Optionally navigate back on error
-        navigate(route);
-      });
+  const handleNewConversation = () => {
+    // Clear the conversation parameter to show WelcomeView
+    navigate(route);
+    // Close the sidebar
+    // onToggle();
   };
 
   return (
