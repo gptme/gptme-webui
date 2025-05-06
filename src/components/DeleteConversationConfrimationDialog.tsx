@@ -50,6 +50,7 @@ export function DeleteConversationConfirmationDialog({
         setErrorMessage('An unknown error occurred');
       }
       setIsDeleting(false);
+      return;
     }
     conversations$.delete(conversationName);
     queryClient.invalidateQueries({
