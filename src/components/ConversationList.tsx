@@ -10,7 +10,7 @@ import { useState, type FC } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
 import { conversations$ } from '@/stores/conversations';
-import { DeleteConversationConfirmationDialog } from './DeleteConversationConfrimationDialog';
+import { DeleteConversationConfirmationDialog } from './DeleteConversationConfirmationDialog';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
