@@ -87,7 +87,7 @@ export function updateConversationData(id: string, data: ConversationResponse) {
   conversations$.get(id)?.data.set(data);
 }
 
-// Bulk initialize conversations with their data
+// Initialize conversations with their data
 export async function initializeConversations(
   api: { getConversation: (id: string) => Promise<ConversationResponse> },
   conversationIds: string[],

@@ -11,7 +11,11 @@ import { toConversationItems } from '@/utils/conversation';
 import { demoConversations, type DemoConversation } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Memo, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
-import { initializeConversations, selectedConversation$ } from '@/stores/conversations';
+import {
+  initializeConversations,
+  selectedConversation$,
+  initConversation,
+} from '@/stores/conversations';
 
 interface Props {
   className?: string;
@@ -27,15 +31,30 @@ const Conversations: FC<Props> = ({ route }) => {
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
-
-  // Update selected conversation when URL param changes
+  const conversation$ = useObservable<ConversationItem | undefined>(undefined);
+  // Track demo initialization
+  // Initialize demo conversations and handle selection on mount
   useEffect(() => {
+    // Initialize demos in store
+    demoConversations.forEach((conv) => {
+      initConversation(conv.name, {
+        log: conv.messages,
+        logfile: conv.name,
+        branches: {},
+      });
+    });
+
+    // Handle initial conversation selection
     if (conversationParam) {
       selectedConversation$.set(conversationParam);
+    } else if (!selectedConversation$.get() && demoConversations.length > 0) {
+      const firstDemo = demoConversations[0].name;
+      selectedConversation$.set(firstDemo);
+      navigate(`${route}?conversation=${firstDemo}`);
     }
-  }, [conversationParam]);
+  }, [conversationParam, navigate, route]); // Add missing dependencies
 
-  // Fetch conversations from API with proper caching
+  // Fetch conversations from API
   const {
     data: apiConversations = [],
     isError,
@@ -45,11 +64,6 @@ const Conversations: FC<Props> = ({ route }) => {
   } = useQuery({
     queryKey: ['conversations', connectionConfig.baseUrl, isConnected],
     queryFn: async () => {
-      console.log('Fetching conversations, connection state:', isConnected);
-      if (!isConnected) {
-        console.warn('Attempting to fetch conversations while disconnected');
-        return [];
-      }
       try {
         const conversations = await api.getConversations();
         console.log('Fetched conversations:', conversations);
@@ -60,7 +74,7 @@ const Conversations: FC<Props> = ({ route }) => {
       }
     },
     enabled: isConnected,
-    staleTime: 0, // Always refetch when query is invalidated
+    staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -70,30 +84,44 @@ const Conversations: FC<Props> = ({ route }) => {
     console.error('Conversation query error:', error);
   }
 
-  // Combine demo and API conversations and initialize store
-  const allConversations: ConversationItem[] = useMemo(() => {
-    // Initialize API conversations in store
-    if (apiConversations.length) {
-      console.log('[Conversations] Initializing conversations in store');
+  // Prepare demo conversation items
+  const demoItems = useMemo(
+    () =>
+      demoConversations.map((conv: DemoConversation) => ({
+        name: conv.name,
+        lastUpdated: conv.lastUpdated,
+        messageCount: conv.messages.length,
+        readonly: true,
+      })),
+    []
+  );
+
+  // Handle API conversations separately
+  const apiItems = useMemo(() => {
+    if (!isConnected) return [];
+    return toConversationItems(apiConversations);
+  }, [isConnected, apiConversations]);
+
+  // Initialize API conversations in store when available
+  useEffect(() => {
+    if (isConnected && apiConversations.length) {
+      console.log('[Conversations] Initializing API conversations');
       void initializeConversations(
         api,
         apiConversations.map((c) => c.name),
         10
       );
     }
+  }, [isConnected, apiConversations, api]);
 
-    return [
-      // Convert demo conversations to ConversationItems
-      ...demoConversations.map((conv: DemoConversation) => ({
-        name: conv.name,
-        lastUpdated: conv.lastUpdated,
-        messageCount: conv.messages.length,
-        readonly: true,
-      })),
-      // Convert API conversations to ConversationItems
-      ...toConversationItems(apiConversations),
-    ];
-  }, [apiConversations, api]);
+  // Combine demo and API conversations
+  const allConversations = useMemo(() => {
+    console.log('[Conversations] Combining conversations', {
+      demoCount: demoItems.length,
+      apiCount: apiItems.length,
+    });
+    return [...demoItems, ...apiItems];
+  }, [demoItems, apiItems]);
 
   const handleSelectConversation = useCallback(
     (id: string) => {
@@ -112,17 +140,15 @@ const Conversations: FC<Props> = ({ route }) => {
     [queryClient, navigate, route]
   );
 
-  const conversation$ = useObservable<ConversationItem | undefined>(undefined);
-
-  // Update conversation$ when selectedConversation$ changes
+  // Update conversation$ when selected conversation changes
   useObserveEffect(selectedConversation$, ({ value: selectedConversation }) => {
     conversation$.set(allConversations.find((conv) => conv.name === selectedConversation));
   });
 
-  // Update conversation$ when allConversations changes
+  // Update conversation$ when available conversations change
   useEffect(() => {
-    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation$.get()));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const selected = selectedConversation$.get();
+    conversation$.set(allConversations.find((conv) => conv.name === selected));
   }, [allConversations]);
 
   // Update document title when selected conversation changes
