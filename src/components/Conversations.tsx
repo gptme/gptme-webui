@@ -47,12 +47,8 @@ const Conversations: FC<Props> = ({ route }) => {
     // Handle initial conversation selection
     if (conversationParam) {
       selectedConversation$.set(conversationParam);
-    } else if (!selectedConversation$.get() && demoConversations.length > 0) {
-      const firstDemo = demoConversations[0].name;
-      selectedConversation$.set(firstDemo);
-      navigate(`${route}?conversation=${firstDemo}`);
     }
-  }, [conversationParam, navigate, route]); // Add missing dependencies
+  }, [conversationParam]);
 
   // Fetch conversations from API
   const {
@@ -149,6 +145,7 @@ const Conversations: FC<Props> = ({ route }) => {
   useEffect(() => {
     const selected = selectedConversation$.get();
     conversation$.set(allConversations.find((conv) => conv.name === selected));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allConversations]);
 
   // Update document title when selected conversation changes
