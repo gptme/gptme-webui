@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { useWorkspaceApi } from '@/utils/workspaceApi';
 import type { FileType, FilePreview } from '@/types/workspace';
 import { CodeDisplay } from '@/components/CodeDisplay';
@@ -55,8 +56,13 @@ export function FilePreview({ file, conversationId }: FilePreviewProps) {
         <div className="flex h-full flex-col">
           <div className="border-b p-2">
             <h3 className="font-medium">{file.name}</h3>
-            <div className="text-sm text-muted-foreground">
-              {(file.size / 1024).toFixed(1)} KB • {file.mime_type || 'Unknown type'}
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div>
+                {(file.size / 1024).toFixed(1)} KB • {file.mime_type || 'Unknown type'}
+              </div>
+              <div>
+                Modified {formatDistanceToNow(new Date(file.modified), { addSuffix: true })}
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-auto">
@@ -73,8 +79,13 @@ export function FilePreview({ file, conversationId }: FilePreviewProps) {
         <div className="flex h-full flex-col">
           <div className="border-b p-2">
             <h3 className="font-medium">{file.name}</h3>
-            <div className="text-sm text-muted-foreground">
-              {(file.size / 1024).toFixed(1)} KB • {file.mime_type || 'Unknown type'}
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div>
+                {(file.size / 1024).toFixed(1)} KB • {file.mime_type || 'Unknown type'}
+              </div>
+              <div>
+                Modified {formatDistanceToNow(new Date(file.modified), { addSuffix: true })}
+              </div>
             </div>
           </div>
           <div className="flex flex-1 items-center justify-center overflow-auto p-4">
@@ -91,8 +102,13 @@ export function FilePreview({ file, conversationId }: FilePreviewProps) {
         <div className="flex h-full flex-col">
           <div className="border-b p-2">
             <h3 className="font-medium">{file.name}</h3>
-            <div className="text-sm text-muted-foreground">
-              {(file.size / 1024).toFixed(1)} KB • {file.mime_type || 'Unknown type'}
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div>
+                {(file.size / 1024).toFixed(1)} KB • {file.mime_type || 'Unknown type'}
+              </div>
+              <div>
+                Modified {formatDistanceToNow(new Date(file.modified), { addSuffix: true })}
+              </div>
             </div>
           </div>
           <div className="flex flex-1 items-center justify-center">

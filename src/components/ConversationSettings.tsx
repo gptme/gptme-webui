@@ -42,52 +42,12 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
   } = form;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       {chatConfig && (
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
             <div className="flex-1 space-y-8 overflow-y-auto pb-24">
-              <h3 className="text-lg font-medium">Chat Configuration</h3>
-
-              {/* Stream Field */}
-              <FormField
-                control={control}
-                name="chat.stream"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Stream Response</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {/* Interactive Field */}
-              <FormField
-                control={control}
-                name="chat.interactive"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Interactive Mode</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <h3 className="mt-4 text-lg font-medium">Chat Settings</h3>
 
               {/* Model Field */}
               <FormField
@@ -160,6 +120,50 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 serverFields={serverFields}
                 isSubmitting={isSubmitting}
               />
+
+              {/* Advanced/rare toggles */}
+              <h3 className="text-lg font-medium">Advanced Settings</h3>
+              <div className="space-y-2 rounded-lg border px-3 py-2 shadow-sm">
+                {/* Stream Field */}
+                <FormField
+                  control={control}
+                  name="chat.stream"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Stream Response</FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Interactive Field */}
+                <FormField
+                  control={control}
+                  name="chat.interactive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Interactive Mode</FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* Danger Zone */}
               <div className="mt-8 space-y-6">

@@ -73,7 +73,7 @@ export const ConnectionButton: FC = () => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="xs"
           className={cn(
             isConnected ? 'text-green-600' : 'text-muted-foreground',

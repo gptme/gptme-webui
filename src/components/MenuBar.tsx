@@ -40,6 +40,8 @@ export const MenuBar: FC = () => {
         <span className="font-mono text-base font-semibold">gptme</span>
       </div>
       <div className="flex items-center gap-4">
+        <ConnectionButton />
+        <ThemeToggle />
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -56,8 +58,6 @@ export const MenuBar: FC = () => {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <ConnectionButton />
-        <ThemeToggle />
       </div>
     </div>
   );
