@@ -6,7 +6,6 @@ import {
   ImageIcon,
   FileCodeIcon,
   FileIcon,
-  FileJsonIcon,
   FileVideoIcon,
   FileAudioIcon,
   FileArchiveIcon,
@@ -44,9 +43,6 @@ const getFileIcon = (file: FileType): LucideIcon => {
   if (ARCHIVE_EXTENSIONS.includes(ext)) {
     return FileArchiveIcon;
   }
-  if (ext === 'json') {
-    return FileJsonIcon;
-  }
   if (DOCUMENT_EXTENSIONS.includes(ext)) {
     return FileTextIcon;
   }
@@ -68,8 +64,6 @@ const getFileIcon = (file: FileType): LucideIcon => {
       return FileTextIcon;
     case 'application':
       switch (subtype) {
-        case 'json':
-          return FileJsonIcon;
         case 'x-archive':
         case 'zip':
         case 'x-tar':
