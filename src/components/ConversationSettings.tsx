@@ -2,6 +2,8 @@ import { use$ } from '@legendapp/state/react';
 import { conversations$, updateConversation } from '@/stores/conversations';
 import { useEffect, useState, type FC } from 'react';
 import { useApi } from '@/contexts/ApiContext';
+import { DeleteConversationConfirmationDialog } from './DeleteConversationConfirmationDialog';
+import { Trash } from 'lucide-react';
 import { AVAILABLE_MODELS } from './ConversationContent';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
@@ -88,6 +90,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
 
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mcpOpen, setMcpOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   console.log('chatConfig', chatConfig);
 
@@ -947,7 +950,32 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                   </CollapsibleContent>
                 </FormItem>
               </Collapsible>
+
+              {/* Danger Zone */}
+              <div className="mt-8 space-y-6">
+                <h3 className="text-lg font-medium text-destructive">Danger Zone</h3>
+                <div className="rounded-lg border-2 border-destructive/20 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Delete Conversation</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Permanently delete this conversation and all its messages.
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="shrink-0"
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
+
             {/* Submit Button */}
             <div className="sticky bottom-0 mt-auto border-t bg-background p-4">
               <Button
@@ -968,6 +996,17 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 )}
               </Button>
             </div>
+
+            {/* Delete Dialog */}
+            <DeleteConversationConfirmationDialog
+              conversationName={conversationId}
+              open={deleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+              onDelete={() => {
+                // Handle post-deletion navigation or UI updates
+                window.location.href = '/';
+              }}
+            />
           </form>
         </Form>
       )}
