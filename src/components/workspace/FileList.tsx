@@ -15,57 +15,23 @@ import type { LucideIcon } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { FileType } from '@/types/workspace';
 
+// prettier-ignore
 const CODE_EXTENSIONS = [
   // Web
-  'js',
-  'ts',
-  'jsx',
-  'tsx',
-  'html',
-  'css',
-  'scss',
-  'less',
+  'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'scss', 'less',
   // Backend
-  'py',
-  'rb',
-  'php',
-  'java',
-  'go',
-  'rs',
-  'cs',
-  'cpp',
-  'c',
-  'h',
+  'py', 'rb', 'php', 'java', 'go', 'rs', 'cs', 'cpp', 'c', 'h',
   // Config/Data
-  'json',
-  'yaml',
-  'yml',
-  'toml',
-  'xml',
-  'ini',
+  'json', 'yaml', 'yml', 'toml', 'xml', 'ini',
   // Shell
-  'sh',
-  'bash',
-  'zsh',
-  'fish',
+  'sh', 'bash', 'zsh', 'fish'
 ];
 
+// prettier-ignore
 const ARCHIVE_EXTENSIONS = ['zip', 'tar', 'gz', 'tgz', '7z', 'rar', 'bz2', 'xz'];
 
-const DOCUMENT_EXTENSIONS = [
-  'pdf',
-  'doc',
-  'docx',
-  'xls',
-  'xlsx',
-  'ppt',
-  'pptx',
-  'odt',
-  'ods',
-  'odp',
-  'md',
-  'txt',
-];
+// prettier-ignore
+const DOCUMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'md', 'txt'];
 
 const getFileIcon = (file: FileType): LucideIcon => {
   // Get lowercase extension
