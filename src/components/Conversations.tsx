@@ -1,5 +1,7 @@
-import { useMemo, type FC } from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { useMemo, useRef, type FC } from 'react';
+import type { ImperativePanelHandle } from 'react-resizable-panels';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { useCallback, useEffect } from 'react';
 import { setDocumentTitle } from '@/utils/title';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LeftSidebar } from '@/components/LeftSidebar';
@@ -16,6 +18,12 @@ import {
   selectedConversation$,
   initConversation,
 } from '@/stores/conversations';
+import {
+  leftSidebarVisible$,
+  rightSidebarVisible$,
+  setLeftPanelRef,
+  setRightPanelRef,
+} from '@/stores/sidebar';
 
 interface Props {
   className?: string;
@@ -23,8 +31,7 @@ interface Props {
 }
 
 const Conversations: FC<Props> = ({ route }) => {
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const rightSidebarOpen$ = useObservable(false);
+  // No need for sidebar state management as it's handled by ResizablePanel
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const conversationParam = searchParams.get('conversation');
@@ -158,41 +165,81 @@ const Conversations: FC<Props> = ({ route }) => {
     return () => setDocumentTitle(); // Reset title on unmount
   });
 
+  const leftPanelRef = useRef<ImperativePanelHandle>(null);
+  const rightPanelRef = useRef<ImperativePanelHandle>(null);
+
+  // Connect panel refs to store
+  useEffect(() => {
+    setLeftPanelRef(leftPanelRef.current);
+    setRightPanelRef(rightPanelRef.current);
+    return () => {
+      setLeftPanelRef(null);
+      setRightPanelRef(null);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <LeftSidebar
-        isOpen={leftSidebarOpen}
-        onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
-        conversations={allConversations}
-        selectedConversationId$={selectedConversation$}
-        onSelectConversation={handleSelectConversation}
-        isLoading={isLoading}
-        isError={isError}
-        error={error as Error}
-        onRetry={() => refetch()}
-        route={route}
-      />
-      <Memo>
-        {() => {
-          const conversation = conversation$.get();
-          return conversation ? (
-            <>
-              <ConversationContent
-                conversationId={conversation.name}
-                isReadOnly={conversation.readonly}
-              />
-              <RightSidebar
-                isOpen$={rightSidebarOpen$}
-                onToggle={() => {
-                  rightSidebarOpen$.set(!rightSidebarOpen$.get());
-                }}
-                conversationId={conversation.name}
-              />
-            </>
-          ) : null;
-        }}
-      </Memo>
-    </div>
+    <ResizablePanelGroup direction="horizontal" className="h-full">
+      <ResizablePanel
+        ref={leftPanelRef}
+        defaultSize={20}
+        minSize={15}
+        maxSize={30}
+        collapsible
+        collapsedSize={0}
+        onCollapse={() => leftSidebarVisible$.set(false)}
+        onExpand={() => leftSidebarVisible$.set(true)}
+      >
+        <LeftSidebar
+          conversations={allConversations}
+          selectedConversationId$={selectedConversation$}
+          onSelectConversation={handleSelectConversation}
+          isLoading={isLoading}
+          isError={isError}
+          error={error as Error}
+          onRetry={() => refetch()}
+          route={route}
+        />
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
+
+      <ResizablePanel defaultSize={60} minSize={30} className="overflow-hidden">
+        <Memo>
+          {() => {
+            const conversation = conversation$.get();
+            return conversation ? (
+              <div className="h-full overflow-auto">
+                <ConversationContent
+                  conversationId={conversation.name}
+                  isReadOnly={conversation.readonly}
+                />
+              </div>
+            ) : null;
+          }}
+        </Memo>
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
+
+      <ResizablePanel
+        ref={rightPanelRef}
+        defaultSize={20}
+        minSize={15}
+        maxSize={40}
+        collapsible
+        collapsedSize={0}
+        onCollapse={() => rightSidebarVisible$.set(false)}
+        onExpand={() => rightSidebarVisible$.set(true)}
+      >
+        <Memo>
+          {() => {
+            const conversation = conversation$.get();
+            return conversation ? <RightSidebar conversationId={conversation.name} /> : null;
+          }}
+        </Memo>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 };
 

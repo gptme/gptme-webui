@@ -165,7 +165,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
   }
 
   return (
-    <main className="relative flex flex-1 flex-col overflow-hidden">
+    <main className="relative flex h-full flex-col">
       {/* Tool Confirmation Dialog */}
       <ToolConfirmationDialog
         pendingTool$={conversation$?.pendingTool}
@@ -176,7 +176,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
       />
 
       <div
-        className="relative flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto"
         ref={scrollContainerRef}
         onScroll={() => {
           if (!scrollContainerRef.current || isAutoScrolling$.get()) return;
@@ -244,7 +244,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
         </For>
 
         {/* Add padding at the bottom to account for the floating input */}
-        <div className="mb-40" />
+        <div className="mb-24" />
       </div>
 
       <ChatInput

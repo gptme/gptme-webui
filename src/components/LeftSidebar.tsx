@@ -1,4 +1,4 @@
-import { PanelLeftOpen, PanelLeftClose, Plus, ExternalLink } from 'lucide-react';
+import { Plus, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { useApi } from '@/contexts/ApiContext';
@@ -13,8 +13,6 @@ import { use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
 
 interface Props {
-  isOpen: boolean;
-  onToggle: () => void;
   conversations: ConversationItem[];
   selectedConversationId$: Observable<string | null>;
   onSelectConversation: (id: string) => void;
@@ -26,8 +24,6 @@ interface Props {
 }
 
 export const LeftSidebar: FC<Props> = ({
-  isOpen,
-  onToggle,
   conversations,
   selectedConversationId$,
   onSelectConversation,
@@ -70,13 +66,9 @@ export const LeftSidebar: FC<Props> = ({
   };
 
   return (
-    <div className="relative h-full">
-      <div
-        className={`border-r transition-all duration-300 ${
-          isOpen ? 'w-80' : 'w-0'
-        } flex h-full flex-col overflow-hidden`}
-      >
-        <div className="flex h-12 items-center justify-between border-b px-4">
+    <div className="h-full">
+      <div className="flex h-full flex-col">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b bg-background px-4">
           <h2 className="font-semibold">Conversations</h2>
           <div className="flex items-center space-x-2">
             <TooltipProvider>
@@ -99,9 +91,6 @@ export const LeftSidebar: FC<Props> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button variant="ghost" size="icon" onClick={onToggle}>
-              <PanelLeftClose className="h-5 w-5" />
-            </Button>
           </div>
         </div>
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -138,16 +127,6 @@ export const LeftSidebar: FC<Props> = ({
           </div>
         </div>
       </div>
-      {!isOpen && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="absolute -right-10 top-2 z-50"
-        >
-          <PanelLeftOpen className="h-5 w-5" />
-        </Button>
-      )}
     </div>
   );
 };
