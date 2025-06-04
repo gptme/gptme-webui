@@ -183,10 +183,11 @@ const Conversations: FC<Props> = ({ route }) => {
     };
   }, []);
 
-  // Hide left sidebar by default when no conversation is selected
+  // Hide sidebars by default when no conversation is selected
   useEffect(() => {
     if (!selectedConversation$.get()) {
       leftPanelRef.current?.collapse();
+      rightPanelRef.current?.collapse();
     }
   }, []);
 
@@ -216,7 +217,7 @@ const Conversations: FC<Props> = ({ route }) => {
 
       <ResizableHandle />
 
-      <ResizablePanel defaultSize={60} minSize={30} className="overflow-hidden">
+      <ResizablePanel defaultSize={60} minSize={30} className="flex items-center overflow-hidden">
         <Memo>
           {() => {
             const conversation = conversation$.get();
@@ -228,7 +229,7 @@ const Conversations: FC<Props> = ({ route }) => {
                 />
               </div>
             ) : (
-              <div className="flex-1">
+              <div className="flex flex-1 items-center justify-center p-4">
                 <WelcomeView onToggleHistory={() => leftPanelRef.current?.expand()} />
               </div>
             );

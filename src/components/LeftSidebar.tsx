@@ -56,7 +56,6 @@ export const LeftSidebar: FC<Props> = ({
                       variant="ghost"
                       size="icon"
                       onClick={handleNewConversation}
-                      disabled={!isConnected}
                       data-testid="new-conversation-button"
                     >
                       <Plus className="h-4 w-4" />
