@@ -106,10 +106,7 @@ export const ConversationList: FC<Props> = ({
               className={`cursor-pointer rounded-lg py-2 pl-2 transition-colors hover:bg-accent ${
                 isSelected ? 'bg-accent' : ''
               }`}
-              onClick={() => {
-                console.log(conv);
-                onSelect(conv.id);
-              }}
+              onClick={() => onSelect(conv.id)}
             >
               <div>
                 <div
