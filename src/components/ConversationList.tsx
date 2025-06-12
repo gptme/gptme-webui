@@ -107,17 +107,16 @@ export const ConversationList: FC<Props> = ({
               }`}
               onClick={() => onSelect(conv.name)}
             >
-              <div
-                style={{
-                  maskImage:
-                    'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
-                  WebkitMaskImage:
-                    'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
-                }}
-              >
+              <div>
                 <div
                   data-testid="conversation-title"
-                  className="mb-1 overflow-hidden whitespace-nowrap font-medium"
+                  className="mb-1 whitespace-nowrap font-medium"
+                  style={{
+                    maskImage:
+                      'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
+                    WebkitMaskImage:
+                      'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
+                  }}
                 >
                   {stripDate(conv.name)}
                 </div>
@@ -173,7 +172,7 @@ export const ConversationList: FC<Props> = ({
                       <Tooltip>
                         <TooltipTrigger>
                           <span className="flex items-center">
-                            <Signal className="h-4 w-4 text-primary" />
+                            <Signal className="h-3 w-3 text-primary" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>Connected</TooltipContent>
@@ -183,7 +182,7 @@ export const ConversationList: FC<Props> = ({
                       <Tooltip>
                         <TooltipTrigger>
                           <span className="flex items-center">
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>Generating...</TooltipContent>
@@ -205,7 +204,7 @@ export const ConversationList: FC<Props> = ({
                       <Tooltip>
                         <TooltipTrigger>
                           <span className="flex items-center">
-                            <Lock className="h-4 w-4" />
+                            <Lock className="h-3 w-3" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>This conversation is read-only</TooltipContent>
