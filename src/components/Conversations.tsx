@@ -18,6 +18,7 @@ import {
   initializeConversations,
   selectedConversation$,
   initConversation,
+  conversations$,
 } from '@/stores/conversations';
 import {
   leftSidebarVisible$,
@@ -36,6 +37,7 @@ const Conversations: FC<Props> = ({ route }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const conversationParam = searchParams.get('conversation');
+  const stepParam = searchParams.get('step');
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
@@ -60,6 +62,38 @@ const Conversations: FC<Props> = ({ route }) => {
       selectedConversation$.set('');
     }
   }, [conversationParam]);
+
+  // Handle step parameter for auto-generation
+  useEffect(() => {
+    if (stepParam === 'true' && conversationParam && isConnected) {
+      console.log(`[Conversations] Step parameter detected for ${conversationParam}`);
+
+      // Watch for conversation to be connected
+      const checkAndStart = () => {
+        const conversation = conversations$.get(conversationParam);
+        if (conversation?.isConnected.get()) {
+          console.log(
+            `[Conversations] Conversation ${conversationParam} is connected, starting generation`
+          );
+
+          // Start generation
+          api.step(conversationParam).catch((error) => {
+            console.error('[Conversations] Failed to start generation:', error);
+          });
+
+          // Remove step parameter from URL
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('step');
+          navigate(`${route}?${newSearchParams.toString()}`, { replace: true });
+        } else {
+          // Check again in 100ms
+          setTimeout(checkAndStart, 100);
+        }
+      };
+
+      checkAndStart();
+    }
+  }, [stepParam, conversationParam, isConnected, api, navigate, route, searchParams]);
 
   // Fetch conversations from API
   const {
@@ -217,7 +251,7 @@ const Conversations: FC<Props> = ({ route }) => {
 
       <ResizableHandle />
 
-      <ResizablePanel defaultSize={60} minSize={30} className="flex items-center overflow-hidden">
+      <ResizablePanel defaultSize={60} minSize={30} className="overflow-hidden">
         <Memo>
           {() => {
             const conversation = conversation$.get();
@@ -229,7 +263,7 @@ const Conversations: FC<Props> = ({ route }) => {
                 />
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center p-4">
+              <div className="flex h-full flex-1 items-center justify-center p-4">
                 <WelcomeView onToggleHistory={() => leftPanelRef.current?.expand()} />
               </div>
             );

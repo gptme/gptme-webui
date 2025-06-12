@@ -102,101 +102,116 @@ export const ConversationList: FC<Props> = ({
 
           return (
             <div
-              className={`cursor-pointer rounded-lg p-3 transition-colors hover:bg-accent ${
+              className={`cursor-pointer rounded-lg py-2 pl-2 transition-colors hover:bg-accent ${
                 isSelected ? 'bg-accent' : ''
               }`}
               onClick={() => onSelect(conv.name)}
             >
-              <div data-testid="conversation-title" className="mb-1 font-medium">
-                {stripDate(conv.name)}
-              </div>
-              <div className="flex items-center space-x-3 text-sm text-muted-foreground">
-                <Tooltip>
-                  <TooltipTrigger>
-                    <time className="flex items-center" dateTime={conv.lastUpdated.toISOString()}>
-                      <Clock className="mr-1 h-4 w-4" />
-                      {getRelativeTimeString(conv.lastUpdated)}
-                    </time>
-                  </TooltipTrigger>
-                  <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
-                </Tooltip>
-                <Computed>
-                  {() => {
-                    const storeConv = conversations$.get(conv.name)?.get();
-                    const isLoaded = storeConv?.data?.log?.length > 0;
+              <div
+                style={{
+                  maskImage:
+                    'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
+                  WebkitMaskImage:
+                    'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
+                }}
+              >
+                <div
+                  data-testid="conversation-title"
+                  className="mb-1 overflow-hidden whitespace-nowrap font-medium"
+                >
+                  {stripDate(conv.name)}
+                </div>
+                <div className="flex items-center space-x-3 text-xs text-muted-foreground">
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <time
+                        className="flex items-center whitespace-nowrap"
+                        dateTime={conv.lastUpdated.toISOString()}
+                      >
+                        <Clock className="mr-1 h-3 w-3" />
+                        {getRelativeTimeString(conv.lastUpdated)}
+                      </time>
+                    </TooltipTrigger>
+                    <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
+                  </Tooltip>
+                  <Computed>
+                    {() => {
+                      const storeConv = conversations$.get(conv.name)?.get();
+                      const isLoaded = storeConv?.data?.log?.length > 0;
 
-                    if (!isLoaded) {
-                      return (
-                        <span className="flex items-center">
-                          <MessageSquare className="mr-1 h-4 w-4" />
-                          {conv.messageCount}
-                        </span>
-                      );
-                    }
-
-                    const breakdown = getMessageBreakdown();
-                    const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0);
-
-                    return (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                      if (!isLoaded) {
+                        return (
                           <span className="flex items-center">
-                            <MessageSquare className="mr-1 h-4 w-4" />
-                            {totalCount}
+                            <MessageSquare className="mr-1 h-3 w-3" />
+                            {conv.messageCount}
+                          </span>
+                        );
+                      }
+
+                      const breakdown = getMessageBreakdown();
+                      const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0);
+
+                      return (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center">
+                              <MessageSquare className="mr-1 h-3 w-3" />
+                              {totalCount}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="whitespace-pre">{formatBreakdown(breakdown)}</div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }}
+                  </Computed>
+
+                  {/* Show conversation state indicators */}
+                  <div className="flex items-center space-x-2">
+                    {convState?.isConnected && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="flex items-center">
+                            <Signal className="h-4 w-4 text-primary" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Connected</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {convState?.isGenerating && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="flex items-center">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Generating...</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {convState?.pendingTool && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="flex items-center">
+                            <span className="text-lg">⚙️</span>
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <div className="whitespace-pre">{formatBreakdown(breakdown)}</div>
+                          Pending tool: {convState.pendingTool.tooluse.tool}
                         </TooltipContent>
                       </Tooltip>
-                    );
-                  }}
-                </Computed>
-
-                {/* Show conversation state indicators */}
-                <div className="flex items-center space-x-2">
-                  {convState?.isConnected && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <span className="flex items-center">
-                          <Signal className="h-4 w-4 text-primary" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>Connected</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {convState?.isGenerating && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <span className="flex items-center">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>Generating...</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {convState?.pendingTool && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <span className="flex items-center">
-                          <span className="text-lg">⚙️</span>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Pending tool: {convState.pendingTool.tooluse.tool}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {conv.readonly && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <span className="flex items-center">
-                          <Lock className="h-4 w-4" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>This conversation is read-only</TooltipContent>
-                    </Tooltip>
-                  )}
+                    )}
+                    {conv.readonly && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="flex items-center">
+                            <Lock className="h-4 w-4" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>This conversation is read-only</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -207,7 +222,7 @@ export const ConversationList: FC<Props> = ({
   };
 
   return (
-    <div data-testid="conversation-list" className="h-full space-y-2 overflow-y-auto p-4">
+    <div data-testid="conversation-list" className="h-full space-y-2 overflow-y-auto p-3">
       {isLoading && (
         <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

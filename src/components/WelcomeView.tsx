@@ -3,7 +3,9 @@ import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '@/contexts/ApiContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { use$ } from '@legendapp/state/react';
 
 const examples = [
   'Help me write a Python script',
@@ -16,11 +18,13 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
   const [input, setInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { api, isConnected$ } = useApi();
+  const { api, isConnected$, connectionConfig } = useApi();
+  const queryClient = useQueryClient();
+  const isConnected = use$(isConnected$);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !isConnected$.get()) return;
+    if (!input.trim() || !isConnected) return;
 
     setIsSubmitting(true);
     try {
@@ -28,32 +32,19 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const conversationId = `chat-${timestamp}`;
 
+      // Create the conversation with the initial message
       await api.createConversation(conversationId, [{ role: 'user', content: input }]);
 
-      // Subscribe to events for the new conversation
-      api.subscribeToEvents(conversationId, {
-        onMessageStart: () => {},
-        onToken: () => {},
-        onMessageComplete: () => {},
-        onMessageAdded: () => {},
-        onToolPending: () => {},
-        onInterrupted: () => {},
-        onError: (error) => {
-          toast.error(`Error: ${error}`);
-        },
+      // Navigate to the new conversation with step flag
+      navigate(`/?conversation=${conversationId}&step=true`);
+
+      // Invalidate conversations query to refresh the list
+      await queryClient.invalidateQueries({
+        queryKey: ['conversations', connectionConfig.baseUrl, isConnected$.get()],
       });
 
-      // Send the initial message
-      await api.sendMessage(conversationId, {
-        role: 'user',
-        content: input,
-      });
-
-      // Start generation
-      await api.step(conversationId);
-
-      // Navigate to the new conversation
-      navigate(`/?conversation=${conversationId}`);
+      // Show success message
+      toast.success('Conversation started successfully!');
     } catch (error) {
       console.error('Failed to create conversation:', error);
       toast.error('Failed to create conversation. Please try again.');
@@ -78,7 +69,7 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message here..."
             className="h-12 text-lg"
-            disabled={isSubmitting || !isConnected$.get()}
+            disabled={isSubmitting || !isConnected}
           />
           <div className="flex justify-between">
             <Button
@@ -89,7 +80,7 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
             >
               Show history
             </Button>
-            <Button type="submit" disabled={!input.trim() || isSubmitting || !isConnected$.get()}>
+            <Button type="submit" disabled={!input.trim() || isSubmitting || !isConnected}>
               {isSubmitting ? 'Sending...' : 'Send message'}
             </Button>
           </div>

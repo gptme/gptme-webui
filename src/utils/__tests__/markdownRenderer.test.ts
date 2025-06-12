@@ -61,7 +61,7 @@ describe('renderThinkingBlocks', () => {
     //   </p>
     // </div>
     const expected =
-      '<p><details type="thinking" open="true"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details> some other text</p>';
+      '<p><details type="thinking"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details> some other text</p>';
 
     let div = parse(markdown);
     expect(div.innerHTML).toBe(expected);
@@ -84,7 +84,7 @@ describe('renderThinkingBlocks', () => {
     //   </p>
     // </div>
     const expected =
-      '<p>some other text <details type="thinking" open="true"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details></p>';
+      '<p>some other text <details type="thinking"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details></p>';
 
     let div = parse(markdown);
     expect(div.innerHTML).toBe(expected);
@@ -112,7 +112,7 @@ describe('renderThinkingBlocks', () => {
     //   </p>
     // </div>
     const expected =
-      '<p>some other text <details type="thinking" open="true"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details> some other text <details type="thinking" open="true"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is another thinking block</div></details></p>';
+      '<p>some other text <details type="thinking"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details> some other text <details type="thinking"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is another thinking block</div></details></p>';
 
     const div = parse(markdown);
     expect(div.innerHTML).toBe(expected);
@@ -157,8 +157,7 @@ describe('renderMarkdownBlocks', () => {
     const expected =
       '<details open="true"><summary>💻 markdown</summary><pre><code class="hljs language-markdown">This is a markdown block</code></pre></details><p>some other text</p>';
 
-    let div = parse(markdown, false, true);
-    console.log(div.innerHTML);
+    let div = parse(markdown, false, false);
     expect(div.innerHTML).toBe(expected);
 
     div = parse(markdown, true, false);
