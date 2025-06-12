@@ -39,9 +39,9 @@ export function extractWorkspacesFromConversations(
     const name = workspace.split('/').pop() || workspace;
     const lastUsed = conversation.lastUpdated.toISOString();
 
-    console.log(
-      `[workspaceUtils] Found workspace: ${workspace} from conversation ${conversation.id}`
-    );
+    //console.log(
+    //  `[workspaceUtils] Found workspace: ${workspace} from conversation ${conversation.id}`
+    //);
 
     if (workspaceMap.has(workspace)) {
       const existing = workspaceMap.get(workspace)!;
