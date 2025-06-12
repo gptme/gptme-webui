@@ -51,6 +51,7 @@ export function useConversation(conversationId: string) {
               log: demoConv.messages,
               logfile: conversationId,
               branches: {},
+              workspace: '/demo/workspace',
             },
           });
           return;

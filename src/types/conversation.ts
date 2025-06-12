@@ -23,6 +23,7 @@ export interface ConversationSummary {
   modified: number;
   messages: number;
   branch?: string;
+  workspace?: string;
 }
 
 export interface GenerateCallbacks {

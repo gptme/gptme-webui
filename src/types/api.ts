@@ -29,6 +29,7 @@ export interface ConversationResponse {
   log: (Message | StreamingMessage)[];
   logfile: string;
   branches: Record<string, Message[]>;
+  workspace: string;
 }
 
 export enum ToolFormat {

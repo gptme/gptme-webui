@@ -20,6 +20,7 @@ export interface ConversationItem {
   lastUpdated: Date;
   messageCount: number;
   readonly?: boolean;
+  workspace?: string;
 }
 
 interface Props {
@@ -111,7 +112,7 @@ export const ConversationList: FC<Props> = ({
               <div>
                 <div
                   data-testid="conversation-title"
-                  className="mb-1 whitespace-nowrap font-medium"
+                  className="font-small mb-1 whitespace-nowrap"
                   style={{
                     maskImage:
                       'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',

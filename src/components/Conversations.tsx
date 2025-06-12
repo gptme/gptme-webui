@@ -53,6 +53,7 @@ const Conversations: FC<Props> = ({ route }) => {
         log: conv.messages,
         logfile: conv.name,
         branches: {},
+        workspace: '/demo/workspace',
       });
     });
 
@@ -220,11 +221,12 @@ const Conversations: FC<Props> = ({ route }) => {
     };
   }, []);
 
-  // Hide sidebars by default when no conversation is selected
   useEffect(() => {
+    // Always hide right sidebar by default
+    rightPanelRef.current?.collapse();
+    // Hide left sidebar by default when no conversation is selected
     if (!selectedConversation$.get()) {
       leftPanelRef.current?.collapse();
-      rightPanelRef.current?.collapse();
     }
   }, []);
 

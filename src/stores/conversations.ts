@@ -37,7 +37,7 @@ export function updateConversation(id: string, update: Partial<ConversationState
   if (!conversations$.get(id)) {
     // Initialize with defaults if conversation doesn't exist
     conversations$.set(id, {
-      data: { id, name: '', log: [], logfile: id, branches: {} },
+      data: { id, name: '', log: [], logfile: id, branches: {}, workspace: '/default/workspace' },
       isGenerating: false,
       isConnected: false,
       pendingTool: null,
@@ -72,7 +72,14 @@ export function setPendingTool(id: string, toolId: string | null, tooluse: ToolU
 // Initialize a new conversation in the store
 export function initConversation(id: string, data?: ConversationResponse) {
   const initial: ConversationState = {
-    data: data || { id, name: '', log: [], logfile: id, branches: {} },
+    data: data || {
+      id,
+      name: '',
+      log: [],
+      logfile: id,
+      branches: {},
+      workspace: '/default/workspace',
+    },
     isGenerating: false,
     isConnected: false,
     pendingTool: null,
@@ -105,6 +112,7 @@ export async function initializeConversations(
           log: demoConv.messages,
           logfile: id,
           branches: {},
+          workspace: '/demo/workspace',
         });
         return;
       }

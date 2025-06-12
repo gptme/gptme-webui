@@ -11,6 +11,7 @@ export function toConversationItem(conv: ConversationSummary): ConversationItem 
     lastUpdated: new Date(conv.modified * 1000), // Convert Unix timestamp to Date
     messageCount: conv.messages,
     readonly: false, // This could be determined by other factors
+    workspace: conv.workspace,
   };
 }
 
