@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
 import { Computed, use$ } from '@legendapp/state/react';
 import { conversations$ } from '@/stores/conversations';
+import { AVAILABLE_MODELS } from './ConversationContent';
 
 export interface ChatOptions {
   model?: string;
@@ -23,7 +24,7 @@ export interface ChatOptions {
 }
 
 interface Props {
-  conversationId: string;
+  conversationId?: string;
   onSend: (message: string, options?: ChatOptions) => void;
   onInterrupt?: () => void;
   isReadOnly?: boolean;
@@ -31,6 +32,9 @@ interface Props {
   availableModels?: string[];
   autoFocus$: Observable<boolean>;
   hasSession$: Observable<boolean>;
+  value?: string;
+  onChange?: (value: string) => void;
+  static?: boolean; // Disable absolute positioning for static layouts
 }
 
 export const ChatInput: FC<Props> = ({
@@ -39,11 +43,16 @@ export const ChatInput: FC<Props> = ({
   onInterrupt,
   isReadOnly,
   defaultModel = '',
-  availableModels = [],
+  availableModels = AVAILABLE_MODELS,
   autoFocus$,
   hasSession$,
+  value,
+  onChange,
+  static: isStatic = false,
 }) => {
-  const [message, setMessage] = useState('');
+  const [internalMessage, setInternalMessage] = useState('');
+  const message = value !== undefined ? value : internalMessage;
+  const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
   const { isConnected$ } = useApi();
@@ -51,7 +60,7 @@ export const ChatInput: FC<Props> = ({
 
   const isConnected = use$(isConnected$);
   const autoFocus = use$(autoFocus$);
-  const conversation = use$(conversations$.get(conversationId));
+  const conversation = conversationId ? use$(conversations$.get(conversationId)) : undefined;
   const isGenerating = conversation?.isGenerating || false;
   const hasSession = use$(hasSession$);
   const placeholder = isReadOnly
@@ -117,7 +126,11 @@ export const ChatInput: FC<Props> = ({
   return (
     <form
       onSubmit={handleSubmit}
-      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/80 to-transparent p-4"
+      className={
+        isStatic
+          ? 'p-4'
+          : 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/80 to-transparent p-4'
+      }
     >
       <div className="mx-auto flex max-w-2xl flex-col">
         <div className="flex">
@@ -203,7 +216,7 @@ export const ChatInput: FC<Props> = ({
                       ${
                         isGenerating
                           ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
-                          : 'h-10 w-10 bg-green-600 text-green-100'
+                          : 'h-8 w-8 bg-green-600 text-green-100'
                       }
                     `}
                     disabled={isDisabled}
@@ -211,10 +224,10 @@ export const ChatInput: FC<Props> = ({
                     {isGenerating ? (
                       <div className="flex items-center gap-2">
                         <span>Stop</span>
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       </div>
                     ) : (
-                      <Send className="h-4 w-4" />
+                      <Send className="h-3 w-3" />
                     )}
                   </Button>
                 )}

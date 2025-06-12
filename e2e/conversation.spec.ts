@@ -122,7 +122,6 @@ test.describe('Conversation Flow', () => {
     // Type a message
     await page.getByTestId('chat-input').fill(message);
     await page.keyboard.press('Enter');
-    // await page.locator('[data-testid="new-conversation-button"]').click();
 
     // Wait for the new conversation page to load
     await expect(page).toHaveURL(/\?conversation=.+$/);

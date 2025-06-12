@@ -21,9 +21,8 @@ export const AVAILABLE_MODELS = [
   'anthropic/claude-3-opus-20240229',
   'anthropic/claude-3-sonnet-20240229',
   'anthropic/claude-3-haiku-20240307',
-  'openai/gpt-4-turbo',
-  'openai/gpt-4',
-  'openai/gpt-3.5-turbo',
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
 ];
 
 export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) => {

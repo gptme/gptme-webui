@@ -9,6 +9,12 @@ export interface ApiError {
 // Request to create a conversation
 export interface CreateConversationRequest {
   messages: Message[];
+  config?: {
+    chat?: {
+      model?: string;
+      stream?: boolean;
+    };
+  };
 }
 
 // Request to send a message
