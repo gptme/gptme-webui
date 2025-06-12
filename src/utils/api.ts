@@ -5,7 +5,7 @@ import type {
   CreateConversationRequest,
   SendMessageRequest,
 } from '@/types/api';
-import type { Message, ToolUse } from '@/types/conversation';
+import type { ConversationSummary, Message, ToolUse } from '@/types/conversation';
 import { type Observable } from '@legendapp/state';
 import { observable } from '@legendapp/state';
 
@@ -450,14 +450,12 @@ export class ApiClient {
     }
   }
 
-  async getConversations(
-    limit: number = 100
-  ): Promise<{ name: string; modified: number; messages: number }[]> {
+  async getConversations(limit: number = 100): Promise<ConversationSummary[]> {
     if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');
     }
     try {
-      return await this.fetchJson<{ name: string; modified: number; messages: number }[]>(
+      return await this.fetchJson<ConversationSummary[]>(
         `${this.baseUrl}/api/v2/conversations?limit=${limit}`
       );
     } catch (error) {

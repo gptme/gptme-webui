@@ -1,6 +1,7 @@
 import type { Message } from '@/types/conversation';
 
 export interface DemoConversation {
+  id: string;
   name: string;
   lastUpdated: Date;
   messages: Message[];
@@ -11,6 +12,7 @@ const now = new Date();
 // Demo conversations (read-only)
 export const demoConversations: DemoConversation[] = [
   {
+    id: 'introduction',
     name: 'Introduction to gptme',
     lastUpdated: now,
     messages: [

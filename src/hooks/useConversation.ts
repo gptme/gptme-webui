@@ -46,6 +46,8 @@ export function useConversation(conversationId: string) {
           // Initialize with demo data
           updateConversation(conversationId, {
             data: {
+              id: conversationId,
+              name: demoConv.name,
               log: demoConv.messages,
               logfile: conversationId,
               branches: {},

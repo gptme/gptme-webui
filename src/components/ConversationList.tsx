@@ -15,6 +15,7 @@ type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
 // UI-specific type for rendering conversations
 export interface ConversationItem {
+  id: string;
   name: string;
   lastUpdated: Date;
   messageCount: number;
@@ -54,7 +55,7 @@ export const ConversationList: FC<Props> = ({
 
   const ConversationItem: FC<{ conv: ConversationItem }> = ({ conv }) => {
     // For demo conversations, get messages from demoConversations
-    const demoConv = demoConversations.find((dc) => dc.name === conv.name);
+    const demoConv = demoConversations.find((dc) => dc.id === conv.id);
 
     // For API conversations, fetch messages
     const getMessageBreakdown = (): MessageBreakdown => {
@@ -66,7 +67,7 @@ export const ConversationList: FC<Props> = ({
       }
 
       // Get messages from store
-      const storeConv = conversations$.get(conv.name)?.get();
+      const storeConv = conversations$.get(conv.id)?.get();
       // Return empty breakdown if conversation or data is not loaded yet
       if (!storeConv?.data?.log) return {};
 
@@ -97,15 +98,18 @@ export const ConversationList: FC<Props> = ({
     return (
       <Computed>
         {() => {
-          const convState = conversations$.get(conv.name)?.get();
-          const isSelected = selectedId$?.get() === conv.name;
+          const convState = conversations$.get(conv.id)?.get();
+          const isSelected = selectedId$?.get() === conv.id;
 
           return (
             <div
               className={`cursor-pointer rounded-lg py-2 pl-2 transition-colors hover:bg-accent ${
                 isSelected ? 'bg-accent' : ''
               }`}
-              onClick={() => onSelect(conv.name)}
+              onClick={() => {
+                console.log(conv);
+                onSelect(conv.id);
+              }}
             >
               <div>
                 <div
@@ -118,7 +122,7 @@ export const ConversationList: FC<Props> = ({
                       'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
                   }}
                 >
-                  {stripDate(conv.name)}
+                  {conv.name || stripDate(conv.id)}
                 </div>
                 <div className="flex items-center space-x-3 text-xs text-muted-foreground">
                   <Tooltip>
@@ -135,7 +139,7 @@ export const ConversationList: FC<Props> = ({
                   </Tooltip>
                   <Computed>
                     {() => {
-                      const storeConv = conversations$.get(conv.name)?.get();
+                      const storeConv = conversations$.get(conv.id)?.get();
                       const isLoaded = storeConv?.data?.log?.length > 0;
 
                       if (!isLoaded) {
@@ -252,7 +256,7 @@ export const ConversationList: FC<Props> = ({
       )}
       {!isLoading &&
         !isError &&
-        conversations.map((conv) => <ConversationItem key={conv.name} conv={conv} />)}
+        conversations.map((conv) => <ConversationItem key={conv.id} conv={conv} />)}
     </div>
   );
 };

@@ -30,14 +30,14 @@ export interface ConversationState {
 export const conversations$ = observable(new Map<string, ConversationState>());
 
 // Currently selected conversation
-export const selectedConversation$ = observable<string>(demoConversations[0].name);
+export const selectedConversation$ = observable<string>(demoConversations[0].id);
 
 // Helper functions
 export function updateConversation(id: string, update: Partial<ConversationState>) {
   if (!conversations$.get(id)) {
     // Initialize with defaults if conversation doesn't exist
     conversations$.set(id, {
-      data: { log: [], logfile: id, branches: {} },
+      data: { id, name: '', log: [], logfile: id, branches: {} },
       isGenerating: false,
       isConnected: false,
       pendingTool: null,
@@ -72,7 +72,7 @@ export function setPendingTool(id: string, toolId: string | null, tooluse: ToolU
 // Initialize a new conversation in the store
 export function initConversation(id: string, data?: ConversationResponse) {
   const initial: ConversationState = {
-    data: data || { log: [], logfile: id, branches: {} },
+    data: data || { id, name: '', log: [], logfile: id, branches: {} },
     isGenerating: false,
     isConnected: false,
     pendingTool: null,
@@ -97,9 +97,11 @@ export async function initializeConversations(
   conversationIds.forEach((id) => {
     if (!conversations$.get(id)) {
       // Check if this is a demo conversation
-      const demoConv = demoConversations.find((conv: DemoConversation) => conv.name === id);
+      const demoConv = demoConversations.find((conv: DemoConversation) => conv.id === id);
       if (demoConv) {
         initConversation(id, {
+          id: demoConv.id,
+          name: demoConv.name,
           log: demoConv.messages,
           logfile: id,
           branches: {},
@@ -112,7 +114,7 @@ export async function initializeConversations(
 
   // Then load data for the first N non-demo conversations
   const toLoad = conversationIds
-    .filter((id) => !demoConversations.some((conv) => conv.name === id))
+    .filter((id) => !demoConversations.some((conv) => conv.id === id))
     .slice(0, limit);
 
   if (toLoad.length === 0) {

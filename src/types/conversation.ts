@@ -18,16 +18,10 @@ export interface ToolUse {
 }
 
 export interface ConversationSummary {
+  id: string;
   name: string;
   modified: number;
   messages: number;
-  branch?: string;
-}
-
-export interface ConversationDetails {
-  name: string;
-  modified: number;
-  messages: Message[];
   branch?: string;
 }
 

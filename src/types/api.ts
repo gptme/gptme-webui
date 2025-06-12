@@ -24,6 +24,8 @@ export interface SendMessageRequest extends Message {
 
 // Response from /api/conversations/<logfile>
 export interface ConversationResponse {
+  id: string;
+  name: string;
   log: (Message | StreamingMessage)[];
   logfile: string;
   branches: Record<string, Message[]>;
@@ -51,6 +53,7 @@ export interface McpConfig {
 
 export interface ChatConfig {
   chat: {
+    name: string | null;
     model: string | null;
     tools: string[] | null;
     tool_format: ToolFormat | null;

@@ -6,6 +6,7 @@ import type { ConversationItem } from '@/components/ConversationList';
  */
 export function toConversationItem(conv: ConversationSummary): ConversationItem {
   return {
+    id: conv.id,
     name: conv.name,
     lastUpdated: new Date(conv.modified * 1000), // Convert Unix timestamp to Date
     messageCount: conv.messages,

@@ -47,7 +47,9 @@ const Conversations: FC<Props> = ({ route }) => {
   useEffect(() => {
     // Initialize demos in store
     demoConversations.forEach((conv) => {
-      initConversation(conv.name, {
+      initConversation(conv.id, {
+        id: conv.id,
+        name: conv.name,
         log: conv.messages,
         logfile: conv.name,
         branches: {},
@@ -126,9 +128,10 @@ const Conversations: FC<Props> = ({ route }) => {
   }
 
   // Prepare demo conversation items
-  const demoItems = useMemo(
+  const demoItems: ConversationItem[] = useMemo(
     () =>
       demoConversations.map((conv: DemoConversation) => ({
+        id: conv.id,
         name: conv.name,
         lastUpdated: conv.lastUpdated,
         messageCount: conv.messages.length,
@@ -138,7 +141,7 @@ const Conversations: FC<Props> = ({ route }) => {
   );
 
   // Handle API conversations separately
-  const apiItems = useMemo(() => {
+  const apiItems: ConversationItem[] = useMemo(() => {
     if (!isConnected) return [];
     return toConversationItems(apiConversations);
   }, [isConnected, apiConversations]);
@@ -149,14 +152,14 @@ const Conversations: FC<Props> = ({ route }) => {
       console.log('[Conversations] Initializing API conversations');
       void initializeConversations(
         api,
-        apiConversations.map((c) => c.name),
+        apiConversations.map((c) => c.id),
         10
       );
     }
   }, [isConnected, apiConversations, api]);
 
   // Combine demo and API conversations
-  const allConversations = useMemo(() => {
+  const allConversations: ConversationItem[] = useMemo(() => {
     console.log('[Conversations] Combining conversations', {
       demoCount: demoItems.length,
       apiCount: apiItems.length,
@@ -183,13 +186,13 @@ const Conversations: FC<Props> = ({ route }) => {
 
   // Update conversation$ when selected conversation changes
   useObserveEffect(selectedConversation$, ({ value: selectedConversation }) => {
-    conversation$.set(allConversations.find((conv) => conv.name === selectedConversation));
+    conversation$.set(allConversations.find((conv) => conv.id === selectedConversation));
   });
 
   // Update conversation$ when available conversations change
   useEffect(() => {
     const selectedId = selectedConversation$.get();
-    const selectedConversation = allConversations.find((conv) => conv.name === selectedId);
+    const selectedConversation = allConversations.find((conv) => conv.id === selectedId);
     conversation$.set(selectedConversation);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allConversations]);
@@ -258,7 +261,7 @@ const Conversations: FC<Props> = ({ route }) => {
             return conversation ? (
               <div className="h-full overflow-auto">
                 <ConversationContent
-                  conversationId={conversation.name}
+                  conversationId={conversation.id}
                   isReadOnly={conversation.readonly}
                 />
               </div>
@@ -286,7 +289,7 @@ const Conversations: FC<Props> = ({ route }) => {
         <Memo>
           {() => {
             const conversation = conversation$.get();
-            return conversation ? <RightSidebar conversationId={conversation.name} /> : null;
+            return conversation ? <RightSidebar conversationId={conversation.id} /> : null;
           }}
         </Memo>
       </ResizablePanel>
