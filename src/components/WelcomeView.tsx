@@ -70,6 +70,7 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
             placeholder="Type your message here..."
             className="h-12 text-lg"
             disabled={isSubmitting || !isConnected}
+            data-testid="chat-input"
           />
           <div className="flex justify-between">
             <Button
@@ -80,7 +81,11 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
             >
               Show history
             </Button>
-            <Button type="submit" disabled={!input.trim() || isSubmitting || !isConnected}>
+            <Button
+              type="submit"
+              disabled={!input.trim() || isSubmitting || !isConnected}
+              data-testid="new-conversation-button"
+            >
               {isSubmitting ? 'Sending...' : 'Send message'}
             </Button>
           </div>

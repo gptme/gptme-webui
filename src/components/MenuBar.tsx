@@ -24,7 +24,13 @@ export const MenuBar: FC = () => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="-ml-2" onClick={toggleLeftSidebar}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="-ml-2"
+                onClick={toggleLeftSidebar}
+                data-testid="toggle-conversations-sidebar"
+              >
                 {leftVisible ? (
                   <PanelLeftClose className="h-4 w-4" />
                 ) : (

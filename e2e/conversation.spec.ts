@@ -5,6 +5,9 @@ test.describe('Connecting', () => {
     // Go to the app
     await page.goto('/');
 
+    // Click the left panel toggle button to show conversations
+    await page.getByTestId('toggle-conversations-sidebar').click();
+
     // Should show demo conversations initially
     await expect(page.getByText('Introduction to gptme')).toBeVisible();
 
@@ -19,9 +22,6 @@ test.describe('Connecting', () => {
     await expect(page.getByText(/Hello! I'm gptme, your AI programming assistant/)).toBeVisible();
     await page.goto('/');
 
-    // Should show demo conversations immediately
-    await expect(page.getByText('Introduction to gptme')).toBeVisible();
-
     // Wait for successful connection
     await expect(page.getByRole('button', { name: /Connect/i })).toHaveClass(/text-green-600/, {
       timeout: 10000,
@@ -32,6 +32,7 @@ test.describe('Connecting', () => {
 
     // Wait for conversations to load
     // Should show both demo conversations and connected conversations
+    await page.getByTestId('toggle-conversations-sidebar').click();
     await expect(page.getByText('Introduction to gptme')).toBeVisible();
 
     // Wait for loading state to finish
@@ -71,6 +72,9 @@ test.describe('Connecting', () => {
   test('should handle connection errors gracefully', async ({ page }) => {
     // Start with server unavailable
     await page.goto('/');
+
+    // Click the left panel toggle button to show conversations
+    await page.getByTestId('toggle-conversations-sidebar').click();
 
     // Should still show demo conversations
     await expect(page.getByText('Introduction to gptme')).toBeVisible();
@@ -113,17 +117,15 @@ test.describe('Conversation Flow', () => {
   test('should be able to create a new conversation and send a message', async ({ page }) => {
     await page.goto('/');
 
-    // Click the "New Conversation" button to start a new conversation
-    await page.locator('[data-testid="new-conversation-button"]').click();
-
-    // Wait for the new conversation page to load
-    await expect(page).toHaveURL(/\?conversation=\d+$/);
-
     const message = 'Hello. We are testing, just say exactly "Hello world" without anything else.';
 
     // Type a message
     await page.getByTestId('chat-input').fill(message);
     await page.keyboard.press('Enter');
+    // await page.locator('[data-testid="new-conversation-button"]').click();
+
+    // Wait for the new conversation page to load
+    await expect(page).toHaveURL(/\?conversation=.+$/);
 
     // Should show the message in the conversation
     // Look specifically for the user's message in a user message container
