@@ -34,7 +34,6 @@ interface Props {
   hasSession$: Observable<boolean>;
   value?: string;
   onChange?: (value: string) => void;
-  static?: boolean; // Disable absolute positioning for static layouts
 }
 
 export const ChatInput: FC<Props> = ({
@@ -48,7 +47,6 @@ export const ChatInput: FC<Props> = ({
   hasSession$,
   value,
   onChange,
-  static: isStatic = false,
 }) => {
   const [internalMessage, setInternalMessage] = useState('');
   const message = value !== undefined ? value : internalMessage;
@@ -124,14 +122,7 @@ export const ChatInput: FC<Props> = ({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={
-        isStatic
-          ? 'p-4'
-          : 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/80 to-transparent p-4'
-      }
-    >
+    <form onSubmit={handleSubmit} className="p-4">
       <div className="mx-auto flex max-w-2xl flex-col">
         <div className="flex">
           <div className="flex flex-1">

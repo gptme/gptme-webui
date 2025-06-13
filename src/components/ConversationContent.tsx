@@ -246,16 +246,18 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
         <div className="mb-40" />
       </div>
 
-      <ChatInput
-        conversationId={conversationId}
-        onSend={handleSendMessage}
-        onInterrupt={interruptGeneration}
-        isReadOnly={isReadOnly}
-        hasSession$={hasSession$}
-        defaultModel={AVAILABLE_MODELS[0]}
-        availableModels={AVAILABLE_MODELS}
-        autoFocus$={shouldFocus$}
-      />
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/80 to-transparent">
+        <ChatInput
+          conversationId={conversationId}
+          onSend={handleSendMessage}
+          onInterrupt={interruptGeneration}
+          isReadOnly={isReadOnly}
+          hasSession$={hasSession$}
+          defaultModel={AVAILABLE_MODELS[0]}
+          availableModels={AVAILABLE_MODELS}
+          autoFocus$={shouldFocus$}
+        />
+      </div>
     </main>
   );
 };

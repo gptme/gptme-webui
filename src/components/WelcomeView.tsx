@@ -79,7 +79,6 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
               hasSession$={hasSession$}
               value={inputValue}
               onChange={setInputValue}
-              static={true}
             />
           </div>
         </div>
