@@ -48,6 +48,174 @@ interface Props {
   onChange?: (value: string) => void;
 }
 
+interface ChatOptionsProps {
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
+  selectedWorkspace: string;
+  setSelectedWorkspace: (workspace: string) => void;
+  streamingEnabled: boolean;
+  setStreamingEnabled: (enabled: boolean) => void;
+  availableModels: string[];
+  availableWorkspaces: Array<{ name: string; path: string }>;
+  isDisabled: boolean;
+  showWorkspaceSelector: boolean;
+}
+
+const ChatOptionsPanel: FC<ChatOptionsProps> = ({
+  selectedModel,
+  setSelectedModel,
+  selectedWorkspace,
+  setSelectedWorkspace,
+  streamingEnabled,
+  setStreamingEnabled,
+  availableModels,
+  availableWorkspaces,
+  isDisabled,
+  showWorkspaceSelector,
+}) => (
+  <div className="space-y-8">
+    <ModelSelector
+      selectedModel={selectedModel}
+      setSelectedModel={setSelectedModel}
+      availableModels={availableModels}
+      isDisabled={isDisabled}
+    />
+
+    {showWorkspaceSelector && (
+      <WorkspaceSelector
+        selectedWorkspace={selectedWorkspace}
+        setSelectedWorkspace={setSelectedWorkspace}
+        availableWorkspaces={availableWorkspaces}
+        isDisabled={isDisabled}
+      />
+    )}
+
+    <StreamingToggle
+      streamingEnabled={streamingEnabled}
+      setStreamingEnabled={setStreamingEnabled}
+      isDisabled={isDisabled}
+    />
+  </div>
+);
+
+const ModelSelector: FC<{
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
+  availableModels: string[];
+  isDisabled: boolean;
+}> = ({ selectedModel, setSelectedModel, availableModels, isDisabled }) => (
+  <div className="space-y-1">
+    <Label htmlFor="model-select">Model</Label>
+    <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isDisabled}>
+      <SelectTrigger id="model-select">
+        <SelectValue placeholder="Default model" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="default">Default model</SelectItem>
+        {availableModels.map((model) => (
+          <SelectItem key={model} value={model}>
+            <div className="flex flex-col overflow-hidden whitespace-nowrap">
+              <span className="font-medium">{model}</span>
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+const WorkspaceSelector: FC<{
+  selectedWorkspace: string;
+  setSelectedWorkspace: (workspace: string) => void;
+  availableWorkspaces: Array<{ name: string; path: string }>;
+  isDisabled: boolean;
+}> = ({ selectedWorkspace, setSelectedWorkspace, availableWorkspaces, isDisabled }) => (
+  <div className="space-y-1">
+    <Label htmlFor="workspace-select">Workspace</Label>
+    <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace} disabled={isDisabled}>
+      <SelectTrigger id="workspace-select">
+        <SelectValue placeholder="Current directory (.)" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value=".">Current directory (.)</SelectItem>
+        {availableWorkspaces.map((workspace) => (
+          <SelectItem key={workspace.path} value={workspace.path}>
+            <div className="flex items-center space-x-2">
+              <Folder className="h-4 w-4 text-yellow-600" />
+              <div className="flex flex-col">
+                <span className="text-left text-sm font-medium">{workspace.name}</span>
+                <span className="text-xs text-muted-foreground">{formatPath(workspace.path)}</span>
+              </div>
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+const StreamingToggle: FC<{
+  streamingEnabled: boolean;
+  setStreamingEnabled: (enabled: boolean) => void;
+  isDisabled: boolean;
+}> = ({ streamingEnabled, setStreamingEnabled, isDisabled }) => (
+  <div className="flex items-center justify-between">
+    <Label htmlFor="streaming-toggle">Enable streaming</Label>
+    <Switch
+      id="streaming-toggle"
+      checked={streamingEnabled}
+      onCheckedChange={setStreamingEnabled}
+      disabled={isDisabled}
+    />
+  </div>
+);
+
+const OptionsButton: FC<{ isDisabled: boolean; children: React.ReactNode }> = ({
+  isDisabled,
+  children,
+}) => (
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-5 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-all hover:bg-accent hover:text-muted-foreground hover:opacity-100"
+        disabled={isDisabled}
+      >
+        <Settings className="mr-0.5 h-2.5 w-2.5" />
+        Options
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-80" align="start">
+      {children}
+    </PopoverContent>
+  </Popover>
+);
+
+const SubmitButton: FC<{ isGenerating: boolean; isDisabled: boolean }> = ({
+  isGenerating,
+  isDisabled,
+}) => (
+  <Button
+    type="submit"
+    className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors ${
+      isGenerating
+        ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
+        : 'h-8 w-8 bg-green-600 text-green-100'
+    }`}
+    disabled={isDisabled}
+  >
+    {isGenerating ? (
+      <div className="flex items-center gap-2">
+        <span>Stop</span>
+        <Loader2 className="h-3 w-3 animate-spin" />
+      </div>
+    ) : (
+      <Send className="h-3 w-3" />
+    )}
+  </Button>
+);
+
 export const ChatInput: FC<Props> = ({
   conversationId,
   onSend,
@@ -61,20 +229,23 @@ export const ChatInput: FC<Props> = ({
   onChange,
 }) => {
   const [internalMessage, setInternalMessage] = useState('');
-  const message = value !== undefined ? value : internalMessage;
-  const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>('.');
+
   const { isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const message = value !== undefined ? value : internalMessage;
+  const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
 
   const isConnected = use$(isConnected$);
   const autoFocus = use$(autoFocus$);
   const conversation = conversationId ? use$(conversations$.get(conversationId)) : undefined;
   const isGenerating = conversation?.isGenerating || false;
   const hasSession = use$(hasSession$);
+
   const placeholder = isReadOnly
     ? 'This is a demo conversation (read-only)'
     : !isConnected
@@ -112,9 +283,7 @@ export const ChatInput: FC<Props> = ({
       console.log('[ChatInput] Interrupting generation...', { isGenerating });
       try {
         await onInterrupt();
-        console.log('[ChatInput] Generation interrupted successfully', {
-          isGenerating,
-        });
+        console.log('[ChatInput] Generation interrupted successfully', { isGenerating });
       } catch (error) {
         console.error('[ChatInput] Error interrupting generation:', error);
       }
@@ -147,141 +316,52 @@ export const ChatInput: FC<Props> = ({
     }
   };
 
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+    // Auto-adjust height
+    e.target.style.height = 'auto';
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 400)}px`;
+  };
+
   return (
     <form onSubmit={handleSubmit} className="p-4">
       <div className="mx-auto flex max-w-2xl flex-col">
         <div className="flex">
-          <div className="flex flex-1">
-            <Computed>
-              {() => {
-                return (
-                  <div className="relative flex flex-1">
-                    <Textarea
-                      ref={textareaRef}
-                      value={message}
-                      data-testid="chat-input"
-                      onChange={(e) => {
-                        setMessage(e.target.value);
-                        // Auto-adjust height
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${Math.min(e.target.scrollHeight, 400)}px`;
-                      }}
-                      onKeyDown={handleKeyDown}
-                      placeholder={placeholder}
-                      className="max-h-[400px] min-h-[60px] resize-none overflow-y-auto pb-8 pr-16"
-                      disabled={isDisabled}
+          <Computed>
+            {() => (
+              <div className="relative flex flex-1">
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  data-testid="chat-input"
+                  onChange={handleTextareaChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={placeholder}
+                  className="max-h-[400px] min-h-[60px] resize-none overflow-y-auto pb-8 pr-16"
+                  disabled={isDisabled}
+                />
+
+                <div className="absolute bottom-1.5 left-1.5">
+                  <OptionsButton isDisabled={isDisabled}>
+                    <ChatOptionsPanel
+                      selectedModel={selectedModel}
+                      setSelectedModel={setSelectedModel}
+                      selectedWorkspace={selectedWorkspace}
+                      setSelectedWorkspace={setSelectedWorkspace}
+                      streamingEnabled={streamingEnabled}
+                      setStreamingEnabled={setStreamingEnabled}
+                      availableModels={availableModels}
+                      availableWorkspaces={availableWorkspaces}
+                      isDisabled={isDisabled}
+                      showWorkspaceSelector={!conversationId}
                     />
-                    <div className="absolute bottom-1.5 left-1.5">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-all hover:bg-accent hover:text-muted-foreground hover:opacity-100"
-                            disabled={isDisabled}
-                          >
-                            <Settings className="mr-0.5 h-2.5 w-2.5" />
-                            Options
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80" align="start">
-                          <div className="space-y-8">
-                            <div className="space-y-1">
-                              <Label htmlFor="model-select">Model</Label>
-                              <Select
-                                value={selectedModel}
-                                onValueChange={setSelectedModel}
-                                disabled={isDisabled}
-                              >
-                                <SelectTrigger id="model-select">
-                                  <SelectValue placeholder="Default model" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="default">Default model</SelectItem>
-                                  {availableModels.map((model) => (
-                                    <SelectItem key={model} value={model}>
-                                      {model}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                  </OptionsButton>
+                </div>
 
-                            <div className="space-y-1">
-                              <Label htmlFor="workspace-select">Workspace</Label>
-                              <Select
-                                value={selectedWorkspace}
-                                onValueChange={setSelectedWorkspace}
-                                disabled={isDisabled}
-                              >
-                                <SelectTrigger id="workspace-select">
-                                  <SelectValue placeholder="Current directory (.)" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value=".">Current directory (.)</SelectItem>
-                                  {availableWorkspaces.map((workspace) => (
-                                    <SelectItem key={workspace.path} value={workspace.path}>
-                                      <div className="flex items-center space-x-2">
-                                        <Folder className="h-4 w-4 text-yellow-600" />
-                                        <div className="flex flex-col">
-                                          <span className="text-sm font-medium">
-                                            {workspace.name}
-                                          </span>
-                                          <span className="text-xs text-muted-foreground">
-                                            {formatPath(workspace.path)}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <Label htmlFor="streaming-toggle">Enable streaming</Label>
-                              <Switch
-                                id="streaming-toggle"
-                                checked={streamingEnabled}
-                                onCheckedChange={setStreamingEnabled}
-                                disabled={isDisabled}
-                              />
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                );
-              }}
-            </Computed>
-            <div className="relative h-full">
-              <Computed>
-                {() => (
-                  <Button
-                    type="submit"
-                    className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors
-                      ${
-                        isGenerating
-                          ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
-                          : 'h-8 w-8 bg-green-600 text-green-100'
-                      }
-                    `}
-                    disabled={isDisabled}
-                  >
-                    {isGenerating ? (
-                      <div className="flex items-center gap-2">
-                        <span>Stop</span>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      </div>
-                    ) : (
-                      <Send className="h-3 w-3" />
-                    )}
-                  </Button>
-                )}
-              </Computed>
-            </div>
-          </div>
+                <SubmitButton isGenerating={isGenerating} isDisabled={isDisabled} />
+              </div>
+            )}
+          </Computed>
         </div>
       </div>
     </form>
