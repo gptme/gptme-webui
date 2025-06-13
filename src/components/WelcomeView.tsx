@@ -39,8 +39,11 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
 
       // Create the conversation with the initial message and config
       await api.createConversation(conversationId, [{ role: 'user', content: message }], {
-        model: options?.model,
-        stream: options?.stream,
+        chat: {
+          model: options?.model,
+          stream: options?.stream,
+          workspace: options?.workspace || '.',
+        },
       });
 
       // Navigate to the new conversation with step flag

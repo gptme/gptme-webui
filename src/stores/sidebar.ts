@@ -4,6 +4,9 @@ import type { ImperativePanelHandle } from 'react-resizable-panels';
 export const leftSidebarVisible$ = observable(true);
 export const rightSidebarVisible$ = observable(true);
 
+// Selected workspace for filtering conversations
+export const selectedWorkspace$ = observable<string | null>(null);
+
 let leftPanelRef: ImperativePanelHandle | null = null;
 let rightPanelRef: ImperativePanelHandle | null = null;
 

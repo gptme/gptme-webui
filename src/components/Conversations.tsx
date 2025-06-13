@@ -9,9 +9,8 @@ import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
 import { ConversationContent } from '@/components/ConversationContent';
 import { useApi } from '@/contexts/ApiContext';
-import type { ConversationItem } from '@/components/ConversationList';
-import { toConversationItems } from '@/utils/conversation';
-import { demoConversations, type DemoConversation } from '@/democonversations';
+import type { ConversationSummary } from '@/types/conversation';
+import { demoConversations, getDemoMessages } from '@/democonversations';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Memo, use$, useObservable, useObserveEffect } from '@legendapp/state/react';
 import {
@@ -41,19 +40,20 @@ const Conversations: FC<Props> = ({ route }) => {
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
-  const conversation$ = useObservable<ConversationItem | undefined>(undefined);
+  const conversation$ = useObservable<ConversationSummary | undefined>(undefined);
   // Track demo initialization
   // Initialize demo conversations and handle selection on mount
   useEffect(() => {
     // Initialize demos in store
     demoConversations.forEach((conv) => {
+      const messages = getDemoMessages(conv.id);
       initConversation(conv.id, {
         id: conv.id,
         name: conv.name,
-        log: conv.messages,
+        log: messages,
         logfile: conv.name,
         branches: {},
-        workspace: '/demo/workspace',
+        workspace: conv.workspace || '/demo/workspace',
       });
     });
 
@@ -129,22 +129,12 @@ const Conversations: FC<Props> = ({ route }) => {
   }
 
   // Prepare demo conversation items
-  const demoItems: ConversationItem[] = useMemo(
-    () =>
-      demoConversations.map((conv: DemoConversation) => ({
-        id: conv.id,
-        name: conv.name,
-        lastUpdated: conv.lastUpdated,
-        messageCount: conv.messages.length,
-        readonly: true,
-      })),
-    []
-  );
+  const demoItems: ConversationSummary[] = useMemo(() => demoConversations, []);
 
   // Handle API conversations separately
-  const apiItems: ConversationItem[] = useMemo(() => {
+  const apiItems: ConversationSummary[] = useMemo(() => {
     if (!isConnected) return [];
-    return toConversationItems(apiConversations);
+    return apiConversations;
   }, [isConnected, apiConversations]);
 
   // Initialize API conversations in store when available
@@ -160,7 +150,7 @@ const Conversations: FC<Props> = ({ route }) => {
   }, [isConnected, apiConversations, api]);
 
   // Combine demo and API conversations
-  const allConversations: ConversationItem[] = useMemo(() => {
+  const allConversations: ConversationSummary[] = useMemo(() => {
     console.log('[Conversations] Combining conversations', {
       demoCount: demoItems.length,
       apiCount: apiItems.length,

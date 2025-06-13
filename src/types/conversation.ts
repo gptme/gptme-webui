@@ -20,10 +20,11 @@ export interface ToolUse {
 export interface ConversationSummary {
   id: string;
   name: string;
-  modified: number;
-  messages: number;
+  modified: number; // Unix timestamp
+  messages: number; // Message count
   branch?: string;
   workspace?: string;
+  readonly?: boolean; // For demo conversations
 }
 
 export interface GenerateCallbacks {

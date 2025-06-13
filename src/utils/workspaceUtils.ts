@@ -1,4 +1,4 @@
-import type { ConversationItem } from '@/components/ConversationList';
+import type { ConversationSummary } from '@/types/conversation';
 
 export interface WorkspaceProject {
   path: string;
@@ -23,25 +23,21 @@ export function isAgentWorkspace(path: string): boolean {
   );
 }
 
-// Extract unique workspaces from conversation items
+// Extract unique workspaces from conversation summaries
 export function extractWorkspacesFromConversations(
-  conversations: ConversationItem[]
+  conversations: ConversationSummary[]
 ): WorkspaceProject[] {
   const workspaceMap = new Map<string, WorkspaceProject>();
 
   console.log('[workspaceUtils] Processing conversations:', conversations.length);
 
-  // Extract workspace information from conversation items
+  // Extract workspace information from conversation summaries
   for (const conversation of conversations) {
     if (!conversation.workspace) continue;
 
     const workspace = conversation.workspace;
     const name = workspace.split('/').pop() || workspace;
-    const lastUsed = conversation.lastUpdated.toISOString();
-
-    //console.log(
-    //  `[workspaceUtils] Found workspace: ${workspace} from conversation ${conversation.id}`
-    //);
+    const lastUsed = new Date(conversation.modified * 1000).toISOString(); // Convert Unix timestamp to ISO string
 
     if (workspaceMap.has(workspace)) {
       const existing = workspaceMap.get(workspace)!;

@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getRelativeTimeString } from '@/utils/time';
 import { useApi } from '@/contexts/ApiContext';
-import { demoConversations } from '@/democonversations';
+import { demoConversations, getDemoMessages } from '@/democonversations';
 
-import type { MessageRole } from '@/types/conversation';
+import type { MessageRole, ConversationSummary } from '@/types/conversation';
 import { type FC } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
@@ -13,18 +13,8 @@ import { conversations$ } from '@/stores/conversations';
 
 type MessageBreakdown = Partial<Record<MessageRole, number>>;
 
-// UI-specific type for rendering conversations
-export interface ConversationItem {
-  id: string;
-  name: string;
-  lastUpdated: Date;
-  messageCount: number;
-  readonly?: boolean;
-  workspace?: string;
-}
-
 interface Props {
-  conversations: ConversationItem[];
+  conversations: ConversationSummary[];
   onSelect: (id: string) => void;
   isLoading?: boolean;
   isError?: boolean;
@@ -54,14 +44,15 @@ export const ConversationList: FC<Props> = ({
     return match ? match[1] : name;
   }
 
-  const ConversationItem: FC<{ conv: ConversationItem }> = ({ conv }) => {
+  const ConversationItem: FC<{ conv: ConversationSummary }> = ({ conv }) => {
     // For demo conversations, get messages from demoConversations
     const demoConv = demoConversations.find((dc) => dc.id === conv.id);
 
     // For API conversations, fetch messages
     const getMessageBreakdown = (): MessageBreakdown => {
       if (demoConv) {
-        return demoConv.messages.reduce((acc: MessageBreakdown, msg) => {
+        const messages = getDemoMessages(demoConv.id);
+        return messages.reduce((acc: MessageBreakdown, msg) => {
           acc[msg.role] = (acc[msg.role] || 0) + 1;
           return acc;
         }, {});
@@ -127,13 +118,15 @@ export const ConversationList: FC<Props> = ({
                     <TooltipTrigger>
                       <time
                         className="flex items-center whitespace-nowrap"
-                        dateTime={conv.lastUpdated.toISOString()}
+                        dateTime={new Date(conv.modified * 1000).toISOString()}
                       >
                         <Clock className="mr-1 h-3 w-3" />
-                        {getRelativeTimeString(conv.lastUpdated)}
+                        {getRelativeTimeString(new Date(conv.modified * 1000))}
                       </time>
                     </TooltipTrigger>
-                    <TooltipContent>{conv.lastUpdated.toLocaleString()}</TooltipContent>
+                    <TooltipContent>
+                      {new Date(conv.modified * 1000).toLocaleString()}
+                    </TooltipContent>
                   </Tooltip>
                   <Computed>
                     {() => {
@@ -144,7 +137,7 @@ export const ConversationList: FC<Props> = ({
                         return (
                           <span className="flex items-center">
                             <MessageSquare className="mr-1 h-3 w-3" />
-                            {conv.messageCount}
+                            {conv.messages}
                           </span>
                         );
                       }
@@ -223,7 +216,10 @@ export const ConversationList: FC<Props> = ({
   };
 
   return (
-    <div data-testid="conversation-list" className="h-full space-y-2 overflow-y-auto p-3">
+    <div
+      data-testid="conversation-list"
+      className="h-full space-y-2 overflow-y-auto overflow-x-hidden p-3"
+    >
       {isLoading && (
         <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

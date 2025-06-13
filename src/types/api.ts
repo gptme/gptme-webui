@@ -13,6 +13,7 @@ export interface CreateConversationRequest {
     chat?: {
       model?: string;
       stream?: boolean;
+      workspace?: string;
     };
   };
 }

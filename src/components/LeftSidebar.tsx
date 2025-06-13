@@ -5,17 +5,18 @@ import { AgentsList } from './AgentsList';
 import { WorkspaceList } from './WorkspaceList';
 import { useApi } from '@/contexts/ApiContext';
 import { useNavigate } from 'react-router-dom';
-import type { ConversationItem } from './ConversationList';
+import type { ConversationSummary } from '@/types/conversation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { selectedWorkspace$ } from '@/stores/sidebar';
 
 import type { FC } from 'react';
 import { use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface Props {
-  conversations: ConversationItem[];
+  conversations: ConversationSummary[];
   selectedConversationId$: Observable<string | null>;
   onSelectConversation: (id: string) => void;
   isLoading?: boolean;
@@ -37,9 +38,18 @@ export const LeftSidebar: FC<Props> = ({
 }) => {
   const { isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
+  const selectedWorkspace = use$(selectedWorkspace$);
   const navigate = useNavigate();
   const [agentsCollapsed, setAgentsCollapsed] = useState(false);
-  const [workspacesCollapsed, setWorkspacesCollapsed] = useState(false);
+  const [workspacesCollapsed, setWorkspacesCollapsed] = useState(true);
+
+  // Filter conversations based on selected workspace
+  const filteredConversations = useMemo(() => {
+    if (!selectedWorkspace) {
+      return conversations;
+    }
+    return conversations.filter((conv) => conv.workspace === selectedWorkspace);
+  }, [conversations, selectedWorkspace]);
 
   const handleNewConversation = () => {
     // Clear the conversation parameter to show WelcomeView
@@ -99,32 +109,7 @@ export const LeftSidebar: FC<Props> = ({
           </CollapsibleContent>
         </Collapsible>
 
-        <Collapsible
-          className="hidden"
-          open={!workspacesCollapsed}
-          onOpenChange={(open) => setWorkspacesCollapsed(!open)}
-        >
-          <CollapsibleTrigger className="flex h-12 w-full shrink-0 items-center justify-between border-t bg-background px-4 hover:bg-muted/50">
-            <div className="flex items-center space-x-2">
-              {workspacesCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-              <h2 className="font-semibold">Workspaces</h2>
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="overflow-hidden">
-            <div
-              className="overflow-scroll"
-              style={{ maxHeight: workspacesCollapsed ? 0 : '150px' }}
-            >
-              <WorkspaceList conversations={conversations} />
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        <div className="flex h-12 shrink-0 items-center justify-between border-t bg-background px-4">
+        <div className="flex h-12 shrink-0 items-center justify-between bg-background px-4">
           <h2 className="font-semibold">Conversations</h2>
           <div className="flex items-center space-x-2">
             <TooltipProvider>
@@ -150,7 +135,7 @@ export const LeftSidebar: FC<Props> = ({
         </div>
         <div className="flex flex-1 flex-col overflow-hidden">
           <ConversationList
-            conversations={conversations}
+            conversations={filteredConversations}
             selectedId$={selectedConversationId$}
             onSelect={onSelectConversation}
             isLoading={isLoading}
@@ -158,6 +143,29 @@ export const LeftSidebar: FC<Props> = ({
             error={error}
             onRetry={onRetry}
           />
+          <Collapsible
+            open={!workspacesCollapsed}
+            onOpenChange={(open) => setWorkspacesCollapsed(!open)}
+          >
+            <CollapsibleTrigger className="flex h-12 w-full shrink-0 items-center justify-between border-t bg-background px-4 hover:bg-muted/50">
+              <div className="flex items-center space-x-2">
+                {workspacesCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+                <h2 className="font-semibold">Workspaces</h2>
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="overflow-hidden">
+              <div
+                className="overflow-scroll"
+                style={{ maxHeight: workspacesCollapsed ? 0 : '200px' }}
+              >
+                <WorkspaceList conversations={conversations} />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
           <div className="border-t p-2 text-xs text-muted-foreground">
             <div className="flex items-center justify-center space-x-4">
               <a

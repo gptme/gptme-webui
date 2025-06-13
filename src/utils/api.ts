@@ -490,7 +490,7 @@ export class ApiClient {
   async createConversation(
     logfile: string,
     messages: Message[],
-    config?: { model?: string; stream?: boolean }
+    config?: { chat?: { model?: string; stream?: boolean; workspace?: string } }
   ): Promise<{ status: string; session_id: string }> {
     if (!this.isConnected) {
       console.error('Attempted to create conversation while disconnected');
@@ -499,7 +499,7 @@ export class ApiClient {
     try {
       const request: CreateConversationRequest = {
         messages,
-        ...(config && { config: { chat: config } }),
+        ...(config && { config }),
       };
       const response = await this.fetchJson<{
         status: string;

@@ -3,7 +3,7 @@ import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
 import type { Message, StreamingMessage } from '@/types/conversation';
 import type { ChatOptions } from '@/components/ChatInput';
-import { demoConversations } from '@/democonversations';
+import { demoConversations, getDemoMessages } from '@/democonversations';
 import { use$ } from '@legendapp/state/react';
 import {
   conversations$,
@@ -44,14 +44,15 @@ export function useConversation(conversationId: string) {
         const demoConv = demoConversations.find((conv) => conv.id === conversationId);
         if (demoConv) {
           // Initialize with demo data
+          const messages = getDemoMessages(demoConv.id);
           updateConversation(conversationId, {
             data: {
               id: conversationId,
               name: demoConv.name,
-              log: demoConv.messages,
+              log: messages,
               logfile: conversationId,
               branches: {},
-              workspace: '/demo/workspace',
+              workspace: demoConv.workspace || '/demo/workspace',
             },
           });
           return;

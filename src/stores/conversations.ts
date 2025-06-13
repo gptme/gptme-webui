@@ -1,8 +1,7 @@
 import { mergeIntoObservable, observable } from '@legendapp/state';
 import type { ChatConfig, ConversationResponse } from '@/types/api';
 import type { Message, StreamingMessage, ToolUse } from '@/types/conversation';
-import { demoConversations } from '@/democonversations';
-import type { DemoConversation } from '@/democonversations';
+import { demoConversations, getDemoMessages } from '@/democonversations';
 
 export interface PendingTool {
   id: string;
@@ -104,15 +103,16 @@ export async function initializeConversations(
   conversationIds.forEach((id) => {
     if (!conversations$.get(id)) {
       // Check if this is a demo conversation
-      const demoConv = demoConversations.find((conv: DemoConversation) => conv.id === id);
+      const demoConv = demoConversations.find((conv) => conv.id === id);
       if (demoConv) {
+        const messages = getDemoMessages(demoConv.id);
         initConversation(id, {
           id: demoConv.id,
           name: demoConv.name,
-          log: demoConv.messages,
+          log: messages,
           logfile: id,
           branches: {},
-          workspace: '/demo/workspace',
+          workspace: demoConv.workspace || '/demo/workspace',
         });
         return;
       }

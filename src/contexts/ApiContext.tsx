@@ -21,6 +21,7 @@ interface ApiContextType {
   connect: (config?: Partial<ConnectionConfig>) => Promise<void>;
   // Methods from ApiClient that are used in components
   getConversation: ApiClient['getConversation'];
+  createConversation: ApiClient['createConversation'];
   sendMessage: ApiClient['sendMessage'];
   step: ApiClient['step'];
   confirmTool: ApiClient['confirmTool'];
@@ -209,6 +210,7 @@ export function ApiProvider({
         connect,
         // Forward methods from the API client
         getConversation: api.getConversation.bind(api),
+        createConversation: api.createConversation.bind(api),
         sendMessage: api.sendMessage.bind(api),
         step: api.step.bind(api),
         confirmTool: api.confirmTool.bind(api),
