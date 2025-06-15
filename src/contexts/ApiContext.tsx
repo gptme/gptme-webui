@@ -6,6 +6,8 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
+import { isTauriEnvironment } from '@/utils/tauri';
+
 interface ConnectionConfig {
   baseUrl: string;
   authToken: string | null;
@@ -16,9 +18,11 @@ interface ApiContextType {
   api: ApiClient;
   isConnecting$: Observable<boolean>;
   isConnected$: Observable<boolean>;
+  isAutoConnecting$: Observable<boolean>;
   connectionConfig: ConnectionConfig;
   updateConfig: (config: Partial<ConnectionConfig>) => void;
   connect: (config?: Partial<ConnectionConfig>) => Promise<void>;
+  stopAutoConnect: () => void;
   // Methods from ApiClient that are used in components
   getConversation: ApiClient['getConversation'];
   createConversation: ApiClient['createConversation'];
@@ -78,6 +82,22 @@ let api = createApiClient(
     : null
 );
 const isConnecting$ = observable(false);
+const isAutoConnecting$ = observable(false);
+
+// Auto-connect state management
+let autoConnectTimer: ReturnType<typeof setTimeout> | null = null;
+let autoConnectAttempts = 0;
+const MAX_AUTO_CONNECT_ATTEMPTS = 10;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+const stopAutoConnect = () => {
+  if (autoConnectTimer) {
+    clearTimeout(autoConnectTimer);
+    autoConnectTimer = null;
+  }
+  isAutoConnecting$.set(false);
+  autoConnectAttempts = 0;
+};
 
 const updateConfig = (newConfig: Partial<ConnectionConfig>) => {
   connectionConfig$.set((prev) => {
@@ -105,6 +125,9 @@ export function ApiProvider({
   // Connect to API
   const connect = useCallback(
     async (config?: Partial<ConnectionConfig>) => {
+      // Stop any ongoing auto-connect attempts when manually connecting
+      stopAutoConnect();
+
       if (config) {
         // Update config if provided
         updateConfig(config);
@@ -175,21 +198,91 @@ export function ApiProvider({
     [queryClient]
   );
 
+  // Auto-connect with retry logic
+  const autoConnect = useCallback(
+    async (isInitialAttempt: boolean = false) => {
+      if (api.isConnected$.get()) {
+        console.log('[ApiContext] Already connected, stopping auto-connect');
+        stopAutoConnect();
+        return;
+      }
+
+      if (autoConnectAttempts >= MAX_AUTO_CONNECT_ATTEMPTS) {
+        console.log('[ApiContext] Max auto-connect attempts reached, stopping');
+        stopAutoConnect();
+        if (!isInitialAttempt) {
+          toast.error('Unable to connect to gptme server after multiple attempts');
+        }
+        return;
+      }
+
+      autoConnectAttempts++;
+      isAutoConnecting$.set(true);
+
+      console.log(
+        `[ApiContext] Auto-connect attempt ${autoConnectAttempts}/${MAX_AUTO_CONNECT_ATTEMPTS}`
+      );
+
+      try {
+        const connected = await api.checkConnection();
+        if (connected) {
+          console.log('[ApiContext] Auto-connect successful');
+          api.setConnected(true);
+          stopAutoConnect();
+
+          // Refresh queries
+          await queryClient.invalidateQueries();
+          await queryClient.refetchQueries({
+            queryKey: ['conversations'],
+            type: 'active',
+          });
+
+          // Only show success toast if not the initial attempt
+          if (!isInitialAttempt) {
+            toast.success('Connected to gptme server');
+          }
+          return;
+        }
+      } catch (error) {
+        console.log(`[ApiContext] Auto-connect attempt ${autoConnectAttempts} failed:`, error);
+      }
+
+      // Schedule next retry with exponential backoff
+      const delay = INITIAL_RETRY_DELAY * Math.pow(2, autoConnectAttempts - 1);
+      const maxDelay = 30000; // Cap at 30 seconds
+      const nextDelay = Math.min(delay, maxDelay);
+
+      console.log(`[ApiContext] Scheduling next auto-connect attempt in ${nextDelay}ms`);
+
+      autoConnectTimer = setTimeout(() => {
+        autoConnect(false);
+      }, nextDelay);
+    },
+    [queryClient]
+  );
+
   // Attempt initial connection
   useEffect(() => {
     const attemptInitialConnection = async () => {
       console.log('[ApiContext] Attempting initial connection');
-      try {
-        // Always try to connect on startup
-        await connect();
-      } catch (error) {
-        console.error('Initial connection attempt failed:', error);
-        // Don't show toast for initial connection failure
+
+      // In Tauri environment, use autoconnect for better UX
+      if (isTauriEnvironment()) {
+        console.log('[ApiContext] Tauri environment detected, starting auto-connect');
+        await autoConnect(true);
+      } else {
+        // In web environment, try once and let user manually connect if needed
+        try {
+          await connect();
+        } catch (error) {
+          console.error('Initial connection attempt failed:', error);
+          // Don't show toast for initial connection failure in web environment
+        }
       }
     };
 
     void attemptInitialConnection();
-  }, [connect]);
+  }, [connect, autoConnect]);
 
   // Reconnect on config change
   useObserveEffect(connectionConfig$, async ({ value }) => {
@@ -205,9 +298,11 @@ export function ApiProvider({
         api,
         isConnecting$,
         isConnected$: api.isConnected$,
+        isAutoConnecting$,
         connectionConfig,
         updateConfig,
         connect,
+        stopAutoConnect,
         // Forward methods from the API client
         getConversation: api.getConversation.bind(api),
         createConversation: api.createConversation.bind(api),

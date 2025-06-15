@@ -20,7 +20,14 @@ import { use$ } from '@legendapp/state/react';
 
 export const ConnectionButton: FC = () => {
   const [open, setOpen] = useState(false);
-  const { connectionConfig, connect, isConnected$, isConnecting$ } = useApi();
+  const {
+    connectionConfig,
+    connect,
+    isConnected$,
+    isConnecting$,
+    isAutoConnecting$,
+    stopAutoConnect,
+  } = useApi();
   const [formState, setFormState] = useState({
     baseUrl: connectionConfig.baseUrl,
     authToken: connectionConfig.authToken || '',
@@ -29,6 +36,7 @@ export const ConnectionButton: FC = () => {
 
   const isConnected = use$(isConnected$);
   const isConnecting = use$(isConnecting$);
+  const isAutoConnecting = use$(isAutoConnecting$);
   const features = [
     'Create new conversations',
     'Access conversation history',
@@ -77,11 +85,17 @@ export const ConnectionButton: FC = () => {
           size="xs"
           className={cn(
             isConnected ? 'text-green-600' : 'text-muted-foreground',
-            isConnecting && 'text-yellow-600'
+            (isConnecting || isAutoConnecting) && 'text-yellow-600'
           )}
         >
           <Network className="mr-2 h-3 w-3" />
-          {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Connect'}
+          {isConnected
+            ? 'Connected'
+            : isConnecting
+              ? 'Connecting...'
+              : isAutoConnecting
+                ? 'Auto-connecting...'
+                : 'Connect'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -153,6 +167,30 @@ export const ConnectionButton: FC = () => {
             </div>
           </div>
 
+          {isAutoConnecting && (
+            <div className="space-y-2 rounded-md bg-yellow-50 p-3 dark:bg-yellow-950/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Network className="mr-2 h-4 w-4 animate-pulse text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    Auto-connecting to server...
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={stopAutoConnect}
+                  className="text-yellow-700 hover:text-yellow-900 dark:text-yellow-300 dark:hover:text-yellow-100"
+                >
+                  Stop
+                </Button>
+              </div>
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                The server is starting up. This may take a few seconds.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">Features enabled by connecting:</h4>
             <ul className="space-y-2">
@@ -170,9 +208,15 @@ export const ConnectionButton: FC = () => {
           <Button
             onClick={handleConnect}
             className={cn('w-full', isConnected && 'bg-green-600 hover:bg-green-700')}
-            disabled={isConnecting}
+            disabled={isConnecting || isAutoConnecting}
           >
-            {isConnected ? 'Reconnect' : isConnecting ? 'Connecting...' : 'Connect'}
+            {isConnected
+              ? 'Reconnect'
+              : isConnecting
+                ? 'Connecting...'
+                : isAutoConnecting
+                  ? 'Auto-connecting...'
+                  : 'Connect'}
           </Button>
         </div>
       </DialogContent>
