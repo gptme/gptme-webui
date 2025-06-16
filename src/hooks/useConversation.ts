@@ -15,6 +15,7 @@ import {
   initConversation,
   selectedConversation$,
 } from '@/stores/conversations';
+import { playChime } from '@/utils/audio';
 
 const MAX_CONNECTED_CONVERSATIONS = 3;
 
@@ -121,6 +122,11 @@ export function useConversation(conversationId: string) {
                 lastMessage$.isComplete.set(true);
               }
             }
+
+            // Play chime sound when assistant is done generating
+            playChime().catch((error) => {
+              console.warn('Failed to play completion chime:', error);
+            });
           },
           onMessageAdded: (message) => {
             console.log('[useConversation] Message added:', message);
@@ -146,6 +152,11 @@ export function useConversation(conversationId: string) {
             } else {
               // Only set pending tool state if we need confirmation
               setPendingTool(conversationId, toolId, tooluse);
+
+              // Play chime sound when tool confirmation is needed
+              playChime().catch((error) => {
+                console.warn('Failed to play tool confirmation chime:', error);
+              });
             }
           },
           onInterrupted: () => {
