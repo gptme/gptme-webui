@@ -133,31 +133,27 @@ export const ConversationList: FC<Props> = ({
                       const storeConv = conversations$.get(conv.id)?.get();
                       const isLoaded = storeConv?.data?.log?.length > 0;
 
-                      if (!isLoaded) {
-                        return (
-                          <span className="flex items-center">
-                            <MessageSquare className="mr-1 h-3 w-3" />
-                            {conv.messages}
-                          </span>
-                        );
-                      }
+                      const breakdown = isLoaded ? getMessageBreakdown() : {};
+                      const count = isLoaded
+                        ? Object.values(breakdown).reduce((a, b) => a + b, 0)
+                        : conv.messages;
 
-                      const breakdown = getMessageBreakdown();
-                      const userCount = breakdown.user || 0;
-                      //const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0);
+                      const messageCountElement = (
+                        <span className="flex items-center">
+                          <MessageSquare className="mr-1 h-3 w-3" />
+                          {count}
+                        </span>
+                      );
 
-                      return (
+                      return isLoaded ? (
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="flex items-center">
-                              <MessageSquare className="mr-1 h-3 w-3" />
-                              {userCount}
-                            </span>
-                          </TooltipTrigger>
+                          <TooltipTrigger asChild>{messageCountElement}</TooltipTrigger>
                           <TooltipContent>
                             <div className="whitespace-pre">{formatBreakdown(breakdown)}</div>
                           </TooltipContent>
                         </Tooltip>
+                      ) : (
+                        messageCountElement
                       );
                     }}
                   </Computed>
