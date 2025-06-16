@@ -1,4 +1,4 @@
-import { Plus, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
+import { PenSquare, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { AgentsList } from './AgentsList';
@@ -79,19 +79,20 @@ export const LeftSidebar: FC<Props> = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNewConversation();
-                        }}
-                        data-testid="new-conversation-button"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNewConversation();
+                      }}
+                      data-testid="new-conversation-button"
+                    >
+                      <span>
+                        <PenSquare className="h-4 w-4" />
+                      </span>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {!isConnected
@@ -115,16 +116,17 @@ export const LeftSidebar: FC<Props> = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleNewConversation}
-                      data-testid="new-conversation-button"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNewConversation}
+                    data-testid="new-conversation-button"
+                  >
+                    <span>
+                      <PenSquare className="h-4 w-4" />
+                    </span>
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {!isConnected ? 'Connect to create new conversations' : 'Create new conversation'}

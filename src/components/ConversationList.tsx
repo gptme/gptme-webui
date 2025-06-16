@@ -143,14 +143,15 @@ export const ConversationList: FC<Props> = ({
                       }
 
                       const breakdown = getMessageBreakdown();
-                      const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0);
+                      const userCount = breakdown.user || 0;
+                      //const totalCount = Object.values(breakdown).reduce((a, b) => a + b, 0);
 
                       return (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="flex items-center">
                               <MessageSquare className="mr-1 h-3 w-3" />
-                              {totalCount}
+                              {userCount}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>

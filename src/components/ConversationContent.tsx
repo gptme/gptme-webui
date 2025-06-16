@@ -5,7 +5,7 @@ import { ChatInput, type ChatOptions } from './ChatInput';
 import { useConversation } from '@/hooks/useConversation';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
-import { ToolConfirmationDialog } from './ToolConfirmationDialog';
+import { InlineToolConfirmation } from './InlineToolConfirmation';
 import { For, Memo, useObservable, useObserveEffect } from '@legendapp/state/react';
 import { getObservableIndex } from '@legendapp/state';
 import { useApi } from '@/contexts/ApiContext';
@@ -165,15 +165,6 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
 
   return (
     <main className="relative flex h-full flex-col">
-      {/* Tool Confirmation Dialog */}
-      <ToolConfirmationDialog
-        pendingTool$={conversation$?.pendingTool}
-        onConfirm={handleConfirmTool}
-        onEdit={handleEditTool}
-        onSkip={handleSkipTool}
-        onAuto={handleAutoConfirmTool}
-      />
-
       <div
         className="flex-1 overflow-y-auto"
         ref={scrollContainerRef}
@@ -241,6 +232,15 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
             );
           }}
         </For>
+
+        {/* Inline Tool Confirmation */}
+        <InlineToolConfirmation
+          pendingTool$={conversation$?.pendingTool}
+          onConfirm={handleConfirmTool}
+          onEdit={handleEditTool}
+          onSkip={handleSkipTool}
+          onAuto={handleAutoConfirmTool}
+        />
 
         {/* Add padding at the bottom to account for the floating input */}
         <div className="mb-40" />

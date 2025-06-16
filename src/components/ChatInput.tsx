@@ -294,6 +294,10 @@ export const ChatInput: FC<Props> = ({
         workspace: selectedWorkspace || undefined,
       });
       setMessage('');
+      // Reset textarea height to default by removing inline style
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '';
+      }
     }
   };
 
