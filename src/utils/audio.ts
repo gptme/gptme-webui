@@ -2,6 +2,13 @@
  * Audio utilities for playing notification sounds
  */
 
+// Extend Window interface to include webkit-prefixed AudioContext
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 let audioContext: AudioContext | null = null;
 let chimeBuffer: AudioBuffer | null = null;
 
@@ -15,7 +22,7 @@ async function initializeAudio(): Promise<void> {
 
   try {
     // Create audio context
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
     // Load the chime sound file
     const response = await fetch('/chime.mp3');
@@ -62,5 +69,5 @@ export async function playChime(): Promise<void> {
  * Check if audio is supported
  */
 export function isAudioSupported(): boolean {
-  return !!(window.AudioContext || (window as any).webkitAudioContext);
+  return !!(window.AudioContext || window.webkitAudioContext);
 }
