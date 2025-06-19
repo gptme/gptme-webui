@@ -1,9 +1,11 @@
+
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useWorkspaceApi } from '@/utils/workspaceApi';
 import type { FileType, FilePreview } from '@/types/workspace';
 import { CodeDisplay } from '@/components/CodeDisplay';
+import { MarkdownPreviewTabs } from './MarkdownPreviewTabs';
 
 interface FilePreviewProps {
   file: FileType;
@@ -50,6 +52,9 @@ export function FilePreview({ file, conversationId }: FilePreviewProps) {
     return null;
   }
 
+  // Check if this is a markdown file
+  const isMarkdownFile = file.name.toLowerCase().endsWith('.md') || file.name.toLowerCase().endsWith('.markdown') || file.mime_type === 'text/markdown';
+
   switch (preview.type) {
     case 'text':
       return (
@@ -66,11 +71,18 @@ export function FilePreview({ file, conversationId }: FilePreviewProps) {
             </div>
           </div>
           <div className="flex-1 overflow-auto">
-            <CodeDisplay
-              code={preview.content}
-              language={file.mime_type?.split('/')[1] || 'plaintext'}
-              maxHeight="none"
-            />
+            {isMarkdownFile ? (
+              <MarkdownPreviewTabs
+                content={preview.content}
+                language={file.mime_type?.split('/')[1] || 'markdown'}
+              />
+            ) : (
+              <CodeDisplay
+                code={preview.content}
+                language={file.mime_type?.split('/')[1] || 'plaintext'}
+                maxHeight="none"
+              />
+            )}
           </div>
         </div>
       );
