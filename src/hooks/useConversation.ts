@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { useToast } from '@/components/ui/use-toast';
 import type { Message, StreamingMessage } from '@/types/conversation';
@@ -25,7 +25,7 @@ export function useConversation(conversationId: string) {
   const conversation$ = conversations$.get(conversationId);
   const isConnected = use$(api.isConnected$);
   
-  let messageJustCompleted = false;
+  const messageJustCompleted = useRef(false);
 
   // Initialize conversation in store if needed
   useEffect(() => {
@@ -90,7 +90,7 @@ export function useConversation(conversationId: string) {
           onMessageStart: () => {
             console.log('[useConversation] Generation started');
             setGenerating(conversationId, true);
-            messageJustCompleted = false;
+            messageJustCompleted.current = false;
 
             // Add empty message placeholder if needed
             const messages$ = conversation$?.data.log;
@@ -114,7 +114,7 @@ export function useConversation(conversationId: string) {
           },
           onMessageComplete: (message) => {
             console.log('[useConversation] Generation complete');
-            messageJustCompleted = true;
+            messageJustCompleted.current = true;
 
             // Update the last message
             const messages$ = conversation$?.data.log;
@@ -128,7 +128,7 @@ export function useConversation(conversationId: string) {
 
             // Use setTimeout with 0ms delay to allow potential onToolPending to fire first
             setTimeout(() => {
-              if (messageJustCompleted) {
+              if (messageJustCompleted.current) {
                 setGenerating(conversationId, false);
                 playChime().catch((error) => {
                   console.warn('Failed to play completion chime:', error);
@@ -152,8 +152,8 @@ export function useConversation(conversationId: string) {
           },
           onToolPending: (toolId, tooluse, auto_confirm) => {
             console.log('[useConversation] Tool pending:', { toolId, tooluse, auto_confirm });
-            if (messageJustCompleted) {
-              messageJustCompleted = false;
+            if (messageJustCompleted.current) {
+              messageJustCompleted.current = false;
               // Keep generating true as we're continuing with tool execution
             } else if (!auto_confirm) {
               // Only set generating to false if we need manual confirmation
@@ -175,7 +175,7 @@ export function useConversation(conversationId: string) {
             console.log('[useConversation] Generation interrupted');
             setGenerating(conversationId, false);
             setPendingTool(conversationId, null, null);
-            messageJustCompleted = false;
+            messageJustCompleted.current = false;
 
             // Mark the last message as interrupted
             const messages$ = conversation$?.data.log;
