@@ -21,6 +21,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GitBranch, Folder, Settings } from 'lucide-react';
+import { WorkspaceSelector } from '@/components/WorkspaceSelector';
+import { useWorkspaces } from '@/hooks/useWorkspaces';
 import type { CreateTaskRequest, TargetType } from '@/types/task';
 
 interface Props {
@@ -38,7 +40,11 @@ const TaskCreationDialog: FC<Props> = ({ open, onOpenChange, onTaskCreated }) =>
   });
   const [useWorktree, setUseWorktree] = useState(true);
   const [createBranch, setCreateBranch] = useState(true);
+  const [useExistingWorkspace, setUseExistingWorkspace] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get available workspaces
+  const { workspaces } = useWorkspaces();
 
   const handleSubmit = async () => {
     if (!formData.content.trim()) return;
@@ -64,6 +70,7 @@ const TaskCreationDialog: FC<Props> = ({ open, onOpenChange, onTaskCreated }) =>
       });
       setUseWorktree(true);
       setCreateBranch(true);
+      setUseExistingWorkspace(true);
     } catch (error) {
       console.error('Error creating task:', error);
     } finally {
@@ -144,16 +151,45 @@ const TaskCreationDialog: FC<Props> = ({ open, onOpenChange, onTaskCreated }) =>
               <CardDescription>Configure isolated development environment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Custom Workspace Path */}
-              <div className="space-y-2">
-                <Label htmlFor="workspace">Custom Workspace Path (optional)</Label>
-                <Input
-                  id="workspace"
-                  placeholder="Leave empty for auto-generated path"
-                  value={formData.workspace}
-                  onChange={(e) => handleInputChange('workspace', e.target.value)}
+              {/* Workspace Selection Mode Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Folder className="h-4 w-4" />
+                    <Label htmlFor="use-existing-workspace">Use Existing Workspace</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Choose from recent workspaces or enter custom path
+                  </p>
+                </div>
+                <Switch
+                  id="use-existing-workspace"
+                  checked={useExistingWorkspace}
+                  onCheckedChange={setUseExistingWorkspace}
                 />
               </div>
+
+              {/* Workspace Selection */}
+              {useExistingWorkspace ? (
+                <WorkspaceSelector
+                  label="Select Workspace"
+                  selectedWorkspace={formData.workspace || '.'}
+                  onWorkspaceChange={(workspace) => handleInputChange('workspace', workspace)}
+                  workspaces={workspaces}
+                  placeholder="Choose a workspace"
+                  showConversationCount={true}
+                />
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="workspace">Custom Workspace Path</Label>
+                  <Input
+                    id="workspace"
+                    placeholder="Enter custom workspace path or leave empty for auto-generated"
+                    value={formData.workspace}
+                    onChange={(e) => handleInputChange('workspace', e.target.value)}
+                  />
+                </div>
+              )}
 
               {/* Git Worktree Option */}
               <div className="flex items-center justify-between">

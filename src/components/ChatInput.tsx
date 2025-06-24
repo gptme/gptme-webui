@@ -1,18 +1,9 @@
-import { Send, Loader2, Settings, Folder } from 'lucide-react';
+import { Send, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  type FC,
-  type FormEvent,
-  type KeyboardEvent,
-} from 'react';
+import { useState, useEffect, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 
-import { useConversationsInfiniteQuery } from '@/hooks/useConversationsInfiniteQuery';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
@@ -26,7 +17,9 @@ import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
 import { Computed, use$ } from '@legendapp/state/react';
 import { conversations$ } from '@/stores/conversations';
-import { extractWorkspacesFromConversations, formatPath } from '@/utils/workspaceUtils';
+import { useWorkspaces } from '@/hooks/useWorkspaces';
+import { WorkspaceSelector } from '@/components/WorkspaceSelector';
+import type { WorkspaceProject } from '@/utils/workspaceUtils';
 import { AVAILABLE_MODELS } from './ConversationContent';
 
 export interface ChatOptions {
@@ -56,7 +49,7 @@ interface ChatOptionsProps {
   streamingEnabled: boolean;
   setStreamingEnabled: (enabled: boolean) => void;
   availableModels: string[];
-  availableWorkspaces: Array<{ name: string; path: string }>;
+  availableWorkspaces: WorkspaceProject[];
   isDisabled: boolean;
   showWorkspaceSelector: boolean;
 }
@@ -84,9 +77,10 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
     {showWorkspaceSelector && (
       <WorkspaceSelector
         selectedWorkspace={selectedWorkspace}
-        setSelectedWorkspace={setSelectedWorkspace}
-        availableWorkspaces={availableWorkspaces}
-        isDisabled={isDisabled}
+        onWorkspaceChange={setSelectedWorkspace}
+        workspaces={availableWorkspaces}
+        disabled={isDisabled}
+        showConversationCount={true}
       />
     )}
 
@@ -116,36 +110,6 @@ const ModelSelector: FC<{
           <SelectItem key={model} value={model}>
             <div className="flex flex-col overflow-hidden whitespace-nowrap">
               <span className="font-medium">{model}</span>
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-);
-
-const WorkspaceSelector: FC<{
-  selectedWorkspace: string;
-  setSelectedWorkspace: (workspace: string) => void;
-  availableWorkspaces: Array<{ name: string; path: string }>;
-  isDisabled: boolean;
-}> = ({ selectedWorkspace, setSelectedWorkspace, availableWorkspaces, isDisabled }) => (
-  <div className="space-y-1">
-    <Label htmlFor="workspace-select">Workspace</Label>
-    <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace} disabled={isDisabled}>
-      <SelectTrigger id="workspace-select">
-        <SelectValue placeholder="Current directory (.)" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value=".">Current directory (.)</SelectItem>
-        {availableWorkspaces.map((workspace) => (
-          <SelectItem key={workspace.path} value={workspace.path}>
-            <div className="flex items-center space-x-2">
-              <Folder className="h-4 w-4 text-yellow-600" />
-              <div className="flex flex-col">
-                <span className="text-left text-sm font-medium">{workspace.name}</span>
-                <span className="text-xs text-muted-foreground">{formatPath(workspace.path)}</span>
-              </div>
             </div>
           </SelectItem>
         ))}
@@ -238,20 +202,8 @@ export const ChatInput: FC<Props> = ({
 
   const isConnected = use$(isConnected$);
 
-  // Get available workspaces reactively using the same query
-  const { data: infiniteData } = useConversationsInfiniteQuery(false); // Don't fetch, just subscribe to cache changes
-
-  // Extract workspaces from cached infinite query data
-  const availableWorkspaces = useMemo(() => {
-    const conversationSummaries = infiniteData?.pages?.flatMap((page) => page.conversations) || [];
-
-    console.log(
-      '[ChatInput] Extracted workspaces from cache:',
-      conversationSummaries.length,
-      'conversations'
-    );
-    return extractWorkspacesFromConversations(conversationSummaries);
-  }, [infiniteData]);
+  // Get available workspaces using the reusable hook
+  const { workspaces: availableWorkspaces } = useWorkspaces(false); // Don't fetch, just subscribe to cache changes
 
   const message = value !== undefined ? value : internalMessage;
   const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
