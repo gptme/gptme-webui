@@ -2,9 +2,11 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ApiProvider } from './contexts/ApiContext';
 import Index from './pages/Index';
+import Tasks from './pages/Tasks';
+import Workspace from './pages/Workspace';
 import type { FC } from 'react';
 
 const queryClient = new QueryClient({
@@ -35,8 +37,18 @@ const App: FC = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ApiProvider queryClient={queryClient}>
-          <BrowserRouter basename={import.meta.env.BASE_URL}>
-            <Index />
+          <BrowserRouter
+            basename={import.meta.env.BASE_URL}
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/tasks" element={<Tasks />} />
+              <Route path="/workspace" element={<Workspace />} />
+            </Routes>
             <Toaster />
             <Sonner />
           </BrowserRouter>
