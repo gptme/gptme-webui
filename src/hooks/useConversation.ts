@@ -126,7 +126,8 @@ export function useConversation(conversationId: string) {
               }
             }
 
-            // Use setTimeout with 0ms delay to allow potential onToolPending to fire first
+            // Use setTimeout with 100ms delay to allow potential onToolPending to fire first
+            // Increased from 0ms to give API events more breathing room
             setTimeout(() => {
               if (messageJustCompleted.current) {
                 setGenerating(conversationId, false);
@@ -134,7 +135,7 @@ export function useConversation(conversationId: string) {
                   console.warn('Failed to play completion chime:', error);
                 });
               }
-            }, 0);
+            }, 100);
           },
           onMessageAdded: (message) => {
             console.log('[useConversation] Message added:', message);
@@ -152,19 +153,19 @@ export function useConversation(conversationId: string) {
           },
           onToolPending: (toolId, tooluse, auto_confirm) => {
             console.log('[useConversation] Tool pending:', { toolId, tooluse, auto_confirm });
+            
             if (messageJustCompleted.current) {
               messageJustCompleted.current = false;
               // Keep generating true as we're continuing with tool execution
-            } else if (!auto_confirm) {
-              // Only set generating to false if we need manual confirmation
-              setGenerating(conversationId, false);
-              playChime().catch((error) => {
-                console.warn('Failed to play tool confirmation chime:', error);
-              });
             }
 
             if (!auto_confirm) {
+              // Always set generating to false and play chime for manual confirmation
+              setGenerating(conversationId, false);
               setPendingTool(conversationId, toolId, tooluse);
+              playChime().catch((error) => {
+                console.warn('Failed to play tool confirmation chime:', error);
+              });
             } else {
               api.confirmTool(conversationId, toolId, 'confirm').catch((error) => {
                 console.error('[useConversation] Error auto-confirming tool:', error);
