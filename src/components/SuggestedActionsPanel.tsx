@@ -237,11 +237,11 @@ const SuggestedActionsPanel: FC<Props> = ({ task }) => {
         break;
       case 'view-conversation':
         // Navigate to conversation view using React Router
-        navigate(`/?conversation=${task.id}`);
+        navigate(`/chat/${task.id}`);
         break;
       case 'open-workspace':
         // Navigate to workspace explorer
-        navigate(`/workspace?conversation=${task.id}`);
+        navigate(`/workspace/${task.id}`);
         break;
       case 'view-pr':
         if (task.git?.pr_url) {

@@ -125,7 +125,7 @@ export const taskApi = {
    */
   viewTaskConversation(taskId: string): void {
     // Navigate to the conversation page for this task
-    window.location.href = `/?conversation=${taskId}`;
+    window.location.href = `/chat/${taskId}`;
   },
 
   /**
@@ -134,8 +134,8 @@ export const taskApi = {
   async executeAction(
     taskId: string,
     actionId: string,
-    params?: Record<string, any>
-  ): Promise<any> {
+    params?: Record<string, unknown>
+  ): Promise<unknown> {
     switch (actionId) {
       case 'start':
         return this.startTask(taskId);
@@ -170,7 +170,11 @@ export const taskApi = {
    * Start a task by creating a conversation session and beginning generation.
    * This delegates to the existing conversation API.
    */
-  async startTask(taskId: string): Promise<any> {
+  async startTask(taskId: string): Promise<{
+    status: 'started';
+    conversation_id: string;
+    session_id: string;
+  }> {
     try {
       // First, get the task to find its conversation ID
       const task = await this.getTask(taskId);

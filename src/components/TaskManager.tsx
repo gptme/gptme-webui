@@ -1,5 +1,5 @@
-import { type FC, useState, useEffect, type ReactElement } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { type FC, useState, useEffect, useCallback, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   GitBranch,
@@ -22,10 +22,10 @@ import type { Task, TaskStatus, CreateTaskRequest } from '@/types/task';
 
 interface Props {
   className?: string;
+  selectedTaskId?: string;
 }
 
-const TaskManager: FC<Props> = ({ className }) => {
-  const [searchParams] = useSearchParams();
+const TaskManager: FC<Props> = ({ className, selectedTaskId }) => {
   const navigate = useNavigate();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -49,6 +49,30 @@ const TaskManager: FC<Props> = ({ className }) => {
     }
   };
 
+  // Handle task selection - fetch detailed info
+  const handleTaskSelect = useCallback(
+    async (task: Task) => {
+      try {
+        // Update URL to reflect selection
+        navigate(`/tasks/${task.id}`, { replace: true });
+
+        // Fetch detailed task information
+        const detailedTask = await taskApi.getTask(task.id);
+        setSelectedTask(detailedTask);
+
+        // Update the task in the tasks array to keep sidebar in sync
+        setTasks((prevTasks) =>
+          prevTasks.map((t) => (t.id === detailedTask.id ? detailedTask : t))
+        );
+      } catch (err) {
+        console.error('Error fetching task details:', err);
+        // Fallback to basic task data
+        setSelectedTask(task);
+      }
+    },
+    [navigate]
+  );
+
   // Load tasks on component mount
   useEffect(() => {
     loadTasks();
@@ -56,35 +80,13 @@ const TaskManager: FC<Props> = ({ className }) => {
 
   // Initialize selected task from URL parameter
   useEffect(() => {
-    const selectedTaskId = searchParams.get('selected');
     if (selectedTaskId && tasks.length > 0) {
       const task = tasks.find((t) => t.id === selectedTaskId);
       if (task && (!selectedTask || selectedTask.id !== selectedTaskId)) {
         handleTaskSelect(task);
       }
     }
-  }, [tasks, searchParams, selectedTask]);
-
-  // Handle task selection - fetch detailed info
-  const handleTaskSelect = async (task: Task) => {
-    try {
-      // Update URL to reflect selection
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set('selected', task.id);
-      navigate(`/tasks?${newSearchParams.toString()}`, { replace: true });
-
-      // Fetch detailed task information
-      const detailedTask = await taskApi.getTask(task.id);
-      setSelectedTask(detailedTask);
-
-      // Update the task in the tasks array to keep sidebar in sync
-      setTasks((prevTasks) => prevTasks.map((t) => (t.id === detailedTask.id ? detailedTask : t)));
-    } catch (err) {
-      console.error('Error fetching task details:', err);
-      // Fallback to basic task data
-      setSelectedTask(task);
-    }
-  };
+  }, [tasks, selectedTaskId, selectedTask, handleTaskSelect]);
 
   // Handle task creation
   const handleTaskCreated = async (taskRequest: CreateTaskRequest) => {
@@ -94,9 +96,7 @@ const TaskManager: FC<Props> = ({ className }) => {
       setShowCreateDialog(false);
 
       // Update URL to reflect selection of new task
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set('selected', newTask.id);
-      navigate(`/tasks?${newSearchParams.toString()}`, { replace: true });
+      navigate(`/tasks/${newTask.id}`, { replace: true });
 
       setSelectedTask(newTask);
     } catch (err) {

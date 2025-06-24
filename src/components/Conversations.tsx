@@ -29,13 +29,14 @@ import {
 interface Props {
   className?: string;
   route: string;
+  conversationId?: string;
 }
 
-const Conversations: FC<Props> = ({ route }) => {
+const Conversations: FC<Props> = ({ route, conversationId }) => {
   // No need for sidebar state management as it's handled by ResizablePanel
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const conversationParam = searchParams.get('conversation');
+  const conversationParam = conversationId;
   const stepParam = searchParams.get('step');
   const { api, isConnected$, connectionConfig } = useApi();
   const queryClient = useQueryClient();
@@ -87,7 +88,9 @@ const Conversations: FC<Props> = ({ route }) => {
           // Remove step parameter from URL
           const newSearchParams = new URLSearchParams(searchParams);
           newSearchParams.delete('step');
-          navigate(`${route}?${newSearchParams.toString()}`, { replace: true });
+          const queryString = newSearchParams.toString();
+          const url = `/chat/${conversationParam}${queryString ? `?${queryString}` : ''}`;
+          navigate(url, { replace: true });
         } else {
           // Check again in 100ms
           setTimeout(checkAndStart, 100);
@@ -170,9 +173,13 @@ const Conversations: FC<Props> = ({ route }) => {
       selectedConversation$.set(id);
       // Update URL with the new conversation ID
       console.log(`[Conversations] [handleSelectConversation] id: ${id}`);
-      navigate(`${route}?conversation=${id}`);
+
+      // Preserve any existing query parameters (like step)
+      const queryString = searchParams.toString();
+      const url = `/chat/${id}${queryString ? `?${queryString}` : ''}`;
+      navigate(url);
     },
-    [queryClient, navigate, route]
+    [queryClient, navigate, searchParams]
   );
 
   // Update conversation$ when selected conversation changes

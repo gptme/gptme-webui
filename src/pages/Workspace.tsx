@@ -1,11 +1,11 @@
 import { type FC } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { MenuBar } from '@/components/MenuBar';
 import { WorkspaceExplorer } from '@/components/workspace/WorkspaceExplorer';
 
 const Workspace: FC = () => {
-  const [searchParams] = useSearchParams();
-  const conversationId = searchParams.get('conversation');
+  const { id } = useParams<{ id: string }>();
+  const conversationId = id;
 
   if (!conversationId) {
     return (
@@ -18,7 +18,7 @@ const Workspace: FC = () => {
               No conversation ID provided. Please specify a conversation ID in the URL.
             </p>
             <p className="text-sm text-muted-foreground">
-              Example: /workspace?conversation=your-conversation-id
+              Example: /workspace/your-conversation-id
             </p>
           </div>
         </div>

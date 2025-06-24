@@ -77,7 +77,7 @@ const TaskDetails: FC<Props> = ({ task }) => {
   const openWorkspace = () => {
     if (task.workspace) {
       // Navigate to workspace explorer
-      navigate(`/workspace?conversation=${task.id}`);
+      navigate(`/workspace/${task.id}`);
     }
   };
 

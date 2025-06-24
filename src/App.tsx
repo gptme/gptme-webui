@@ -46,8 +46,10 @@ const App: FC = () => {
           >
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/chat/:id" element={<Index />} />
               <Route path="/tasks" element={<Tasks />} />
-              <Route path="/workspace" element={<Workspace />} />
+              <Route path="/tasks/:id" element={<Tasks />} />
+              <Route path="/workspace/:id" element={<Workspace />} />
             </Routes>
             <Toaster />
             <Sonner />

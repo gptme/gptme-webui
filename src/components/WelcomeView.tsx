@@ -47,7 +47,7 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
       });
 
       // Navigate to the new conversation with step flag
-      navigate(`/?conversation=${conversationId}&step=true`);
+      navigate(`/chat/${conversationId}?step=true`);
 
       // Invalidate conversations query to refresh the list
       await queryClient.invalidateQueries({
