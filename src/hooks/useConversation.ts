@@ -24,6 +24,23 @@ export function useConversation(conversationId: string) {
   const { toast } = useToast();
   const conversation$ = conversations$.get(conversationId);
   const isConnected = use$(api.isConnected$);
+  
+  // Track auto-stepping state to suppress chimes during rapid tool execution
+  let isAutoStepping = false;
+  let autoSteppingResetTimer: ReturnType<typeof setTimeout> | null = null;
+  
+  // Reset auto-stepping flag after a delay if no more tools are pending
+  const scheduleAutoSteppingReset = () => {
+    if (autoSteppingResetTimer) {
+      clearTimeout(autoSteppingResetTimer);
+    }
+    autoSteppingResetTimer = setTimeout(() => {
+      if (isAutoStepping) {
+        console.log('[useConversation] Auto-stepping sequence completed, resetting flag');
+        isAutoStepping = false;
+      }
+    }, 1000); // 1 second delay to allow for rapid tool execution
+  };
 
   // Initialize conversation in store if needed
   useEffect(() => {
@@ -123,10 +140,17 @@ export function useConversation(conversationId: string) {
               }
             }
 
-            // Play chime sound when assistant is done generating
-            playChime().catch((error) => {
-              console.warn('Failed to play completion chime:', error);
-            });
+            // Only play chime if we're not in the middle of auto-stepping
+            // This prevents multiple chimes during rapid tool execution
+            if (!isAutoStepping) {
+              playChime().catch((error) => {
+                console.warn('Failed to play completion chime:', error);
+              });
+            } else {
+              console.log('[useConversation] Suppressing chime during auto-stepping');
+              // Schedule reset of auto-stepping flag in case no more tools are coming
+              scheduleAutoSteppingReset();
+            }
           },
           onMessageAdded: (message) => {
             console.log('[useConversation] Message added:', message);
@@ -145,11 +169,29 @@ export function useConversation(conversationId: string) {
           onToolPending: (toolId, tooluse, auto_confirm) => {
             console.log('[useConversation] Tool pending:', { toolId, tooluse, auto_confirm });
             if (auto_confirm) {
+              // Clear any pending reset timer since auto-stepping is continuing
+              if (autoSteppingResetTimer) {
+                clearTimeout(autoSteppingResetTimer);
+                autoSteppingResetTimer = null;
+              }
+              
+              // Set auto-stepping flag to suppress intermediate chimes
+              isAutoStepping = true;
+              
               // Auto-confirm immediately if requested
               api.confirmTool(conversationId, toolId, 'confirm').catch((error) => {
                 console.error('[useConversation] Error auto-confirming tool:', error);
               });
             } else {
+              // Clear any pending reset timer
+              if (autoSteppingResetTimer) {
+                clearTimeout(autoSteppingResetTimer);
+                autoSteppingResetTimer = null;
+              }
+              
+              // Reset auto-stepping flag when manual confirmation is needed
+              isAutoStepping = false;
+              
               // Only set pending tool state if we need confirmation
               setPendingTool(conversationId, toolId, tooluse);
 
@@ -163,6 +205,15 @@ export function useConversation(conversationId: string) {
             console.log('[useConversation] Generation interrupted');
             setGenerating(conversationId, false);
             setPendingTool(conversationId, null, null);
+            
+            // Clear any pending reset timer
+            if (autoSteppingResetTimer) {
+              clearTimeout(autoSteppingResetTimer);
+              autoSteppingResetTimer = null;
+            }
+            
+            // Reset auto-stepping flag when interrupted
+            isAutoStepping = false;
 
             // Mark the last message as interrupted
             const messages$ = conversation$?.data.log;
@@ -213,6 +264,13 @@ export function useConversation(conversationId: string) {
     }
 
     console.log('[useConversation] Sending message:', { message, options });
+
+    // Clear any pending tool confirmation when sending a new message
+    const pendingTool = conversation$?.pendingTool.get();
+    if (pendingTool) {
+      console.log('[useConversation] Clearing pending tool due to new message');
+      setPendingTool(conversationId, null, null);
+    }
 
     // Create user message
     const userMessage: Message = {
