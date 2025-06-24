@@ -11,7 +11,8 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { useApi } from '@/contexts/ApiContext';
-import { useQueryClient } from '@tanstack/react-query';
+
+import { useConversationsInfiniteQuery } from '@/hooks/useConversationsInfiniteQuery';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
@@ -27,7 +28,6 @@ import { Computed, use$ } from '@legendapp/state/react';
 import { conversations$ } from '@/stores/conversations';
 import { extractWorkspacesFromConversations, formatPath } from '@/utils/workspaceUtils';
 import { AVAILABLE_MODELS } from './ConversationContent';
-import type { ConversationSummary } from '@/types/conversation';
 
 export interface ChatOptions {
   model?: string;
@@ -233,14 +233,29 @@ export const ChatInput: FC<Props> = ({
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>('.');
 
-  const { isConnected$, connectionConfig } = useApi();
-  const queryClient = useQueryClient();
+  const { isConnected$ } = useApi();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isConnected = use$(isConnected$);
+
+  // Get available workspaces reactively using the same query
+  const { data: infiniteData } = useConversationsInfiniteQuery(false); // Don't fetch, just subscribe to cache changes
+
+  // Extract workspaces from cached infinite query data
+  const availableWorkspaces = useMemo(() => {
+    const conversationSummaries = infiniteData?.pages?.flatMap((page) => page.conversations) || [];
+
+    console.log(
+      '[ChatInput] Extracted workspaces from cache:',
+      conversationSummaries.length,
+      'conversations'
+    );
+    return extractWorkspacesFromConversations(conversationSummaries);
+  }, [infiniteData]);
 
   const message = value !== undefined ? value : internalMessage;
   const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
 
-  const isConnected = use$(isConnected$);
   const autoFocus = use$(autoFocus$);
   const conversation = conversationId ? use$(conversations$.get(conversationId)) : undefined;
   const isGenerating = conversation?.isGenerating || false;
@@ -255,17 +270,6 @@ export const ChatInput: FC<Props> = ({
         : 'Send a message...';
 
   const isDisabled = isReadOnly || !isConnected || !hasSession;
-
-  // Get available workspaces from existing conversations using cached query data
-  const availableWorkspaces = useMemo(() => {
-    const conversationSummaries =
-      queryClient.getQueryData<ConversationSummary[]>([
-        'conversations',
-        connectionConfig.baseUrl,
-        isConnected,
-      ]) || [];
-    return extractWorkspacesFromConversations(conversationSummaries);
-  }, [queryClient, connectionConfig.baseUrl, isConnected]);
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {

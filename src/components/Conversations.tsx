@@ -4,7 +4,8 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { useCallback, useEffect } from 'react';
 import { WelcomeView } from '@/components/WelcomeView';
 import { setDocumentTitle } from '@/utils/title';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { useConversationsInfiniteQuery } from '@/hooks/useConversationsInfiniteQuery';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
 import { ConversationContent } from '@/components/ConversationContent';
@@ -38,7 +39,7 @@ const Conversations: FC<Props> = ({ route, conversationId }) => {
   const navigate = useNavigate();
   const conversationParam = conversationId;
   const stepParam = searchParams.get('step');
-  const { api, isConnected$, connectionConfig } = useApi();
+  const { api, isConnected$ } = useApi();
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
   const conversation$ = useObservable<ConversationSummary | undefined>(undefined);
@@ -101,30 +102,19 @@ const Conversations: FC<Props> = ({ route, conversationId }) => {
     }
   }, [stepParam, conversationParam, isConnected, api, navigate, route, searchParams]);
 
-  // Fetch conversations from API
-  const {
-    data: apiConversations = [],
-    isError,
-    error,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ['conversations', connectionConfig.baseUrl, isConnected],
-    queryFn: async () => {
-      try {
-        const conversations = await api.getConversations();
-        console.log('Fetched conversations:', conversations);
-        return conversations;
-      } catch (err) {
-        console.error('Failed to fetch conversations:', err);
-        throw err;
-      }
-    },
-    enabled: isConnected,
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  // Fetch conversations from API with infinite loading
+  const { data, isError, error, isLoading, isFetching, fetchNextPage, hasNextPage, refetch } =
+    useConversationsInfiniteQuery();
+
+  // Flatten pages to get all conversations
+  const apiConversations = useMemo(() => {
+    return (
+      data?.pages.flatMap(
+        (page: { conversations: ConversationSummary[]; nextCursor: number | undefined }) =>
+          page.conversations
+      ) ?? []
+    );
+  }, [data]);
 
   // Log any query errors
   if (isError) {
@@ -244,9 +234,12 @@ const Conversations: FC<Props> = ({ route, conversationId }) => {
           selectedConversationId$={selectedConversation$}
           onSelectConversation={handleSelectConversation}
           isLoading={isLoading}
+          isFetching={isFetching}
           isError={isError}
           error={error as Error}
           onRetry={() => refetch()}
+          fetchNextPage={fetchNextPage}
+          hasNextPage={hasNextPage}
           route={route}
         />
       </ResizablePanel>

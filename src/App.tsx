@@ -46,6 +46,7 @@ const App: FC = () => {
           >
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/chat" element={<Index />} />
               <Route path="/chat/:id" element={<Index />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/tasks/:id" element={<Tasks />} />

@@ -24,7 +24,7 @@ export function useConversation(conversationId: string) {
   const { toast } = useToast();
   const conversation$ = conversations$.get(conversationId);
   const isConnected = use$(api.isConnected$);
-  
+
   const messageJustCompleted = useRef(false);
 
   // Initialize conversation in store if needed
@@ -153,7 +153,7 @@ export function useConversation(conversationId: string) {
           },
           onToolPending: (toolId, tooluse, auto_confirm) => {
             console.log('[useConversation] Tool pending:', { toolId, tooluse, auto_confirm });
-            
+
             if (messageJustCompleted.current) {
               messageJustCompleted.current = false;
               // Keep generating true as we're continuing with tool execution

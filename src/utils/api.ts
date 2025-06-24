@@ -466,6 +466,43 @@ export class ApiClient {
     }
   }
 
+  async getConversationsPaginated(
+    pageParam: number = 0,
+    pageSize: number = 20
+  ): Promise<{
+    conversations: ConversationSummary[];
+    nextCursor: number | undefined;
+  }> {
+    if (!this.isConnected) {
+      throw new ApiClientError('Not connected to API');
+    }
+    try {
+      // Fetch one more than needed to detect if there are more conversations
+      const fetchLimit = pageParam + pageSize + 1;
+      const allConversations = await this.fetchJson<ConversationSummary[]>(
+        `${this.baseUrl}/api/v2/conversations?limit=${fetchLimit}`
+      );
+
+      // Slice to get only the requested page
+      const conversations = allConversations.slice(pageParam, pageParam + pageSize);
+
+      // Check if there are more conversations by seeing if we got the extra one
+      const hasMore = allConversations.length > pageParam + pageSize;
+      const nextCursor = hasMore ? pageParam + pageSize : undefined;
+
+      console.log(
+        `[API] Pagination: pageParam=${pageParam}, pageSize=${pageSize}, fetched=${allConversations.length}, returning=${conversations.length}, hasMore=${hasMore}`
+      );
+
+      return { conversations, nextCursor };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiClientError('Request aborted', 499);
+      }
+      throw error;
+    }
+  }
+
   async getConversation(logfile: string): Promise<ConversationResponse> {
     if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');

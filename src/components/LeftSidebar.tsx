@@ -20,9 +20,12 @@ interface Props {
   selectedConversationId$: Observable<string | null>;
   onSelectConversation: (id: string) => void;
   isLoading?: boolean;
+  isFetching?: boolean;
   isError?: boolean;
   error?: Error;
   onRetry?: () => void;
+  fetchNextPage: () => void;
+  hasNextPage?: boolean;
   route: string;
 }
 
@@ -31,9 +34,12 @@ export const LeftSidebar: FC<Props> = ({
   selectedConversationId$,
   onSelectConversation,
   isLoading = false,
+  isFetching = false,
   isError = false,
   error,
   onRetry,
+  fetchNextPage,
+  hasNextPage = false,
   route,
 }) => {
   const { isConnected$ } = useApi();
@@ -141,9 +147,12 @@ export const LeftSidebar: FC<Props> = ({
             selectedId$={selectedConversationId$}
             onSelect={onSelectConversation}
             isLoading={isLoading}
+            isFetching={isFetching}
             isError={isError}
             error={error}
             onRetry={onRetry}
+            fetchNextPage={fetchNextPage}
+            hasNextPage={hasNextPage}
           />
           <Collapsible
             open={!workspacesCollapsed}

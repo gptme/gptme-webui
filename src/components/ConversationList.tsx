@@ -6,7 +6,7 @@ import { useApi } from '@/contexts/ApiContext';
 import { demoConversations, getDemoMessages } from '@/democonversations';
 
 import type { MessageRole, ConversationSummary } from '@/types/conversation';
-import { type FC } from 'react';
+import { type FC, useRef, useEffect } from 'react';
 import { Computed, use$ } from '@legendapp/state/react';
 import { type Observable } from '@legendapp/state';
 import { conversations$ } from '@/stores/conversations';
@@ -17,9 +17,12 @@ interface Props {
   conversations: ConversationSummary[];
   onSelect: (id: string) => void;
   isLoading?: boolean;
+  isFetching?: boolean;
   isError?: boolean;
   error?: Error;
   onRetry?: () => void;
+  fetchNextPage: () => void;
+  hasNextPage?: boolean;
   selectedId$?: Observable<string | null>;
 }
 
@@ -27,13 +30,49 @@ export const ConversationList: FC<Props> = ({
   conversations,
   onSelect,
   isLoading = false,
+  isFetching = false,
   isError = false,
   error,
   onRetry,
+  fetchNextPage,
+  hasNextPage = false,
   selectedId$,
 }) => {
   const { isConnected$ } = useApi();
   const isConnected = use$(isConnected$);
+
+  // Refs for infinite scrolling
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const observer = useRef<IntersectionObserver | null>(null);
+
+  // Set up intersection observer for infinite scrolling
+  useEffect(() => {
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetching) {
+          console.log('[ConversationList] Loading more conversations...');
+          fetchNextPage();
+        }
+      },
+      {
+        root: scrollContainerRef.current,
+        threshold: 0.1,
+        rootMargin: '0px 0px 100px 0px', // Trigger loading before reaching the end
+      }
+    );
+
+    if (loadMoreSentinelRef.current) {
+      observer.current.observe(loadMoreSentinelRef.current);
+    }
+
+    return () => {
+      if (observer.current) observer.current.disconnect();
+    };
+  }, [isFetching, hasNextPage, fetchNextPage]);
+
   if (!conversations) {
     return null;
   }
@@ -214,6 +253,7 @@ export const ConversationList: FC<Props> = ({
 
   return (
     <div
+      ref={scrollContainerRef}
       data-testid="conversation-list"
       className="h-full space-y-2 overflow-y-auto overflow-x-hidden p-3"
     >
@@ -245,9 +285,29 @@ export const ConversationList: FC<Props> = ({
           No conversations found. Start a new conversation to get started.
         </div>
       )}
+
+      {/* Render conversations */}
       {!isLoading &&
         !isError &&
         conversations.map((conv) => <ConversationItem key={conv.id} conv={conv} />)}
+
+      {/* Loading indicator for fetching more */}
+      {isFetching && !isLoading && (
+        <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Loading more conversations...
+        </div>
+      )}
+
+      {/* Sentinel element for infinite loading */}
+      <div ref={loadMoreSentinelRef} style={{ height: '1px' }} />
+
+      {/* End message */}
+      {!hasNextPage && conversations.length > 0 && (
+        <div className="py-4 text-center text-sm text-muted-foreground">
+          You've reached the end of your conversations.
+        </div>
+      )}
     </div>
   );
 };
