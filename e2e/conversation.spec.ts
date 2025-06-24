@@ -124,7 +124,7 @@ test.describe('Conversation Flow', () => {
     await page.keyboard.press('Enter');
 
     // Wait for the new conversation page to load
-    await expect(page).toHaveURL(/\?conversation=.+$/);
+    await expect(page).toHaveURL(/\/chat\/.+$/);
 
     // Should show the message in the conversation
     // Look specifically for the user's message in a user message container
