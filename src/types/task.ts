@@ -10,6 +10,7 @@ export interface Task {
   target_repo?: string;
   conversation_ids: string[];
   metadata: Record<string, unknown>;
+  archived: boolean;
   error?: string;
 
   // Derived fields from backend

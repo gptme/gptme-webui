@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useArchiveTaskMutation, useUnarchiveTaskMutation } from '@/stores/tasks';
 import type { Task, TaskAction } from '@/types/task';
 
 interface Props {
@@ -29,6 +30,8 @@ interface Props {
 
 const SuggestedActionsPanel: FC<Props> = ({ task }) => {
   const navigate = useNavigate();
+  const archiveTaskMutation = useArchiveTaskMutation();
+  const unarchiveTaskMutation = useUnarchiveTaskMutation();
 
   const getSuggestedActions = (task: Task): TaskAction[] => {
     const actions: TaskAction[] = [];
@@ -88,9 +91,9 @@ const SuggestedActionsPanel: FC<Props> = ({ task }) => {
             icon: 'Edit',
           },
           {
-            id: 'archive-task',
-            label: 'Archive Task',
-            description: 'Archive this task',
+            id: task.archived ? 'unarchive' : 'archive',
+            label: task.archived ? 'Unarchive Task' : 'Archive Task',
+            description: task.archived ? 'Restore this task from archive' : 'Archive this task',
             type: 'destructive',
             icon: 'Archive',
           }
@@ -158,11 +161,13 @@ const SuggestedActionsPanel: FC<Props> = ({ task }) => {
             });
           }
 
-          // Add archive action for completed tasks
+          // Add archive/unarchive action for completed tasks
           actions.push({
-            id: 'archive-task',
-            label: 'Archive Task',
-            description: 'Archive this completed task',
+            id: task.archived ? 'unarchive' : 'archive',
+            label: task.archived ? 'Unarchive Task' : 'Archive Task',
+            description: task.archived
+              ? 'Restore this completed task from archive'
+              : 'Archive this completed task',
             type: 'secondary',
             icon: 'Archive',
           });
@@ -228,7 +233,7 @@ const SuggestedActionsPanel: FC<Props> = ({ task }) => {
     return icons[iconName as keyof typeof icons] || <Play className="h-4 w-4" />;
   };
 
-  const handleAction = (actionId: string) => {
+  const handleAction = async (actionId: string) => {
     console.log(`Executing action: ${actionId} for task: ${task.id}`);
 
     switch (actionId) {
@@ -261,46 +266,29 @@ const SuggestedActionsPanel: FC<Props> = ({ task }) => {
       case 'edit-task':
         // Open edit dialog
         break;
-      case 'archive-task':
-        // Archive task with confirmation
+      case 'archive':
+        // Archive task - could add confirmation dialog here if needed
+        try {
+          await archiveTaskMutation.mutateAsync(task.id);
+        } catch (error) {
+          console.error('Failed to archive task:', error);
+          // You might want to show an error message to the user
+        }
+        break;
+      case 'unarchive':
+        // Unarchive task
+        try {
+          await unarchiveTaskMutation.mutateAsync(task.id);
+        } catch (error) {
+          console.error('Failed to unarchive task:', error);
+        }
         break;
       default:
         console.log(`Action ${actionId} not implemented yet`);
     }
   };
 
-  const getQuickStats = (task: Task) => {
-    const stats = [];
-
-    if (task.status === 'active' && task.progress) {
-      stats.push({
-        label: 'Progress',
-        value: `${task.progress.steps_completed}/${task.progress.total_steps}`,
-        icon: <CheckCircle className="h-4 w-4" />,
-      });
-    }
-
-    if (task.git?.branch) {
-      stats.push({
-        label: 'Branch',
-        value: task.git.branch.split('/').pop() || task.git.branch,
-        icon: <GitPullRequest className="h-4 w-4" />,
-      });
-    }
-
-    if (task.target_repo) {
-      stats.push({
-        label: 'Repository',
-        value: task.target_repo.split('/').pop() || task.target_repo,
-        icon: <ExternalLink className="h-4 w-4" />,
-      });
-    }
-
-    return stats;
-  };
-
   const suggestedActions = getSuggestedActions(task);
-  const quickStats = getQuickStats(task);
   const primaryActions = suggestedActions.filter((a) => a.type === 'primary');
   const secondaryActions = suggestedActions.filter((a) => a.type === 'secondary');
   const destructiveActions = suggestedActions.filter((a) => a.type === 'destructive');
@@ -308,28 +296,6 @@ const SuggestedActionsPanel: FC<Props> = ({ task }) => {
   return (
     <div className="border-t border-border bg-muted/30">
       <div className="space-y-6 p-6">
-        {/* Quick Stats */}
-        {quickStats.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Quick Stats</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {quickStats.map((stat, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    {stat.icon}
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">{stat.label}</span>
-                      <span className="text-sm font-medium">{stat.value}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Suggested Actions */}
         <Card>
           <CardHeader>

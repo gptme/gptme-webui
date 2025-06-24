@@ -87,13 +87,6 @@ const TaskDetails: FC<Props> = ({ task }) => {
     }
   };
 
-  const openPR = () => {
-    if (task.target_repo && task.git?.branch) {
-      // In a real implementation, this would check if PR exists and open it
-      window.open(`https://github.com/${task.target_repo}/pulls`, '_blank');
-    }
-  };
-
   const createdAt = formatDate(task.created_at);
   const progressPercentage = task.progress
     ? ((task.progress.steps_completed || 0) / (task.progress.total_steps || 1)) * 100
@@ -127,12 +120,6 @@ const TaskDetails: FC<Props> = ({ task }) => {
                   <Button variant="outline" size="sm" onClick={openRepository}>
                     <ExternalLink className="mr-1 h-4 w-4" />
                     Repository
-                  </Button>
-                )}
-                {task.status === 'completed' && task.target_repo && (
-                  <Button variant="outline" size="sm" onClick={openPR}>
-                    <GitBranch className="mr-1 h-4 w-4" />
-                    View PR
                   </Button>
                 )}
               </div>
@@ -234,6 +221,40 @@ const TaskDetails: FC<Props> = ({ task }) => {
                 <span className="text-muted-foreground">Task ID:</span>
                 <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{task.id}</code>
               </div>
+
+              {/* Conversations */}
+              {task.conversation_ids && task.conversation_ids.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Terminal className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Conversations:</span>
+                  </div>
+                  <div className="ml-6 space-y-1">
+                    {task.conversation_ids.map((conversationId, index) => {
+                      const isActive = index === task.conversation_ids.length - 1;
+                      return (
+                        <div key={conversationId} className="flex items-center gap-2">
+                          <button
+                            onClick={() => navigate(`/chat/${conversationId}`)}
+                            className={`font-mono text-xs hover:underline ${
+                              isActive
+                                ? 'font-semibold text-blue-600'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {conversationId}
+                          </button>
+                          {isActive && (
+                            <Badge variant="secondary" className="text-xs">
+                              Current
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -245,12 +266,17 @@ const TaskDetails: FC<Props> = ({ task }) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {task.workspace && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Folder className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Workspace:</span>
-                    <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
-                      {task.workspace}
-                    </code>
+                  <div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Folder className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Workspace:</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="mr-2 h-4 w-4" />
+                      <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                        {task.workspace}
+                      </code>
+                    </div>
                   </div>
                 )}
 

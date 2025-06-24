@@ -1,4 +1,4 @@
-import { type FC, useState, useEffect, useCallback, type ReactElement } from 'react';
+import { type FC, useState, useEffect, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -9,15 +9,24 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TaskCreationDialog } from './TaskCreationDialog';
 import { TaskDetails } from './TaskDetails';
 import { SuggestedActionsPanel } from './SuggestedActionsPanel';
-import { taskApi } from '@/utils/taskApi';
+import { use$ } from '@legendapp/state/react';
+import {
+  selectedTask$,
+  showArchived$,
+  useTasksQuery,
+  useTaskQuery,
+  useCreateTaskMutation,
+} from '@/stores/tasks';
 import type { Task, TaskStatus, CreateTaskRequest } from '@/types/task';
 
 interface Props {
@@ -25,84 +34,47 @@ interface Props {
   selectedTaskId?: string;
 }
 
-const TaskManager: FC<Props> = ({ className, selectedTaskId }) => {
+const TaskManager: FC<Props> = ({ className, selectedTaskId: selectedTaskIdProp }) => {
   const navigate = useNavigate();
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const showArchived = use$(showArchived$);
+  const selectedTaskId = use$(selectedTask$);
 
-  // Load tasks from API
-  const loadTasks = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const tasksData = await taskApi.listTasks();
-      setTasks(tasksData);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load tasks';
-      setError(errorMessage);
-      console.error('Error loading tasks:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle task selection - fetch detailed info
-  const handleTaskSelect = useCallback(
-    async (task: Task) => {
-      try {
-        // Update URL to reflect selection
-        navigate(`/tasks/${task.id}`, { replace: true });
-
-        // Fetch detailed task information
-        const detailedTask = await taskApi.getTask(task.id);
-        setSelectedTask(detailedTask);
-
-        // Update the task in the tasks array to keep sidebar in sync
-        setTasks((prevTasks) =>
-          prevTasks.map((t) => (t.id === detailedTask.id ? detailedTask : t))
-        );
-      } catch (err) {
-        console.error('Error fetching task details:', err);
-        // Fallback to basic task data
-        setSelectedTask(task);
-      }
-    },
-    [navigate]
+  // Use query hooks
+  const { data: tasks = [], isLoading: loading, error, refetch } = useTasksQuery();
+  const { data: selectedTask, isLoading: selectedTaskLoading } = useTaskQuery(
+    selectedTaskId || null
   );
+  const createTaskMutation = useCreateTaskMutation();
 
-  // Load tasks on component mount
-  useEffect(() => {
-    loadTasks();
-  }, []);
+  // Handle task selection
+  const handleTaskSelect = (task: Task) => {
+    // Update URL to reflect selection
+    navigate(`/tasks/${task.id}`, { replace: true });
+    // Update store
+    selectedTask$.set(task.id);
+  };
 
   // Initialize selected task from URL parameter
   useEffect(() => {
-    if (selectedTaskId && tasks.length > 0) {
-      const task = tasks.find((t) => t.id === selectedTaskId);
-      if (task && (!selectedTask || selectedTask.id !== selectedTaskId)) {
-        handleTaskSelect(task);
-      }
+    if (selectedTaskIdProp && selectedTaskIdProp !== selectedTaskId) {
+      // Set the selected task from URL parameter
+      selectedTask$.set(selectedTaskIdProp);
     }
-  }, [tasks, selectedTaskId, selectedTask, handleTaskSelect]);
+  }, [selectedTaskIdProp, selectedTaskId]);
 
   // Handle task creation
   const handleTaskCreated = async (taskRequest: CreateTaskRequest) => {
     try {
-      const newTask = await taskApi.createTask(taskRequest);
-      setTasks((prev) => [newTask, ...prev]);
+      await createTaskMutation.mutateAsync(taskRequest);
       setShowCreateDialog(false);
-
-      // Update URL to reflect selection of new task
-      navigate(`/tasks/${newTask.id}`, { replace: true });
-
-      setSelectedTask(newTask);
+      // The mutation will handle updating the store and setting selected task
+      // Navigate to the new task (selectedTask$ will be updated by the mutation)
+      if (selectedTaskId) {
+        navigate(`/tasks/${selectedTaskId}`, { replace: true });
+      }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create task';
       console.error('Error creating task:', err);
-      setError(errorMessage);
     }
   };
 
@@ -138,10 +110,11 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId }) => {
     return new Date(dateString).toLocaleString();
   };
 
-  const activeTasks = tasks.filter((t) => t.status === 'active');
-  const pendingTasks = tasks.filter((t) => t.status === 'pending');
-  const completedTasks = tasks.filter((t) => t.status === 'completed');
-  const failedTasks = tasks.filter((t) => t.status === 'failed');
+  const activeTasks = tasks.filter((t) => t.status === 'active' && !t.archived);
+  const pendingTasks = tasks.filter((t) => t.status === 'pending' && !t.archived);
+  const completedTasks = tasks.filter((t) => t.status === 'completed' && !t.archived);
+  const failedTasks = tasks.filter((t) => t.status === 'failed' && !t.archived);
+  const archivedTasks = tasks.filter((t) => t.archived);
 
   return (
     <div className={`flex h-full ${className}`}>
@@ -154,12 +127,25 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId }) => {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={loadTasks}
+                onClick={() => refetch()}
                 disabled={loading}
                 className="flex items-center gap-1"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant={showArchived ? 'default' : 'outline'}
+                    onClick={() => showArchived$.set(!showArchived)}
+                    className="flex items-center"
+                  >
+                    <Archive className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{showArchived ? 'Hide Archived' : 'Show Archived'}</TooltipContent>
+              </Tooltip>
               <Button
                 size="sm"
                 onClick={() => setShowCreateDialog(true)}
@@ -179,8 +165,10 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId }) => {
                   <AlertCircle className="h-4 w-4" />
                   <span className="text-sm font-medium">Error loading tasks</span>
                 </div>
-                <p className="mt-1 text-xs text-red-600">{error}</p>
-                <Button size="sm" variant="outline" onClick={loadTasks} className="mt-2">
+                <p className="mt-1 text-xs text-red-600">
+                  {error instanceof Error ? error.message : String(error)}
+                </p>
+                <Button size="sm" variant="outline" onClick={() => refetch()} className="mt-2">
                   Retry
                 </Button>
               </CardContent>
@@ -307,6 +295,24 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId }) => {
               ))}
             </div>
           )}
+
+          {/* Archived Tasks */}
+          {showArchived && archivedTasks.length > 0 && (
+            <div className="mb-4">
+              <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived Tasks</h3>
+              {archivedTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  isSelected={selectedTask?.id === task.id}
+                  onClick={() => handleTaskSelect(task)}
+                  getStatusIcon={getStatusIcon}
+                  getStatusBadge={getStatusBadge}
+                  formatDate={formatDate}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Task Details */}
@@ -316,6 +322,13 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId }) => {
               <TaskDetails task={selectedTask} />
               <SuggestedActionsPanel task={selectedTask} />
             </>
+          ) : selectedTaskId && selectedTaskLoading ? (
+            <div className="flex flex-1 items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
+                <p className="mb-2 text-lg">Loading task details...</p>
+              </div>
+            </div>
           ) : (
             <div className="flex flex-1 items-center justify-center text-muted-foreground">
               <div className="text-center">

@@ -122,10 +122,10 @@ export function FileList({ files, currentPath, onFileClick, onDirectoryClick }: 
           >
             <div className="flex items-center">
               {file.type === 'directory' ? (
-                <FolderIcon className="mr-2 h-4 w-4" />
+                <FolderIcon className="mr-2 h-4 w-4 fill-sky-300" />
               ) : (
                 React.createElement(getFileIcon(file), {
-                  className: 'mr-2 h-4 w-4 fill-foreground/20',
+                  className: 'mr-2 h-4 w-4',
                 })
               )}
               <span className="text-sm">{file.name}</span>

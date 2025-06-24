@@ -15,8 +15,13 @@ export const taskApi = {
   /**
    * List all tasks with current status information.
    */
-  async listTasks(): Promise<Task[]> {
-    const response = await fetch(`${getApiBaseUrl()}/api/v2/tasks`);
+  async listTasks(includeArchived: boolean = false): Promise<Task[]> {
+    const url = new URL(`${getApiBaseUrl()}/api/v2/tasks`);
+    if (includeArchived) {
+      url.searchParams.set('include_archived', 'true');
+    }
+
+    const response = await fetch(url.toString());
     if (!response.ok) {
       throw new Error(`Failed to list tasks: ${response.statusText}`);
     }
@@ -78,16 +83,30 @@ export const taskApi = {
   },
 
   /**
-   * Delete a task and all its associated conversations.
+   * Archive a task (hide from active view but preserve data).
    */
-  async deleteTask(taskId: string): Promise<void> {
-    const response = await fetch(`${getApiBaseUrl()}/api/v2/tasks/${taskId}`, {
-      method: 'DELETE',
+  async archiveTask(taskId: string): Promise<void> {
+    const response = await fetch(`${getApiBaseUrl()}/api/v2/tasks/${taskId}/archive`, {
+      method: 'POST',
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(error.error || `Failed to delete task: ${response.statusText}`);
+      throw new Error(error.error || `Failed to archive task: ${response.statusText}`);
+    }
+  },
+
+  /**
+   * Unarchive a task (restore to active view).
+   */
+  async unarchiveTask(taskId: string): Promise<void> {
+    const response = await fetch(`${getApiBaseUrl()}/api/v2/tasks/${taskId}/unarchive`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(error.error || `Failed to unarchive task: ${response.statusText}`);
     }
   },
 
@@ -147,9 +166,13 @@ export const taskApi = {
       case 'continue':
         return this.continueTask(taskId);
 
-      case 'delete':
-        await this.deleteTask(taskId);
-        return { status: 'deleted' };
+      case 'archive':
+        await this.archiveTask(taskId);
+        return { status: 'archived' };
+
+      case 'unarchive':
+        await this.unarchiveTask(taskId);
+        return { status: 'unarchived' };
 
       case 'edit':
         // Return indication that edit dialog should be opened
