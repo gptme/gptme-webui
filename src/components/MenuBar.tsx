@@ -1,5 +1,6 @@
 import { ThemeToggle } from './ThemeToggle';
 import { ConnectionButton } from './ConnectionButton';
+import { SettingsModal } from './SettingsModal';
 import { Button } from './ui/button';
 import {
   PanelLeftClose,
@@ -105,6 +106,14 @@ export const MenuBar: FC = () => {
       <div className="flex items-center gap-4">
         <ConnectionButton />
         <ThemeToggle />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SettingsModal />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Settings</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>

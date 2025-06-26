@@ -16,6 +16,7 @@ import {
   selectedConversation$,
 } from '@/stores/conversations';
 import { playChime } from '@/utils/audio';
+import { notifyGenerationComplete, notifyToolConfirmation } from '@/utils/notifications';
 
 const MAX_CONNECTED_CONVERSATIONS = 3;
 
@@ -134,6 +135,9 @@ export function useConversation(conversationId: string) {
                 playChime().catch((error) => {
                   console.warn('Failed to play completion chime:', error);
                 });
+                notifyGenerationComplete(conversation$?.data.name.get()).catch((error) => {
+                  console.warn('Failed to show completion notification:', error);
+                });
               }
             }, 100);
           },
@@ -166,6 +170,11 @@ export function useConversation(conversationId: string) {
               playChime().catch((error) => {
                 console.warn('Failed to play tool confirmation chime:', error);
               });
+              notifyToolConfirmation(tooluse?.tool, conversation$?.data.name.get()).catch(
+                (error) => {
+                  console.warn('Failed to show tool confirmation notification:', error);
+                }
+              );
             } else {
               api.confirmTool(conversationId, toolId, 'confirm').catch((error) => {
                 console.error('[useConversation] Error auto-confirming tool:', error);

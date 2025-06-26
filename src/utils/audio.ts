@@ -36,10 +36,33 @@ async function initializeAudio(): Promise<void> {
 }
 
 /**
+ * Check if chime is enabled in settings
+ */
+function isChimeEnabled(): boolean {
+  try {
+    const savedSettings = localStorage.getItem('gptme-settings');
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      return settings.chimeEnabled !== false; // Default to true if not set
+    }
+    return true; // Default to enabled
+  } catch (error) {
+    console.error('Failed to read chime setting:', error);
+    return true; // Default to enabled on error
+  }
+}
+
+/**
  * Play the chime sound
  */
 export async function playChime(): Promise<void> {
   try {
+    // Check if chime is enabled
+    if (!isChimeEnabled()) {
+      console.log('Chime disabled, skipping');
+      return;
+    }
+
     // Initialize audio if needed
     await initializeAudio();
 
@@ -53,10 +76,16 @@ export async function playChime(): Promise<void> {
       await audioContext.resume();
     }
 
-    // Create and play the sound
+    // Create audio nodes for volume control
     const source = audioContext.createBufferSource();
+    const gainNode = audioContext.createGain();
+
+    // Set volume to 50% of original
+    gainNode.gain.value = 0.5;
+
     source.buffer = chimeBuffer;
-    source.connect(audioContext.destination);
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
     source.start(0);
 
     console.log('Chime played');
