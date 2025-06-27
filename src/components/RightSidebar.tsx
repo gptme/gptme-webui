@@ -1,7 +1,16 @@
-import { Monitor, Settings, Globe, FolderOpen } from 'lucide-react';
+import { Monitor, Settings, Globe, FolderOpen, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import type { FC } from 'react';
+import { rightSidebarVisible$ } from '@/stores/sidebar';
 
 interface Props {
   conversationId: string;
@@ -24,7 +33,12 @@ export const RightSidebar: FC<Props> = ({ conversationId }) => {
           className="relative flex h-full flex-col"
         >
           <div className="absolute inset-x-0 top-0 z-10 flex h-12 items-center justify-between border-b bg-background px-4">
-            <TabsList>
+            {/* Desktop: Horizontal tabs */}
+            <TabsList className="hidden md:flex">
+              <TabsTrigger value="settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </TabsTrigger>
               <TabsTrigger value="workspace">
                 <FolderOpen className="mr-2 h-4 w-4" />
                 Workspace
@@ -37,11 +51,49 @@ export const RightSidebar: FC<Props> = ({ conversationId }) => {
                 <Monitor className="mr-2 h-4 w-4" />
                 Computer
               </TabsTrigger>
-              <TabsTrigger value="settings">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </TabsTrigger>
             </TabsList>
+
+            {/* Mobile: Dropdown */}
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-36 md:hidden">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="settings">
+                  <div className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </div>
+                </SelectItem>
+                <SelectItem value="workspace">
+                  <div className="flex items-center">
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Workspace
+                  </div>
+                </SelectItem>
+                <SelectItem value="browser">
+                  <div className="flex items-center">
+                    <Globe className="mr-2 h-4 w-4" />
+                    Browser
+                  </div>
+                </SelectItem>
+                <SelectItem value="computer">
+                  <div className="flex items-center">
+                    <Monitor className="mr-2 h-4 w-4" />
+                    Computer
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => rightSidebarVisible$.set(false)}
+              className="h-8 w-8 md:hidden"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
 
           <div className="flex-1 overflow-hidden">
