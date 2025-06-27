@@ -260,124 +260,62 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId: selectedTaskIdProp 
           </>
         )}
 
-        {/* Active Tasks */}
-        {activeTasks.length > 0 && (
-          <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Active Tasks</h3>
-            {activeTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isSelected={selectedTask?.id === task.id}
-                onClick={() => {
-                  handleTaskSelect(task);
-                  // Close sidebar on mobile after selection
-                  if (isMobile) {
-                    leftPanelRef.current?.collapse();
-                  }
-                }}
-                getStatusIcon={getStatusIcon}
-                getStatusBadge={getStatusBadge}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
-        )}
+        <TaskSection
+          title="Active Tasks"
+          tasks={activeTasks}
+          selectedTask={selectedTask}
+          onTaskSelect={handleTaskSelect}
+          isMobile={isMobile}
+          getStatusIcon={getStatusIcon}
+          getStatusBadge={getStatusBadge}
+          formatDate={formatDate}
+        />
 
-        {/* Pending Tasks */}
-        {pendingTasks.length > 0 && (
-          <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Pending Tasks</h3>
-            {pendingTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isSelected={selectedTask?.id === task.id}
-                onClick={() => {
-                  handleTaskSelect(task);
-                  // Close sidebar on mobile after selection
-                  if (isMobile) {
-                    leftPanelRef.current?.collapse();
-                  }
-                }}
-                getStatusIcon={getStatusIcon}
-                getStatusBadge={getStatusBadge}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
-        )}
+        <TaskSection
+          title="Pending Tasks"
+          tasks={pendingTasks}
+          selectedTask={selectedTask}
+          onTaskSelect={handleTaskSelect}
+          isMobile={isMobile}
+          getStatusIcon={getStatusIcon}
+          getStatusBadge={getStatusBadge}
+          formatDate={formatDate}
+        />
 
-        {/* Completed Tasks */}
-        {completedTasks.length > 0 && (
-          <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Recently Completed</h3>
-            {completedTasks.slice(0, 5).map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isSelected={selectedTask?.id === task.id}
-                onClick={() => {
-                  handleTaskSelect(task);
-                  // Close sidebar on mobile after selection
-                  if (isMobile) {
-                    leftPanelRef.current?.collapse();
-                  }
-                }}
-                getStatusIcon={getStatusIcon}
-                getStatusBadge={getStatusBadge}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
-        )}
+        <TaskSection
+          title="Recently Completed"
+          tasks={completedTasks.slice(0, 5)}
+          selectedTask={selectedTask}
+          onTaskSelect={handleTaskSelect}
+          isMobile={isMobile}
+          getStatusIcon={getStatusIcon}
+          getStatusBadge={getStatusBadge}
+          formatDate={formatDate}
+        />
 
-        {/* Failed Tasks */}
-        {failedTasks.length > 0 && (
-          <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Failed Tasks</h3>
-            {failedTasks.slice(0, 3).map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isSelected={selectedTask?.id === task.id}
-                onClick={() => {
-                  handleTaskSelect(task);
-                  // Close sidebar on mobile after selection
-                  if (isMobile) {
-                    leftPanelRef.current?.collapse();
-                  }
-                }}
-                getStatusIcon={getStatusIcon}
-                getStatusBadge={getStatusBadge}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
-        )}
+        <TaskSection
+          title="Failed Tasks"
+          tasks={failedTasks.slice(0, 3)}
+          selectedTask={selectedTask}
+          onTaskSelect={handleTaskSelect}
+          isMobile={isMobile}
+          getStatusIcon={getStatusIcon}
+          getStatusBadge={getStatusBadge}
+          formatDate={formatDate}
+        />
 
-        {/* Archived Tasks */}
-        {showArchived && archivedTasks.length > 0 && (
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived Tasks</h3>
-            {archivedTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isSelected={selectedTask?.id === task.id}
-                onClick={() => {
-                  handleTaskSelect(task);
-                  // Close sidebar on mobile after selection
-                  if (isMobile) {
-                    leftPanelRef.current?.collapse();
-                  }
-                }}
-                getStatusIcon={getStatusIcon}
-                getStatusBadge={getStatusBadge}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
+        {showArchived && (
+          <TaskSection
+            title="Archived Tasks"
+            tasks={archivedTasks}
+            selectedTask={selectedTask}
+            onTaskSelect={handleTaskSelect}
+            isMobile={isMobile}
+            getStatusIcon={getStatusIcon}
+            getStatusBadge={getStatusBadge}
+            formatDate={formatDate}
+            isLastSection
+          />
         )}
       </div>
     </div>
@@ -558,6 +496,57 @@ const TaskCard: FC<TaskCardProps> = ({
         </div>
       </CardContent>
     </Card>
+  );
+};
+
+interface TaskSectionProps {
+  title: string;
+  tasks: Task[];
+  selectedTask: Task | null | undefined;
+  onTaskSelect: (task: Task) => void;
+  isMobile: boolean;
+  getStatusIcon: (status: TaskStatus) => ReactElement;
+  getStatusBadge: (status: TaskStatus) => ReactElement;
+  formatDate: (date: string) => string;
+  isLastSection?: boolean;
+}
+
+const TaskSection: FC<TaskSectionProps> = ({
+  title,
+  tasks,
+  selectedTask,
+  onTaskSelect,
+  isMobile,
+  getStatusIcon,
+  getStatusBadge,
+  formatDate,
+  isLastSection = false,
+}) => {
+  if (tasks.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={isLastSection ? '' : 'mb-4'}>
+      <h3 className="mb-2 text-sm font-medium text-muted-foreground">{title}</h3>
+      {tasks.map((task) => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          isSelected={selectedTask?.id === task.id}
+          onClick={() => {
+            onTaskSelect(task);
+            // Close sidebar on mobile after selection
+            if (isMobile) {
+              leftSidebarVisible$.set(false);
+            }
+          }}
+          getStatusIcon={getStatusIcon}
+          getStatusBadge={getStatusBadge}
+          formatDate={formatDate}
+        />
+      ))}
+    </div>
   );
 };
 
