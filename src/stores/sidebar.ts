@@ -19,19 +19,29 @@ export const setRightPanelRef = (ref: ImperativePanelHandle | null) => {
 };
 
 export const toggleLeftSidebar = () => {
-  if (!leftPanelRef) return;
-  if (leftPanelRef.isCollapsed()) {
-    leftPanelRef.expand();
+  if (leftPanelRef) {
+    // Desktop: use panel ref
+    if (leftPanelRef.isCollapsed()) {
+      leftPanelRef.expand();
+    } else {
+      leftPanelRef.collapse();
+    }
   } else {
-    leftPanelRef.collapse();
+    // Mobile: toggle state directly
+    leftSidebarVisible$.set(!leftSidebarVisible$.get());
   }
 };
 
 export const toggleRightSidebar = () => {
-  if (!rightPanelRef) return;
-  if (rightPanelRef.isCollapsed()) {
-    rightPanelRef.expand();
+  if (rightPanelRef) {
+    // Desktop: use panel ref
+    if (rightPanelRef.isCollapsed()) {
+      rightPanelRef.expand();
+    } else {
+      rightPanelRef.collapse();
+    }
   } else {
-    rightPanelRef.collapse();
+    // Mobile: toggle state directly
+    rightSidebarVisible$.set(!rightSidebarVisible$.get());
   }
 };

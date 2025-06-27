@@ -16,7 +16,7 @@ const Index: FC<Props> = () => {
 
   return (
     <div className="flex h-screen flex-col">
-      <MenuBar />
+      <MenuBar showRightSidebar={!!id} />
       <Conversations route={route} conversationId={id} />
     </div>
   );

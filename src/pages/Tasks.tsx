@@ -12,7 +12,7 @@ const Tasks: FC<Props> = () => {
 
   return (
     <div className="flex h-screen flex-col">
-      <MenuBar />
+      <MenuBar showRightSidebar={false} />
       <TaskManager selectedTaskId={id} />
     </div>
   );

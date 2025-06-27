@@ -1,7 +1,8 @@
 import { useMemo, useRef, type FC } from 'react';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { WelcomeView } from '@/components/WelcomeView';
 import { setDocumentTitle } from '@/utils/title';
 import { useQueryClient } from '@tanstack/react-query';
@@ -43,6 +44,20 @@ const Conversations: FC<Props> = ({ route, conversationId }) => {
   const queryClient = useQueryClient();
   const isConnected = use$(isConnected$);
   const conversation$ = useObservable<ConversationSummary | undefined>(undefined);
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Track demo initialization
   // Initialize demo conversations and handle selection on mount
   useEffect(() => {
@@ -198,25 +213,113 @@ const Conversations: FC<Props> = ({ route, conversationId }) => {
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
   const rightPanelRef = useRef<ImperativePanelHandle>(null);
 
-  // Connect panel refs to store
+  // Connect panel refs to store only in desktop mode
   useEffect(() => {
-    setLeftPanelRef(leftPanelRef.current);
-    setRightPanelRef(rightPanelRef.current);
+    if (!isMobile) {
+      setLeftPanelRef(leftPanelRef.current);
+      setRightPanelRef(rightPanelRef.current);
+    }
     return () => {
       setLeftPanelRef(null);
       setRightPanelRef(null);
     };
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
-    // Always hide right sidebar by default
-    rightPanelRef.current?.collapse();
-    // Hide left sidebar by default when no conversation is selected
-    if (!selectedConversation$.get()) {
-      leftPanelRef.current?.collapse();
+    // Only manipulate panels in desktop mode
+    if (!isMobile) {
+      // Always hide right sidebar by default
+      rightPanelRef.current?.collapse();
+      // Hide left sidebar by default when no conversation is selected
+      if (!selectedConversation$.get()) {
+        leftPanelRef.current?.collapse();
+      }
     }
-  }, []);
+  }, [isMobile]);
 
+  const leftVisible = use$(leftSidebarVisible$);
+  const rightVisible = use$(rightSidebarVisible$);
+
+  if (isMobile) {
+    return (
+      <div className="flex h-full flex-col">
+        {/* Mobile Layout */}
+        <Sheet
+          open={leftVisible}
+          onOpenChange={(open) => {
+            leftSidebarVisible$.set(open);
+          }}
+        >
+          <SheetContent side="left" className="flex w-full flex-col p-0 sm:max-w-md">
+            <SheetHeader className="flex-shrink-0 border-b p-4">
+              <SheetTitle className="text-left text-base font-semibold">Conversations</SheetTitle>
+            </SheetHeader>
+            <div className="min-h-0 flex-1">
+              <LeftSidebar
+                conversations={allConversations}
+                selectedConversationId$={selectedConversation$}
+                onSelectConversation={(id) => {
+                  handleSelectConversation(id);
+                  // Close sidebar after selection on mobile
+                  leftSidebarVisible$.set(false);
+                }}
+                isLoading={isLoading}
+                isFetching={isFetching}
+                isError={isError}
+                error={error as Error}
+                onRetry={() => refetch()}
+                fetchNextPage={fetchNextPage}
+                hasNextPage={hasNextPage}
+                route={route}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-hidden">
+          <Memo>
+            {() => {
+              const conversation = conversation$.get();
+              return conversation ? (
+                <div className="h-full overflow-auto">
+                  <ConversationContent
+                    conversationId={conversation.id}
+                    isReadOnly={conversation.readonly}
+                  />
+                </div>
+              ) : (
+                <div className="flex h-full flex-1 items-center justify-center p-4">
+                  <WelcomeView onToggleHistory={() => leftPanelRef.current?.expand()} />
+                </div>
+              );
+            }}
+          </Memo>
+        </div>
+
+        {/* Right Sidebar - Sheet for mobile */}
+        <Sheet
+          open={rightVisible}
+          onOpenChange={(open) => {
+            rightSidebarVisible$.set(open);
+          }}
+        >
+          <SheetContent side="right" className="h-full w-full p-0 sm:max-w-md">
+            <div className="h-full">
+              <Memo>
+                {() => {
+                  const conversation = conversation$.get();
+                  return conversation ? <RightSidebar conversationId={conversation.id} /> : null;
+                }}
+              </Memo>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    );
+  }
+
+  // Desktop Layout
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
       <ResizablePanel

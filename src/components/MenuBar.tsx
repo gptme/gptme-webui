@@ -9,6 +9,7 @@ import {
   PanelRightOpen,
   MessageSquare,
   Kanban,
+  Menu,
 } from 'lucide-react';
 import {
   leftSidebarVisible$,
@@ -62,74 +63,109 @@ const NavigationTabs: FC = () => {
   );
 };
 
-export const MenuBar: FC = () => {
+interface MenuBarProps {
+  showRightSidebar?: boolean;
+}
+
+export const MenuBar: FC<MenuBarProps> = ({ showRightSidebar = false }) => {
   const leftVisible = use$(leftSidebarVisible$);
   const rightVisible = use$(rightSidebarVisible$);
+  const location = useLocation();
+  const isTasksView = location.pathname.startsWith('/tasks');
 
   return (
-    <div className="flex h-9 items-center justify-between border-b px-4">
-      <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-2">
+    <div className="flex h-9 items-center justify-between border-b px-2 sm:px-4">
+      <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="-ml-2"
+                  className="-ml-1 sm:-ml-2"
                   onClick={toggleLeftSidebar}
                   data-testid="toggle-conversations-sidebar"
                 >
-                  {leftVisible ? (
-                    <PanelLeftClose className="h-4 w-4" />
-                  ) : (
-                    <PanelLeftOpen className="h-4 w-4" />
-                  )}
+                  {/* Show hamburger menu on mobile, panel icons on desktop */}
+                  <span className="block sm:hidden">
+                    <Menu className="h-4 w-4" />
+                  </span>
+                  <span className="hidden sm:block">
+                    {leftVisible ? (
+                      <PanelLeftClose className="h-4 w-4" />
+                    ) : (
+                      <PanelLeftOpen className="h-4 w-4" />
+                    )}
+                  </span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {leftVisible ? 'Hide conversations' : 'Show conversations'}
+                {isTasksView
+                  ? leftVisible
+                    ? 'Hide tasks'
+                    : 'Show tasks'
+                  : leftVisible
+                    ? 'Hide conversations'
+                    : 'Show conversations'}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <Link
             to="/chat"
-            className="flex items-center space-x-2 transition-opacity hover:opacity-80"
+            className="flex items-center space-x-1 transition-opacity hover:opacity-80 sm:space-x-2"
           >
             <img src="https://gptme.org/media/logo.png" alt="gptme logo" className="w-4" />
-            <span className="font-mono text-base font-semibold">gptme</span>
+            <span className="font-mono text-sm font-semibold sm:text-base">gptme</span>
           </Link>
         </div>
 
-        <NavigationTabs />
+        <div className="hidden sm:block">
+          <NavigationTabs />
+        </div>
       </div>
-      <div className="flex items-center gap-4">
-        <ConnectionButton />
-        <ThemeToggle />
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SettingsModal />
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Settings</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={toggleRightSidebar}>
-                {rightVisible ? (
-                  <PanelRightClose className="h-4 w-4" />
-                ) : (
-                  <PanelRightOpen className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {rightVisible ? 'Hide sidebar' : 'Show sidebar'}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      <div className="flex items-center gap-1 sm:gap-4">
+        {/* Show on mobile for tasks view only */}
+        <div className="block sm:hidden">
+          <NavigationTabs />
+        </div>
+
+        <div className="hidden sm:flex sm:items-center sm:gap-4">
+          <ConnectionButton />
+          <ThemeToggle />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SettingsModal />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Settings</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {/* Mobile menu for settings etc */}
+        <div className="flex items-center gap-1 sm:hidden">
+          <ThemeToggle />
+        </div>
+
+        {showRightSidebar && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={toggleRightSidebar}>
+                  {rightVisible ? (
+                    <PanelRightClose className="h-4 w-4" />
+                  ) : (
+                    <PanelRightOpen className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {rightVisible ? 'Hide sidebar' : 'Show sidebar'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
     </div>
   );

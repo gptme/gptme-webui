@@ -1,4 +1,4 @@
-import { type FC, useState, useEffect, type ReactElement } from 'react';
+import { type FC, useState, useEffect, type ReactElement, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -11,6 +11,9 @@ import {
   Loader2,
   Archive,
 } from 'lucide-react';
+import type { ImperativePanelHandle } from 'react-resizable-panels';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +29,7 @@ import {
   useTaskQuery,
   useCreateTaskMutation,
 } from '@/stores/tasks';
+import { leftSidebarVisible$, setLeftPanelRef } from '@/stores/sidebar';
 import type { Task, TaskStatus, CreateTaskRequest } from '@/types/task';
 
 interface Props {
@@ -38,6 +42,40 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId: selectedTaskIdProp 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const showArchived = use$(showArchived$);
   const selectedTaskId = use$(selectedTask$);
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Panel refs for sidebar integration
+  const leftPanelRef = useRef<ImperativePanelHandle>(null);
+
+  // Connect panel refs to store only in desktop mode
+  useEffect(() => {
+    if (!isMobile) {
+      setLeftPanelRef(leftPanelRef.current);
+    }
+    return () => {
+      setLeftPanelRef(null);
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    // Only manipulate panels in desktop mode
+    if (!isMobile) {
+      // Keep left sidebar expanded by default on desktop
+      leftPanelRef.current?.expand();
+    }
+  }, [isMobile]);
 
   // Use query hooks
   const { data: tasks = [], isLoading: loading, error, refetch } = useTasksQuery();
@@ -115,219 +153,262 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId: selectedTaskIdProp 
   const failedTasks = tasks.filter((t) => t.status === 'failed' && !t.archived);
   const archivedTasks = tasks.filter((t) => t.archived);
 
-  return (
-    <div className={`flex flex-1 flex-col overflow-hidden ${className}`}>
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel - Task List */}
-        <div className="flex w-96 flex-col border-r border-border">
-          <div className="flex-shrink-0 p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Tasks</h2>
-              <div className="flex items-center gap-2">
+  // Task List Component - shared between mobile and desktop
+  const TaskListContent = () => (
+    <div className="flex h-full flex-col">
+      <div className="flex-shrink-0 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Tasks</h2>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={loading}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() => refetch()}
-                  disabled={loading}
-                  className="flex items-center gap-1"
+                  variant={showArchived ? 'default' : 'outline'}
+                  onClick={() => showArchived$.set(!showArchived)}
+                  className="flex items-center"
                 >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <Archive className="h-4 w-4" />
                 </Button>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant={showArchived ? 'default' : 'outline'}
-                      onClick={() => showArchived$.set(!showArchived)}
-                      className="flex items-center"
-                    >
-                      <Archive className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {showArchived ? 'Hide Archived' : 'Show Archived'}
-                  </TooltipContent>
-                </Tooltip>
-                <Button
-                  size="sm"
-                  onClick={() => setShowCreateDialog(true)}
-                  className="flex items-center gap-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  New Task
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-4 pb-2">
-            {/* Error State */}
-            {error && (
-              <Card className="mb-4 border-red-200 bg-red-50">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2 text-red-700">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">Error loading tasks</span>
-                  </div>
-                  <p className="mt-1 text-xs text-red-600">
-                    {error instanceof Error ? error.message : String(error)}
-                  </p>
-                  <Button size="sm" variant="outline" onClick={() => refetch()} className="mt-2">
-                    Retry
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Loading State */}
-            {loading && tasks.length === 0 && (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">Loading tasks...</p>
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && !error && tasks.length === 0 && (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-center">
-                  <GitBranch className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
-                  <p className="mt-2 text-lg font-medium">No tasks yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Create your first task to get started
-                  </p>
-                  <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
-                    <Plus className="mr-1 h-4 w-4" />
-                    Create Task
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Task Status Summary */}
-            {tasks.length > 0 && (
-              <>
-                <div className="mb-4 grid grid-cols-2 gap-2">
-                  <Card className="p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Active</span>
-                      <span className="font-bold text-blue-600">{activeTasks.length}</span>
-                    </div>
-                  </Card>
-                  <Card className="p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Pending</span>
-                      <span className="font-bold text-yellow-600">{pendingTasks.length}</span>
-                    </div>
-                  </Card>
-                </div>
-
-                <Separator className="mb-4" />
-              </>
-            )}
-
-            {/* Active Tasks */}
-            {activeTasks.length > 0 && (
-              <div className="mb-4">
-                <h3 className="mb-2 text-sm font-medium text-muted-foreground">Active Tasks</h3>
-                {activeTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    isSelected={selectedTask?.id === task.id}
-                    onClick={() => handleTaskSelect(task)}
-                    getStatusIcon={getStatusIcon}
-                    getStatusBadge={getStatusBadge}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Pending Tasks */}
-            {pendingTasks.length > 0 && (
-              <div className="mb-4">
-                <h3 className="mb-2 text-sm font-medium text-muted-foreground">Pending Tasks</h3>
-                {pendingTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    isSelected={selectedTask?.id === task.id}
-                    onClick={() => handleTaskSelect(task)}
-                    getStatusIcon={getStatusIcon}
-                    getStatusBadge={getStatusBadge}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Completed Tasks */}
-            {completedTasks.length > 0 && (
-              <div className="mb-4">
-                <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                  Recently Completed
-                </h3>
-                {completedTasks.slice(0, 5).map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    isSelected={selectedTask?.id === task.id}
-                    onClick={() => handleTaskSelect(task)}
-                    getStatusIcon={getStatusIcon}
-                    getStatusBadge={getStatusBadge}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Failed Tasks */}
-            {failedTasks.length > 0 && (
-              <div className="mb-4">
-                <h3 className="mb-2 text-sm font-medium text-muted-foreground">Failed Tasks</h3>
-                {failedTasks.slice(0, 3).map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    isSelected={selectedTask?.id === task.id}
-                    onClick={() => handleTaskSelect(task)}
-                    getStatusIcon={getStatusIcon}
-                    getStatusBadge={getStatusBadge}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Archived Tasks */}
-            {showArchived && archivedTasks.length > 0 && (
-              <div>
-                <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived Tasks</h3>
-                {archivedTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    isSelected={selectedTask?.id === task.id}
-                    onClick={() => handleTaskSelect(task)}
-                    getStatusIcon={getStatusIcon}
-                    getStatusBadge={getStatusBadge}
-                    formatDate={formatDate}
-                  />
-                ))}
-              </div>
-            )}
+              </TooltipTrigger>
+              <TooltipContent>{showArchived ? 'Hide Archived' : 'Show Archived'}</TooltipContent>
+            </Tooltip>
+            <Button
+              size="sm"
+              onClick={() => setShowCreateDialog(true)}
+              className="flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              New Task
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* Right Panel - Task Details */}
+      <div className="flex-1 overflow-y-auto px-4 pb-2">
+        {/* Error State */}
+        {error && (
+          <Card className="mb-4 border-red-200 bg-red-50">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Error loading tasks</span>
+              </div>
+              <p className="mt-1 text-xs text-red-600">
+                {error instanceof Error ? error.message : String(error)}
+              </p>
+              <Button size="sm" variant="outline" onClick={() => refetch()} className="mt-2">
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading State */}
+        {loading && tasks.length === 0 && (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">Loading tasks...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && tasks.length === 0 && (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <GitBranch className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+              <p className="mt-2 text-lg font-medium">No tasks yet</p>
+              <p className="text-sm text-muted-foreground">Create your first task to get started</p>
+              <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                Create Task
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Task Status Summary */}
+        {tasks.length > 0 && (
+          <>
+            <div className="mb-4 grid grid-cols-2 gap-2">
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Active</span>
+                  <span className="font-bold text-blue-600">{activeTasks.length}</span>
+                </div>
+              </Card>
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Pending</span>
+                  <span className="font-bold text-yellow-600">{pendingTasks.length}</span>
+                </div>
+              </Card>
+            </div>
+
+            <Separator className="mb-4" />
+          </>
+        )}
+
+        {/* Active Tasks */}
+        {activeTasks.length > 0 && (
+          <div className="mb-4">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Active Tasks</h3>
+            {activeTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isSelected={selectedTask?.id === task.id}
+                onClick={() => {
+                  handleTaskSelect(task);
+                  // Close sidebar on mobile after selection
+                  if (isMobile) {
+                    leftPanelRef.current?.collapse();
+                  }
+                }}
+                getStatusIcon={getStatusIcon}
+                getStatusBadge={getStatusBadge}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Pending Tasks */}
+        {pendingTasks.length > 0 && (
+          <div className="mb-4">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Pending Tasks</h3>
+            {pendingTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isSelected={selectedTask?.id === task.id}
+                onClick={() => {
+                  handleTaskSelect(task);
+                  // Close sidebar on mobile after selection
+                  if (isMobile) {
+                    leftPanelRef.current?.collapse();
+                  }
+                }}
+                getStatusIcon={getStatusIcon}
+                getStatusBadge={getStatusBadge}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Completed Tasks */}
+        {completedTasks.length > 0 && (
+          <div className="mb-4">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Recently Completed</h3>
+            {completedTasks.slice(0, 5).map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isSelected={selectedTask?.id === task.id}
+                onClick={() => {
+                  handleTaskSelect(task);
+                  // Close sidebar on mobile after selection
+                  if (isMobile) {
+                    leftPanelRef.current?.collapse();
+                  }
+                }}
+                getStatusIcon={getStatusIcon}
+                getStatusBadge={getStatusBadge}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Failed Tasks */}
+        {failedTasks.length > 0 && (
+          <div className="mb-4">
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Failed Tasks</h3>
+            {failedTasks.slice(0, 3).map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isSelected={selectedTask?.id === task.id}
+                onClick={() => {
+                  handleTaskSelect(task);
+                  // Close sidebar on mobile after selection
+                  if (isMobile) {
+                    leftPanelRef.current?.collapse();
+                  }
+                }}
+                getStatusIcon={getStatusIcon}
+                getStatusBadge={getStatusBadge}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Archived Tasks */}
+        {showArchived && archivedTasks.length > 0 && (
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Archived Tasks</h3>
+            {archivedTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isSelected={selectedTask?.id === task.id}
+                onClick={() => {
+                  handleTaskSelect(task);
+                  // Close sidebar on mobile after selection
+                  if (isMobile) {
+                    leftPanelRef.current?.collapse();
+                  }
+                }}
+                getStatusIcon={getStatusIcon}
+                getStatusBadge={getStatusBadge}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const leftVisible = use$(leftSidebarVisible$);
+
+  if (isMobile) {
+    return (
+      <div className={`flex flex-1 flex-col overflow-hidden ${className}`}>
+        {/* Mobile Layout */}
+        <Sheet
+          open={leftVisible}
+          onOpenChange={(open) => {
+            leftSidebarVisible$.set(open);
+          }}
+        >
+          <SheetContent side="left" className="flex w-full flex-col p-0 sm:max-w-md">
+            <SheetHeader className="flex-shrink-0 border-b p-4">
+              <SheetTitle className="text-left text-base font-semibold">Tasks</SheetTitle>
+            </SheetHeader>
+            <div className="min-h-0 flex-1">
+              <TaskListContent />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Task Details - Full Width on Mobile */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {selectedTask ? (
-            <>
-              <TaskDetails task={selectedTask} />
-            </>
+            <TaskDetails task={selectedTask} />
           ) : selectedTaskId && selectedTaskLoading ? (
             <div className="flex flex-1 items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -347,7 +428,58 @@ const TaskManager: FC<Props> = ({ className, selectedTaskId: selectedTaskIdProp 
             </div>
           )}
         </div>
+
+        <TaskCreationDialog
+          open={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+          onTaskCreated={handleTaskCreated}
+        />
       </div>
+    );
+  }
+
+  // Desktop Layout
+  return (
+    <div className={`flex flex-1 flex-col overflow-hidden ${className}`}>
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanel
+          ref={leftPanelRef}
+          defaultSize={25}
+          minSize={20}
+          maxSize={40}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => leftSidebarVisible$.set(false)}
+          onExpand={() => leftSidebarVisible$.set(true)}
+        >
+          <TaskListContent />
+        </ResizablePanel>
+
+        <ResizableHandle />
+
+        <ResizablePanel defaultSize={75} minSize={60} className="overflow-hidden">
+          {selectedTask ? (
+            <TaskDetails task={selectedTask} />
+          ) : selectedTaskId && selectedTaskLoading ? (
+            <div className="flex flex-1 items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
+                <p className="mb-2 text-lg">Loading task details...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <GitBranch className="mx-auto mb-4 h-12 w-12 opacity-50" />
+                <p className="mb-2 text-lg">No task selected</p>
+                <p className="text-sm">
+                  Select a task from the list to view details and suggested actions
+                </p>
+              </div>
+            </div>
+          )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       <TaskCreationDialog
         open={showCreateDialog}
