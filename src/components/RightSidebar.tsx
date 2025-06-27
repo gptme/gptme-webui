@@ -87,7 +87,7 @@ export const RightSidebar: FC<Props> = ({ conversationId }) => {
             </Select>
 
             <Button
-              variant="ghost"
+              variant="ghost" aria-label="Close sidebar"
               size="icon"
               onClick={() => rightSidebarVisible$.set(false)}
               className="h-8 w-8 md:hidden"
