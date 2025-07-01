@@ -44,7 +44,7 @@ const TaskCreationDialog: FC<Props> = ({ open, onOpenChange, onTaskCreated }) =>
   const [isLoading, setIsLoading] = useState(false);
 
   // Get available workspaces
-  const { workspaces } = useWorkspaces();
+  const { workspaces, addCustomWorkspace } = useWorkspaces();
 
   const handleSubmit = async () => {
     if (!formData.content.trim()) return;
@@ -178,6 +178,11 @@ const TaskCreationDialog: FC<Props> = ({ open, onOpenChange, onTaskCreated }) =>
                   workspaces={workspaces}
                   placeholder="Choose a workspace"
                   showConversationCount={true}
+                  allowCustomPath={true}
+                  onAddWorkspace={(path: string) => {
+                    console.log('[TaskCreationDialog] Adding new workspace:', path);
+                    addCustomWorkspace(path);
+                  }}
                 />
               ) : (
                 <div className="space-y-2">

@@ -52,6 +52,7 @@ interface ChatOptionsProps {
   availableWorkspaces: WorkspaceProject[];
   isDisabled: boolean;
   showWorkspaceSelector: boolean;
+  onAddWorkspace?: (path: string) => void;
 }
 
 const ChatOptionsPanel: FC<ChatOptionsProps> = ({
@@ -65,6 +66,7 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
   availableWorkspaces,
   isDisabled,
   showWorkspaceSelector,
+  onAddWorkspace,
 }) => (
   <div className="space-y-8">
     <ModelSelector
@@ -81,6 +83,8 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
         workspaces={availableWorkspaces}
         disabled={isDisabled}
         showConversationCount={true}
+        allowCustomPath={true}
+        onAddWorkspace={onAddWorkspace}
       />
     )}
 
@@ -203,7 +207,7 @@ export const ChatInput: FC<Props> = ({
   const isConnected = use$(isConnected$);
 
   // Get available workspaces using the reusable hook
-  const { workspaces: availableWorkspaces } = useWorkspaces(false); // Don't fetch, just subscribe to cache changes
+  const { workspaces: availableWorkspaces, addCustomWorkspace } = useWorkspaces(false); // Don't fetch, just subscribe to cache changes
 
   const message = value !== undefined ? value : internalMessage;
   const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
@@ -314,6 +318,10 @@ export const ChatInput: FC<Props> = ({
                       availableWorkspaces={availableWorkspaces}
                       isDisabled={isDisabled}
                       showWorkspaceSelector={!conversationId}
+                      onAddWorkspace={(path: string) => {
+                        console.log('[ChatInput] Adding new workspace:', path);
+                        addCustomWorkspace(path);
+                      }}
                     />
                   </OptionsButton>
                 </div>
