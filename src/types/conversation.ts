@@ -25,6 +25,7 @@ export interface ConversationSummary {
   branch?: string;
   workspace?: string;
   readonly?: boolean; // For demo conversations
+  agent_name?: string;
 }
 
 export interface GenerateCallbacks {

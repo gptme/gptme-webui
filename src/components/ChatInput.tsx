@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
 import { Computed, use$ } from '@legendapp/state/react';
 import { conversations$ } from '@/stores/conversations';
+import { selectedAgent$, selectedWorkspace$ } from '@/stores/sidebar';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { WorkspaceSelector } from '@/components/WorkspaceSelector';
 import type { WorkspaceProject } from '@/utils/workspaceUtils';
@@ -52,6 +53,7 @@ interface ChatOptionsProps {
   availableWorkspaces: WorkspaceProject[];
   isDisabled: boolean;
   showWorkspaceSelector: boolean;
+  onAddWorkspace?: (path: string) => void;
 }
 
 const ChatOptionsPanel: FC<ChatOptionsProps> = ({
@@ -65,6 +67,7 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
   availableWorkspaces,
   isDisabled,
   showWorkspaceSelector,
+  onAddWorkspace,
 }) => (
   <div className="space-y-8">
     <ModelSelector
@@ -81,6 +84,8 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
         workspaces={availableWorkspaces}
         disabled={isDisabled}
         showConversationCount={true}
+        allowCustomPath={true}
+        onAddWorkspace={onAddWorkspace}
       />
     )}
 
@@ -192,18 +197,27 @@ export const ChatInput: FC<Props> = ({
   value,
   onChange,
 }) => {
+  const { isConnected$ } = useApi();
+  const sidebarSelectedWorkspace = use$(selectedWorkspace$);
+  const sidebarSelectedAgent = use$(selectedAgent$);
+
   const [internalMessage, setInternalMessage] = useState('');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [selectedModel, setSelectedModel] = useState(defaultModel || '');
-  const [selectedWorkspace, setSelectedWorkspace] = useState<string>('.');
-
-  const { isConnected$ } = useApi();
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(
+    // For new conversations, use the selected workspace from sidebar, otherwise default to '.'
+    !conversationId && sidebarSelectedWorkspace
+      ? sidebarSelectedWorkspace
+      : !conversationId && sidebarSelectedAgent && sidebarSelectedAgent.workspace
+        ? sidebarSelectedAgent.workspace
+        : '.'
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isConnected = use$(isConnected$);
 
   // Get available workspaces using the reusable hook
-  const { workspaces: availableWorkspaces } = useWorkspaces(false); // Don't fetch, just subscribe to cache changes
+  const { workspaces: availableWorkspaces, addCustomWorkspace } = useWorkspaces(false); // Don't fetch, just subscribe to cache changes
 
   const message = value !== undefined ? value : internalMessage;
   const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
@@ -232,6 +246,17 @@ export const ChatInput: FC<Props> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocus, isReadOnly, isConnected]);
+
+  // Update workspace when sidebar selection changes (only for new conversations)
+  useEffect(() => {
+    if (!conversationId && sidebarSelectedWorkspace) {
+      setSelectedWorkspace(sidebarSelectedWorkspace);
+    } else if (!conversationId && sidebarSelectedAgent && sidebarSelectedAgent.workspace) {
+      setSelectedWorkspace(sidebarSelectedAgent.workspace);
+    } else if (!conversationId && !sidebarSelectedWorkspace && !sidebarSelectedAgent) {
+      setSelectedWorkspace('.');
+    }
+  }, [conversationId, sidebarSelectedWorkspace, sidebarSelectedAgent]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -314,6 +339,10 @@ export const ChatInput: FC<Props> = ({
                       availableWorkspaces={availableWorkspaces}
                       isDisabled={isDisabled}
                       showWorkspaceSelector={!conversationId}
+                      onAddWorkspace={(path: string) => {
+                        console.log('[ChatInput] Adding new workspace:', path);
+                        addCustomWorkspace(path);
+                      }}
                     />
                   </OptionsButton>
                 </div>

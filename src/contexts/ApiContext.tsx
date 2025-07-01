@@ -32,6 +32,7 @@ interface ApiContextType {
   getChatConfig: ApiClient['getChatConfig'];
   updateChatConfig: ApiClient['updateChatConfig'];
   deleteConversation: ApiClient['deleteConversation'];
+  createAgent: ApiClient['createAgent'];
 }
 
 const ApiContext = createContext<ApiContextType | null>(null);
@@ -281,6 +282,7 @@ export function ApiProvider({
         getChatConfig: api.getChatConfig.bind(api),
         updateChatConfig: api.updateChatConfig.bind(api),
         deleteConversation: api.deleteConversation.bind(api),
+        createAgent: api.createAgent.bind(api),
       }}
     >
       {children}
