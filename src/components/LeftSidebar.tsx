@@ -1,14 +1,15 @@
-import { PenSquare, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
+import { PenSquare, ExternalLink, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { AgentsList } from './AgentsList';
 import { WorkspaceList } from './WorkspaceList';
+import CreateAgentDialog, { type CreateAgentRequest } from './CreateAgentDialog';
 import { useApi } from '@/contexts/ApiContext';
 import { useNavigate } from 'react-router-dom';
 import type { ConversationSummary } from '@/types/conversation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { selectedWorkspace$ } from '@/stores/sidebar';
+import { selectedWorkspace$, selectedAgent$ } from '@/stores/sidebar';
 
 import type { FC } from 'react';
 import { use$ } from '@legendapp/state/react';
@@ -42,20 +43,29 @@ export const LeftSidebar: FC<Props> = ({
   hasNextPage = false,
   route,
 }) => {
-  const { isConnected$ } = useApi();
+  const { isConnected$, createAgent } = useApi();
   const isConnected = use$(isConnected$);
   const selectedWorkspace = use$(selectedWorkspace$);
+  const selectedAgent = use$(selectedAgent$);
   const navigate = useNavigate();
   const [agentsCollapsed, setAgentsCollapsed] = useState(false);
   const [workspacesCollapsed, setWorkspacesCollapsed] = useState(true);
+  const [showCreateAgentDialog, setShowCreateAgentDialog] = useState(false);
 
-  // Filter conversations based on selected workspace
+  // Filter conversations based on selected workspace and agent
   const filteredConversations = useMemo(() => {
-    if (!selectedWorkspace) {
-      return conversations;
+    let filtered = conversations;
+
+    if (selectedWorkspace) {
+      filtered = filtered.filter((conv) => conv.workspace === selectedWorkspace);
     }
-    return conversations.filter((conv) => conv.workspace === selectedWorkspace);
-  }, [conversations, selectedWorkspace]);
+
+    if (selectedAgent) {
+      filtered = filtered.filter((conv) => conv.agent_name === selectedAgent.name);
+    }
+
+    return filtered;
+  }, [conversations, selectedWorkspace, selectedAgent]);
 
   const handleNewConversation = () => {
     // Clear the conversation parameter to show WelcomeView
@@ -64,14 +74,20 @@ export const LeftSidebar: FC<Props> = ({
     // onToggle();
   };
 
+  const handleAgentCreated = async (agentData: CreateAgentRequest) => {
+    try {
+      return await createAgent(agentData);
+      // The agent will be added to the list via API refresh or state update
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+      throw error; // Let the dialog handle the error
+    }
+  };
+
   return (
     <div className="h-full">
       <div className="flex h-full flex-col">
-        <Collapsible
-          className="hidden"
-          open={!agentsCollapsed}
-          onOpenChange={(open) => setAgentsCollapsed(!open)}
-        >
+        <Collapsible open={!agentsCollapsed} onOpenChange={(open) => setAgentsCollapsed(!open)}>
           <CollapsibleTrigger className="flex h-12 w-full shrink-0 items-center justify-between bg-background px-4 hover:bg-muted/50">
             <div className="flex items-center space-x-2">
               {agentsCollapsed ? (
@@ -86,24 +102,19 @@ export const LeftSidebar: FC<Props> = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      asChild
                       variant="ghost"
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleNewConversation();
+                        setShowCreateAgentDialog(true);
                       }}
-                      data-testid="new-conversation-button"
+                      data-testid="new-agent-button"
                     >
-                      <span>
-                        <PenSquare className="h-4 w-4" />
-                      </span>
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {!isConnected
-                      ? 'Connect to create new conversations'
-                      : 'Create new conversation'}
+                    {!isConnected ? 'Connect to create new agents' : 'Create new agent'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -111,7 +122,12 @@ export const LeftSidebar: FC<Props> = ({
           </CollapsibleTrigger>
           <CollapsibleContent className="overflow-hidden">
             <div className="overflow-hidden" style={{ maxHeight: agentsCollapsed ? 0 : '200px' }}>
-              <AgentsList />
+              <AgentsList
+                conversations={conversations}
+                handleCreateAgent={() => {
+                  setShowCreateAgentDialog(true);
+                }}
+              />
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -201,6 +217,12 @@ export const LeftSidebar: FC<Props> = ({
           </div>
         </div>
       </div>
+
+      <CreateAgentDialog
+        open={showCreateAgentDialog}
+        onOpenChange={setShowCreateAgentDialog}
+        onAgentCreated={handleAgentCreated}
+      />
     </div>
   );
 };

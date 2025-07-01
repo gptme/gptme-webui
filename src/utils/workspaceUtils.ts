@@ -9,8 +9,10 @@ export interface WorkspaceProject {
 
 export interface Agent {
   name: string;
-  path: string;
+  workspace: string;
   description?: string;
+  conversationCount: number;
+  lastUsed: string;
 }
 
 // For now, we'll use a simple heuristic to detect agents
@@ -89,23 +91,41 @@ export function formatPath(path: string): string {
   return path;
 }
 
-// Get example agents for demonstration
-export function getExampleAgents(): Agent[] {
-  return [
-    {
-      name: 'Bob',
-      path: '/agents/bob',
-      description: 'Autonomous Builder-agent',
-    },
-    {
-      name: 'Alice',
-      path: '/agents/alice',
-      description: 'Focused on writing and editing assistance',
-    },
-    {
-      name: 'Neo',
-      path: '/agents/neo',
-      description: 'Escaping The Matrix',
-    },
-  ];
+// Extract unique agents from conversation summaries
+export function extractAgentsFromConversations(conversations: ConversationSummary[]): Agent[] {
+  const agentMap = new Map<string, Agent>();
+
+  console.log('[workspaceUtils] Processing conversations for agents:', conversations.length);
+
+  // Extract agent information from conversation summaries
+  for (const conversation of conversations) {
+    if (!conversation.agent_name) continue;
+
+    const agentName = conversation.agent_name;
+    const lastUsed = new Date(conversation.modified * 1000).toISOString(); // Convert Unix timestamp to ISO string
+
+    if (agentMap.has(agentName)) {
+      const existing = agentMap.get(agentName)!;
+      existing.conversationCount += 1;
+      // Use the most recent timestamp
+      if (new Date(lastUsed) > new Date(existing.lastUsed)) {
+        existing.lastUsed = lastUsed;
+      }
+    } else {
+      agentMap.set(agentName, {
+        name: agentName,
+        workspace: conversation.workspace || '',
+        description: `Agent: ${agentName}`,
+        conversationCount: 1,
+        lastUsed,
+      });
+    }
+  }
+
+  const result = Array.from(agentMap.values()).sort(
+    (a, b) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
+  );
+
+  console.log('[workspaceUtils] Extracted agents:', result);
+  return result;
 }

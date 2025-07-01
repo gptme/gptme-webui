@@ -1,3 +1,4 @@
+import { type CreateAgentResponse } from '@/components/CreateAgentDialog';
 import type {
   ApiError,
   ChatConfig,
@@ -157,13 +158,18 @@ export class ApiClient {
       headers,
     });
 
-    if (!response.ok) {
-      throw new ApiClientError(`HTTP error! status: ${response.status}`, response.status);
-    }
-
     const data = await response.json();
 
-    // Check if the response is an error
+    if (!response.ok) {
+      // Try to extract error message from response body
+      if (isApiErrorResponse(data)) {
+        throw new ApiClientError(data.error, response.status);
+      } else {
+        throw new ApiClientError(`HTTP error! status: ${response.status}`, response.status);
+      }
+    }
+
+    // Check if the response is an error (for successful HTTP status but API error)
     if (isApiErrorResponse(data)) {
       throw new ApiClientError(data.error, data.status);
     }
@@ -762,6 +768,34 @@ export class ApiClient {
       method: 'DELETE',
       signal: this.controller?.signal,
     });
+  }
+
+  async createAgent(agentData: {
+    name: string;
+    template_repo: string;
+    template_branch: string;
+    workspace: string;
+    fork_command?: string;
+    project_config?: Record<string, unknown>;
+  }): Promise<CreateAgentResponse> {
+    if (!this.isConnected) {
+      throw new ApiClientError('Not connected to API');
+    }
+
+    console.log('[ApiClient] Creating agent:', agentData);
+
+    try {
+      const response = await this.fetchJson<CreateAgentResponse>(`${this.baseUrl}/api/v2/agents`, {
+        method: 'PUT',
+        body: JSON.stringify(agentData),
+        signal: this.controller?.signal,
+      });
+      console.log('[ApiClient] Agent created successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('[ApiClient] Failed to create agent:', error);
+      throw error;
+    }
   }
 }
 
