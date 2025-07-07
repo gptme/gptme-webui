@@ -58,7 +58,7 @@ export const AgentsList: FC<AgentsListProps> = ({
     <>
       <div className="flex flex-col space-y-1 p-2">
         {agents.map((agent) => {
-          const isSelected = selectedAgent?.name === agent.name;
+          const isSelected = selectedAgent?.path === agent.path;
           return (
             <Button
               key={agent.path}
