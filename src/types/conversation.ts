@@ -26,6 +26,7 @@ export interface ConversationSummary {
   workspace?: string;
   readonly?: boolean; // For demo conversations
   agent_name?: string;
+  agent_path?: string;
 }
 
 export interface GenerateCallbacks {

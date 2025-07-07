@@ -32,7 +32,7 @@ export interface ChatOptions {
 interface Props {
   conversationId?: string;
   onSend: (message: string, options?: ChatOptions) => void;
-  onInterrupt?: () => void;
+  onInterrupt?: () => Promise<void>;
   isReadOnly?: boolean;
   defaultModel?: string;
   availableModels?: string[];
@@ -208,8 +208,8 @@ export const ChatInput: FC<Props> = ({
     // For new conversations, use the selected workspace from sidebar, otherwise default to '.'
     !conversationId && sidebarSelectedWorkspace
       ? sidebarSelectedWorkspace
-      : !conversationId && sidebarSelectedAgent && sidebarSelectedAgent.workspace
-        ? sidebarSelectedAgent.workspace
+      : !conversationId && sidebarSelectedAgent && sidebarSelectedAgent.path
+        ? sidebarSelectedAgent.path
         : '.'
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -251,8 +251,8 @@ export const ChatInput: FC<Props> = ({
   useEffect(() => {
     if (!conversationId && sidebarSelectedWorkspace) {
       setSelectedWorkspace(sidebarSelectedWorkspace);
-    } else if (!conversationId && sidebarSelectedAgent && sidebarSelectedAgent.workspace) {
-      setSelectedWorkspace(sidebarSelectedAgent.workspace);
+    } else if (!conversationId && sidebarSelectedAgent && sidebarSelectedAgent.path) {
+      setSelectedWorkspace(sidebarSelectedAgent.path);
     } else if (!conversationId && !sidebarSelectedWorkspace && !sidebarSelectedAgent) {
       setSelectedWorkspace('.');
     }

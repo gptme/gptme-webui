@@ -774,7 +774,7 @@ export class ApiClient {
     name: string;
     template_repo: string;
     template_branch: string;
-    workspace: string;
+    path: string;
     fork_command?: string;
     project_config?: Record<string, unknown>;
   }): Promise<CreateAgentResponse> {

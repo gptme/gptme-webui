@@ -32,7 +32,7 @@ export interface CreateAgentRequest {
   name: string;
   template_repo: string;
   template_branch: string;
-  workspace: string;
+  path: string;
   fork_command: string;
   project_config?: Record<string, unknown>;
 }
@@ -61,10 +61,10 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
   const form = useForm<CreateAgentRequest>({
     defaultValues: {
       name: '',
-      template_repo: '',
-      template_branch: 'main',
-      workspace: '',
-      fork_command: '',
+      template_repo: 'https://github.com/gptme/gptme-agent-template',
+      template_branch: 'master',
+      path: '',
+      fork_command: './fork.sh <workspace-path> [<agent-name>]',
     },
   });
 
@@ -73,7 +73,7 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
       !data.name.trim() ||
       !data.template_repo.trim() ||
       !data.template_branch.trim() ||
-      !data.workspace.trim()
+      !data.path.trim()
     ) {
       return;
     }
@@ -94,7 +94,7 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
       // Set selected agent
       selectedAgent$.set({
         name: data.name,
-        workspace: data.workspace,
+        path: data.path,
         description: `Agent: ${data.name}`,
         conversationCount: 0,
         lastUsed: new Date().toISOString(),
@@ -229,7 +229,7 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="workspace"
+                  name="path"
                   rules={{ required: 'Workspace path is required' }}
                   render={({ field }) => (
                     <FormItem>

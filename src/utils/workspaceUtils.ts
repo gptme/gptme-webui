@@ -9,7 +9,7 @@ export interface WorkspaceProject {
 
 export interface Agent {
   name: string;
-  workspace: string;
+  path: string;
   description?: string;
   conversationCount: number;
   lastUsed: string;
@@ -99,22 +99,23 @@ export function extractAgentsFromConversations(conversations: ConversationSummar
 
   // Extract agent information from conversation summaries
   for (const conversation of conversations) {
-    if (!conversation.agent_name) continue;
+    if (!conversation.agent_path) continue;
 
-    const agentName = conversation.agent_name;
+    const agentPath = conversation.agent_path;
+    const agentName = conversation.agent_name || agentPath.split('/').pop() || 'Unknown Agent';
     const lastUsed = new Date(conversation.modified * 1000).toISOString(); // Convert Unix timestamp to ISO string
 
-    if (agentMap.has(agentName)) {
-      const existing = agentMap.get(agentName)!;
+    if (agentMap.has(agentPath)) {
+      const existing = agentMap.get(agentPath)!;
       existing.conversationCount += 1;
       // Use the most recent timestamp
       if (new Date(lastUsed) > new Date(existing.lastUsed)) {
         existing.lastUsed = lastUsed;
       }
     } else {
-      agentMap.set(agentName, {
+      agentMap.set(agentPath, {
         name: agentName,
-        workspace: conversation.workspace || '',
+        path: agentPath,
         description: `Agent: ${agentName}`,
         conversationCount: 1,
         lastUsed,

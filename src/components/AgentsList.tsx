@@ -24,7 +24,7 @@ export const AgentsList: FC<AgentsListProps> = ({
 
   const handleSelectAgent = (agent: Agent) => {
     // Toggle selection - if already selected, deselect
-    if (selectedAgent && selectedAgent.workspace === agent.workspace) {
+    if (selectedAgent && selectedAgent.path === agent.path) {
       selectedAgent$.set(null);
     } else {
       selectedAgent$.set(agent);
@@ -61,7 +61,7 @@ export const AgentsList: FC<AgentsListProps> = ({
           const isSelected = selectedAgent?.name === agent.name;
           return (
             <Button
-              key={agent.workspace}
+              key={agent.path}
               variant={isSelected ? 'default' : 'ghost'}
               className={`h-auto flex-col items-start justify-start p-2 text-left ${
                 isSelected ? 'bg-primary text-primary-foreground' : ''
