@@ -11,7 +11,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bot, GitBranch, FolderOpen, Settings } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Bot, GitBranch, FolderOpen, Settings, ChevronDown, ChevronRight } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import {
   Form,
@@ -55,16 +56,17 @@ interface Props {
 
 const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const form = useForm<CreateAgentRequest>({
     defaultValues: {
       name: '',
+      path: '',
       template_repo: 'https://github.com/gptme/gptme-agent-template',
       template_branch: 'master',
-      path: '',
-      fork_command: './fork.sh <workspace-path> [<agent-name>]',
+      fork_command: '',
     },
   });
 
@@ -78,9 +80,15 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
       return;
     }
 
+    // Generate fork_command if not explicitly set
+    const processedData = { ...data };
+    if (!processedData.fork_command.trim()) {
+      processedData.fork_command = `./fork.sh ${processedData.path} ${processedData.name}`;
+    }
+
     setIsLoading(true);
     try {
-      const response = await onAgentCreated(data);
+      const response = await onAgentCreated(processedData);
 
       // Reset form
       form.reset();
@@ -135,8 +143,7 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
             Create New Agent
           </DialogTitle>
           <DialogDescription>
-            Set up a new specialized agent by forking a template repository with custom
-            configuration.
+            Set up a new agent by forking a template repository.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,71 +158,13 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
                 <FormItem>
                   <FormLabel>Agent Name *</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="e.g., Code Reviewer, Documentation Helper"
-                      {...field}
-                      disabled={isLoading}
-                    />
+                    <Input placeholder="e.g. Alice, Bob, Charlie" {...field} disabled={isLoading} />
                   </FormControl>
-                  <FormDescription>A descriptive name for your agent</FormDescription>
+                  <FormDescription>The name of your agent</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            {/* Template Repository Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="h-4 w-4" />
-                  Template Repository
-                </CardTitle>
-                <CardDescription>
-                  Configure the repository template to fork for this agent
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="template_repo"
-                  rules={{ required: 'Template repository is required' }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Repository URL *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="https://github.com/username/template-repo"
-                          {...field}
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        The git repository URL to clone as the agent template
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="template_branch"
-                  rules={{ required: 'Template branch is required' }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Branch *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="main" {...field} disabled={isLoading} />
-                      </FormControl>
-                      <FormDescription>
-                        The branch to clone from the template repository
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
 
             {/* Workspace Settings */}
             <Card>
@@ -241,43 +190,8 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
                           disabled={isLoading}
                         />
                       </FormControl>
-                      <FormDescription>The directory where the agent will operate</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Advanced Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Advanced Settings
-                </CardTitle>
-                <CardDescription>Configuration for post-setup commands</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FormField
-                  control={form.control}
-                  name="fork_command"
-                  rules={{ required: 'Fork command is required' }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fork Command *</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="npm install && npm run setup"
-                          {...field}
-                          disabled={isLoading}
-                          rows={3}
-                        />
-                      </FormControl>
                       <FormDescription>
-                        Command to run after cloning the template. This should execute a script that
-                        properly copies over the template files to the agent's workspace. E.g.
-                        <code>./fork.sh &lt;workspace-path&gt; [&lt;agent-name&gt;]</code>
+                        The directory where the agent will store itself
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -285,6 +199,115 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
                 />
               </CardContent>
             </Card>
+
+            {/* Advanced Options */}
+            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex w-full items-center justify-between p-0 hover:bg-transparent"
+                  type="button"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <Settings className="h-4 w-4" />
+                    Advanced Options
+                  </span>
+                  {showAdvanced ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4">
+                {/* Template Repository Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <GitBranch className="h-4 w-4" />
+                      Template Repository
+                    </CardTitle>
+                    <CardDescription>
+                      Configure the repository template to fork for this agent
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="template_repo"
+                      rules={{ required: 'Template repository is required' }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Repository URL *</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://github.com/username/template-repo"
+                              {...field}
+                              disabled={isLoading}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            The git repository URL to clone as the agent template
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="template_branch"
+                      rules={{ required: 'Template branch is required' }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Branch *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="main" {...field} disabled={isLoading} />
+                          </FormControl>
+                          <FormDescription>
+                            The branch to clone from the template repository
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Fork Command */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Setup Command</CardTitle>
+                    <CardDescription>Configuration for post-setup commands</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField
+                      control={form.control}
+                      name="fork_command"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fork Command</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="./fork.sh <workspace-path> <agent-name>"
+                              {...field}
+                              disabled={isLoading}
+                              rows={3}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Command to run after cloning the template. Leave empty to use the
+                            default command. This should execute a script that properly copies over
+                            the template files to the agent's workspace.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
