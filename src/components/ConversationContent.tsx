@@ -254,7 +254,6 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
           isReadOnly={isReadOnly}
           hasSession$={hasSession$}
           defaultModel={AVAILABLE_MODELS[0]}
-          availableModels={AVAILABLE_MODELS}
           autoFocus$={shouldFocus$}
         />
       </div>

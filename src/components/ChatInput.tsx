@@ -21,7 +21,7 @@ import { selectedAgent$, selectedWorkspace$ } from '@/stores/sidebar';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { WorkspaceSelector } from '@/components/WorkspaceSelector';
 import type { WorkspaceProject } from '@/utils/workspaceUtils';
-import { AVAILABLE_MODELS } from './ConversationContent';
+import { useModels, type ModelInfo } from '@/hooks/useModels';
 
 export interface ChatOptions {
   model?: string;
@@ -35,7 +35,6 @@ interface Props {
   onInterrupt?: () => Promise<void>;
   isReadOnly?: boolean;
   defaultModel?: string;
-  availableModels?: string[];
   autoFocus$: Observable<boolean>;
   hasSession$: Observable<boolean>;
   value?: string;
@@ -49,10 +48,12 @@ interface ChatOptionsProps {
   setSelectedWorkspace: (workspace: string) => void;
   streamingEnabled: boolean;
   setStreamingEnabled: (enabled: boolean) => void;
+  models: ModelInfo[];
   availableModels: string[];
   availableWorkspaces: WorkspaceProject[];
   isDisabled: boolean;
   showWorkspaceSelector: boolean;
+  modelsLoading: boolean;
   onAddWorkspace?: (path: string) => void;
 }
 
@@ -63,18 +64,22 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
   setSelectedWorkspace,
   streamingEnabled,
   setStreamingEnabled,
+  models,
   availableModels,
   availableWorkspaces,
   isDisabled,
   showWorkspaceSelector,
+  modelsLoading,
   onAddWorkspace,
 }) => (
   <div className="space-y-8">
     <ModelSelector
       selectedModel={selectedModel}
       setSelectedModel={setSelectedModel}
+      models={models}
       availableModels={availableModels}
       isDisabled={isDisabled}
+      isLoading={modelsLoading}
     />
 
     {showWorkspaceSelector && (
@@ -100,24 +105,52 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
 const ModelSelector: FC<{
   selectedModel: string;
   setSelectedModel: (model: string) => void;
+  models: ModelInfo[];
   availableModels: string[];
   isDisabled: boolean;
-}> = ({ selectedModel, setSelectedModel, availableModels, isDisabled }) => (
+  isLoading: boolean;
+}> = ({ selectedModel, setSelectedModel, models, availableModels, isDisabled, isLoading }) => (
   <div className="space-y-1">
     <Label htmlFor="model-select">Model</Label>
-    <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isDisabled}>
+    <Select
+      value={selectedModel}
+      onValueChange={setSelectedModel}
+      disabled={isDisabled || isLoading}
+    >
       <SelectTrigger id="model-select">
-        <SelectValue placeholder="Default model" />
+        <SelectValue placeholder={isLoading ? 'Loading models...' : 'Select model'} />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="default">Default model</SelectItem>
-        {availableModels.map((model) => (
-          <SelectItem key={model} value={model}>
-            <div className="flex flex-col overflow-hidden whitespace-nowrap">
-              <span className="font-medium">{model}</span>
+        {isLoading ? (
+          <SelectItem value="" disabled>
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Loading models...</span>
             </div>
           </SelectItem>
-        ))}
+        ) : (
+          availableModels.map((modelFull) => {
+            const modelInfo = models.find((m) => m.id === modelFull);
+            return (
+              <SelectItem key={modelFull} value={modelFull}>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{modelInfo?.model || modelFull}</span>
+                    <span className="text-xs text-muted-foreground">{modelInfo?.provider}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    {modelInfo?.context && <span>{Math.round(modelInfo.context / 1000)}k ctx</span>}
+                    {modelInfo?.supports_vision && <span className="text-blue-600">👁️ vision</span>}
+                    {modelInfo?.supports_reasoning && (
+                      <span className="text-green-600">🧠 reasoning</span>
+                    )}
+                  </div>
+                </div>
+              </SelectItem>
+            );
+          })
+        )}
       </SelectContent>
     </Select>
   </div>
@@ -191,7 +224,6 @@ export const ChatInput: FC<Props> = ({
   onInterrupt,
   isReadOnly,
   defaultModel = '',
-  availableModels = AVAILABLE_MODELS,
   autoFocus$,
   hasSession$,
   value,
@@ -201,9 +233,24 @@ export const ChatInput: FC<Props> = ({
   const sidebarSelectedWorkspace = use$(selectedWorkspace$);
   const sidebarSelectedAgent = use$(selectedAgent$);
 
+  // Use dynamic models instead of static list
+  const {
+    models,
+    availableModels,
+    defaultModel: apiDefaultModel,
+    isLoading: modelsLoading,
+  } = useModels();
+
   const [internalMessage, setInternalMessage] = useState('');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
-  const [selectedModel, setSelectedModel] = useState(defaultModel || '');
+  const [selectedModel, setSelectedModel] = useState(defaultModel || apiDefaultModel || '');
+
+  // Update selectedModel when apiDefaultModel changes
+  useEffect(() => {
+    if (!defaultModel && apiDefaultModel && !selectedModel) {
+      setSelectedModel(apiDefaultModel);
+    }
+  }, [defaultModel, apiDefaultModel, selectedModel]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>(
     // For new conversations, use the selected workspace from sidebar, otherwise default to '.'
     !conversationId && sidebarSelectedWorkspace
@@ -335,10 +382,12 @@ export const ChatInput: FC<Props> = ({
                       setSelectedWorkspace={setSelectedWorkspace}
                       streamingEnabled={streamingEnabled}
                       setStreamingEnabled={setStreamingEnabled}
+                      models={models}
                       availableModels={availableModels}
                       availableWorkspaces={availableWorkspaces}
                       isDisabled={isDisabled}
                       showWorkspaceSelector={!conversationId}
+                      modelsLoading={modelsLoading}
                       onAddWorkspace={(path: string) => {
                         console.log('[ChatInput] Adding new workspace:', path);
                         addCustomWorkspace(path);
