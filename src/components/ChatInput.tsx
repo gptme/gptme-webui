@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { useApi } from '@/contexts/ApiContext';
+import { ProviderIcon } from '@/components/ProviderIcon';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -136,8 +137,8 @@ const ModelSelector: FC<{
               <SelectItem key={modelFull} value={modelFull}>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
+                    {modelInfo?.provider && <ProviderIcon provider={modelInfo.provider} />}
                     <span className="font-medium">{modelInfo?.model || modelFull}</span>
-                    <span className="text-xs text-muted-foreground">{modelInfo?.provider}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     {modelInfo?.context && <span>{Math.round(modelInfo.context / 1000)}k ctx</span>}
