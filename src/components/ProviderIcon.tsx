@@ -17,13 +17,13 @@ const PROVIDER_CONFIG = {
   anthropic: {
     type: 'component' as const,
     icon: SiAnthropic,
-    color: '#00A3FF',
+    color: '#CC785C',
     name: 'Anthropic',
   },
   openrouter: {
     type: 'svg' as const,
     icon: '/icon-openrouter.svg',
-    color: '#FF6A00',
+    color: '#6467F2',
     name: 'OpenRouter',
   },
 } as const;
@@ -44,7 +44,9 @@ export const ProviderIcon: FC<ProviderIconProps> = ({ provider, size = 14 }) => 
                 alt={config.name}
                 width={size}
                 height={size}
-                style={{ color: config.color }}
+                style={{
+                  color: config.color,
+                }}
                 className="inline-block"
               />
             )}

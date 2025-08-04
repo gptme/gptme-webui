@@ -122,7 +122,6 @@ const ModelSelector: FC<{
         <SelectValue placeholder={isLoading ? 'Loading models...' : 'Select model'} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="default">Default model</SelectItem>
         {isLoading ? (
           <SelectItem value="" disabled>
             <div className="flex items-center gap-2">
