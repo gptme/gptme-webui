@@ -150,7 +150,7 @@ export const ConversationList: FC<Props> = ({
                       'linear-gradient(to right, black 0%, black calc(100% - 2rem), transparent 100%)',
                   }}
                 >
-                  {conv.name || stripDate(conv.id)}
+                  {convState?.data?.name || conv.name || stripDate(conv.id)}
                 </div>
                 <div className="flex items-center space-x-3 text-xs text-muted-foreground">
                   <Tooltip>
