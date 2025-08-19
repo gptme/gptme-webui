@@ -258,6 +258,7 @@ export class ApiClient {
       onToolExecuting: (toolId: string) => void;
       onInterrupted: () => void;
       onError: (error: string) => void;
+      onConfigChanged?: (config: ChatConfig, changedFields: string[]) => void;
     }
   ): void {
     // Close any existing event stream for this conversation
@@ -396,6 +397,13 @@ export class ApiClient {
 
           case 'interrupted':
             callbacks.onInterrupted();
+            break;
+
+          case 'config_changed':
+            console.log(`[ApiClient] Config changed:`, data);
+            if (callbacks.onConfigChanged) {
+              callbacks.onConfigChanged(data.config, data.changed_fields || []);
+            }
             break;
 
           default:

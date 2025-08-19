@@ -15,6 +15,7 @@ import {
   addMessage,
   initConversation,
   selectedConversation$,
+  updateConversationName,
 } from '@/stores/conversations';
 import { playChime } from '@/utils/audio';
 import { notifyGenerationComplete, notifyToolConfirmation } from '@/utils/notifications';
@@ -225,6 +226,15 @@ export function useConversation(conversationId: string) {
               title: 'Error',
               description: error,
             });
+          },
+          onConfigChanged: (config, changedFields) => {
+            console.log('[useConversation] Config changed:', { config, changedFields });
+
+            // Check if the name was changed
+            if (changedFields.includes('name') && config.chat.name) {
+              console.log(`[useConversation] Updating conversation name to: "${config.chat.name}"`);
+              updateConversationName(conversationId, config.chat.name);
+            }
           },
         });
 

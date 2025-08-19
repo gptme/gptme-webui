@@ -108,6 +108,15 @@ export function updateConversationData(id: string, data: ConversationResponse) {
   conversations$.get(id)?.data.set(data);
 }
 
+// Update conversation name in the store
+export function updateConversationName(id: string, name: string) {
+  const conv = conversations$.get(id);
+  if (conv?.data) {
+    conv.data.name.set(name);
+    console.log(`[conversations] Updated conversation name: ${id} -> "${name}"`);
+  }
+}
+
 // Initialize conversations with their data
 export async function initializeConversations(
   api: { getConversation: (id: string) => Promise<ConversationResponse> },
