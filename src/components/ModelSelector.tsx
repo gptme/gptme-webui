@@ -1,5 +1,12 @@
 import { Loader2 } from 'lucide-react';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  FormDescription,
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
@@ -101,6 +108,7 @@ export function ModelSelector<T extends FieldValues = FieldValues>({
               </SelectContent>
             </Select>
           </FormControl>
+          <FormDescription>The model to use.</FormDescription>
           <FormMessage />
         </FormItem>
       )}

@@ -3,16 +3,17 @@ import { ChevronRight } from 'lucide-react';
 
 interface PathSegmentsProps {
   path: string;
+  workspaceRoot: string;
   onNavigate: (path: string) => void;
 }
 
-export function PathSegments({ path, onNavigate }: PathSegmentsProps) {
+export function PathSegments({ path, workspaceRoot, onNavigate }: PathSegmentsProps) {
   const segments = path ? path.split('/') : [];
 
   return (
     <div className="flex items-center space-x-1 text-sm">
       <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => onNavigate('')}>
-        /
+        {workspaceRoot || '/'}
       </Button>
       {segments.map((segment, index) => {
         if (!segment) return null;

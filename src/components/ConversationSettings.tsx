@@ -57,19 +57,16 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 name="chat.name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Conversation Name</FormLabel>
+                    <FormLabel>Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter conversation name..."
+                        placeholder="Enter name..."
                         {...field}
                         value={field.value || ''}
                         disabled={isSubmitting}
                       />
                     </FormControl>
-                    <FormDescription>
-                      A custom name for this conversation. If left empty, a name will be generated
-                      automatically.
-                    </FormDescription>
+                    <FormDescription>A display name for this conversation.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -89,7 +86,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                 name="chat.workspace"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Workspace Directory</FormLabel>
+                    <FormLabel>Workspace</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="e.g., /path/to/project or ."
@@ -98,10 +95,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
                         disabled={isSubmitting}
                       />
                     </FormControl>
-                    <FormDescription>
-                      The directory on the server where the agent can read/write files. Use '.' for
-                      the default.
-                    </FormDescription>
+                    <FormDescription>Directory where the conversation takes place.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
