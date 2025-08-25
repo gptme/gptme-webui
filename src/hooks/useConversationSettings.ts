@@ -6,6 +6,7 @@ import { formSchema, type FormSchema } from '@/schemas/conversationSettings';
 import { toast } from 'sonner';
 import type { ChatConfig } from '@/types/api';
 import { useEffect } from 'react';
+import { use$ } from '@legendapp/state/react';
 import { ToolFormat } from '@/types/api';
 
 const chatConfigToFormValues = (config: ChatConfig | null): FormSchema => ({
@@ -36,7 +37,7 @@ const chatConfigToFormValues = (config: ChatConfig | null): FormSchema => ({
 export const useConversationSettings = (conversationId: string) => {
   const api = useApi();
   const conversation$ = conversations$.get(conversationId);
-  const chatConfig = conversation$?.chatConfig.get();
+  const chatConfig = use$(conversation$?.chatConfig);
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),

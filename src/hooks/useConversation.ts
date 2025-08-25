@@ -240,11 +240,11 @@ export function useConversation(conversationId: string) {
             });
           },
           onConfigChanged: (config, changedFields) => {
-            console.log('[useConversation] Config changed:', { config, changedFields });
+            // Update the full chat config in the conversation state
+            updateConversation(conversationId, { chatConfig: config });
 
             // Check if the name was changed
             if (changedFields.includes('name') && config.chat.name) {
-              console.log(`[useConversation] Updating conversation name to: "${config.chat.name}"`);
               updateConversationName(conversationId, config.chat.name);
             }
           },
