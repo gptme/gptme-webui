@@ -10,6 +10,7 @@ import { ToolFormat } from '@/types/api';
 
 const chatConfigToFormValues = (config: ChatConfig | null): FormSchema => ({
   chat: {
+    name: config?.chat.name || '',
     model: config?.chat.model || '',
     tools: config?.chat.tools?.map((tool) => ({ name: tool })) || [],
     tool_format: config?.chat.tool_format || ToolFormat.MARKDOWN,
@@ -116,6 +117,7 @@ export const useConversationSettings = (conversationId: string) => {
       ...originalConfig,
       chat: {
         ...originalConfig.chat,
+        name: values.chat.name || null,
         model: values.chat.model || null,
         tools: newTools,
         tool_format: values.chat.tool_format || null,

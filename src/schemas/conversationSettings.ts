@@ -18,6 +18,7 @@ export const mcpServerSchema = z.object({
 
 export const formSchema = z.object({
   chat: z.object({
+    name: z.string().optional(),
     model: z.string().optional(),
     tools: z.array(z.object({ name: z.string().min(1, 'Tool name cannot be empty') })).optional(),
     tool_format: z.nativeEnum(ToolFormat).nullable().optional(),

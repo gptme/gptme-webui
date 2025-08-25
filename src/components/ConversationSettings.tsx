@@ -41,6 +41,30 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
           <div className="flex-1 space-y-8 overflow-y-auto p-4 pb-24">
             <h3 className="mt-4 text-lg font-medium">Chat Settings</h3>
 
+            {/* Conversation Name Field */}
+            <FormField
+              control={control}
+              name="chat.name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Conversation Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter conversation name..."
+                      {...field}
+                      value={field.value || ''}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    A custom name for this conversation. If left empty, a name will be generated
+                    automatically.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Model Field */}
             <ModelSelector
               control={control}
