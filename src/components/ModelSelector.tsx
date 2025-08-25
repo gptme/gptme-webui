@@ -1,4 +1,5 @@
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
+import { useState } from 'react';
 import {
   FormField,
   FormItem,
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { ProviderIcon } from '@/components/ProviderIcon';
 import { useModels } from '@/hooks/useModels';
 import type { Control, FieldPath, FieldValues } from 'react-hook-form';
@@ -40,6 +42,18 @@ export function ModelSelector<T extends FieldValues = FieldValues>({
   showFormField = true,
 }: ModelSelectorProps<T>) {
   const { models, availableModels, isLoading } = useModels();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filter models based on search term
+  const filteredModels = availableModels.filter((modelFull) => {
+    const modelInfo = models.find((m) => m.id === modelFull);
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      modelFull.toLowerCase().includes(searchLower) ||
+      (modelInfo?.model && modelInfo.model.toLowerCase().includes(searchLower)) ||
+      (modelInfo?.provider && modelInfo.provider.toLowerCase().includes(searchLower))
+    );
+  });
 
   const renderModelItem = (modelFull: string) => {
     const modelInfo = models.find((m) => m.id === modelFull);
@@ -67,11 +81,29 @@ export function ModelSelector<T extends FieldValues = FieldValues>({
         </div>
       </SelectTrigger>
       <SelectContent>
-        {availableModels.map((modelFull) => (
+        <div className="p-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search models..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+              onKeyDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+        {filteredModels.map((modelFull) => (
           <SelectItem key={modelFull} value={modelFull}>
             {renderModelItem(modelFull)}
           </SelectItem>
         ))}
+        {filteredModels.length === 0 && searchTerm && (
+          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            No models found matching "{searchTerm}"
+          </div>
+        )}
       </SelectContent>
     </Select>
   );
@@ -100,11 +132,29 @@ export function ModelSelector<T extends FieldValues = FieldValues>({
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {availableModels.map((modelFull) => (
+                <div className="p-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search models..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                      onKeyDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+                {filteredModels.map((modelFull) => (
                   <SelectItem key={modelFull} value={modelFull}>
                     {renderModelItem(modelFull)}
                   </SelectItem>
                 ))}
+                {filteredModels.length === 0 && searchTerm && (
+                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                    No models found matching "{searchTerm}"
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </FormControl>
