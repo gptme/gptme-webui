@@ -140,13 +140,16 @@ export const LeftSidebar: FC<Props> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setShowCreateAgentDialog(true)}
-                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                        className="h-8 w-8 p-0"
                         data-testid="new-agent-button"
+                        aria-label="Create new agent"
                       >
                         <Plus className="h-4 w-4" />
-                      </div>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       {!isConnected ? 'Connect to create new agents' : 'Create new agent'}

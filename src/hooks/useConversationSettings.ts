@@ -5,9 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { formSchema, type FormSchema } from '@/schemas/conversationSettings';
 import { toast } from 'sonner';
 import type { ChatConfig } from '@/types/api';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { use$ } from '@legendapp/state/react';
 import { ToolFormat } from '@/types/api';
+import { demoConversations } from '@/democonversations';
 
 const chatConfigToFormValues = (config: ChatConfig | null): FormSchema => ({
   chat: {
@@ -38,6 +39,8 @@ export const useConversationSettings = (conversationId: string) => {
   const api = useApi();
   const conversation$ = conversations$.get(conversationId);
   const chatConfig = use$(conversation$?.chatConfig);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -65,14 +68,37 @@ export const useConversationSettings = (conversationId: string) => {
     form.reset(chatConfigToFormValues(chatConfig));
   }, [chatConfig, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset error state when conversation changes
+  useEffect(() => {
+    setConfigError(null);
+  }, [conversationId]);
+
   // Load the chat config if it's not already loaded
   useEffect(() => {
-    if (!chatConfig) {
-      api.getChatConfig(conversationId).then((config) => {
-        updateConversation(conversationId, { chatConfig: config });
-      });
+    // Skip loading config for demo conversations
+    const isDemo = demoConversations.some((conv) => conv.id === conversationId);
+
+    if (!chatConfig && !isLoadingConfig && !isDemo && !configError) {
+      setIsLoadingConfig(true);
+      setConfigError(null);
+
+      api
+        .getChatConfig(conversationId)
+        .then((config) => {
+          updateConversation(conversationId, { chatConfig: config });
+          setConfigError(null);
+        })
+        .catch((error) => {
+          console.error('Failed to load chat config:', error);
+          const errorMessage =
+            error instanceof Error ? error.message : 'Failed to load configuration';
+          setConfigError(errorMessage);
+        })
+        .finally(() => {
+          setIsLoadingConfig(false);
+        });
     }
-  }, [api, chatConfig, conversationId]);
+  }, [api, chatConfig, conversationId, isLoadingConfig, configError]);
 
   const onSubmit = async (values: FormSchema) => {
     const originalConfig = chatConfig;
@@ -168,5 +194,7 @@ export const useConversationSettings = (conversationId: string) => {
     serverFields,
     onSubmit,
     chatConfig,
+    configError,
+    isLoadingConfig,
   };
 };

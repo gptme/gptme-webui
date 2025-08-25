@@ -18,6 +18,7 @@ import { EnvironmentVariables } from './settings/EnvironmentVariables';
 import { ToolsConfiguration } from './settings/ToolsConfiguration';
 import { McpConfiguration } from './settings/McpConfiguration';
 import { useConversationSettings } from '@/hooks/useConversationSettings';
+import { demoConversations } from '@/democonversations';
 
 interface ConversationSettingsProps {
   conversationId: string;
@@ -25,8 +26,16 @@ interface ConversationSettingsProps {
 
 export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversationId }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const { form, toolFields, envFields, serverFields, onSubmit, chatConfig } =
-    useConversationSettings(conversationId);
+  const {
+    form,
+    toolFields,
+    envFields,
+    serverFields,
+    onSubmit,
+    chatConfig,
+    configError,
+    isLoadingConfig,
+  } = useConversationSettings(conversationId);
 
   const {
     handleSubmit,
@@ -34,7 +43,8 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
     formState: { isDirty, isSubmitting },
   } = form;
 
-  const isLoading = !chatConfig;
+  const isDemo = demoConversations.some((conv) => conv.id === conversationId);
+  const isLoading = isLoadingConfig || (!chatConfig && !configError && !isDemo);
 
   return (
     <div className="flex flex-col">
@@ -43,6 +53,36 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Loading configuration...</p>
+          </div>
+        </div>
+      ) : configError ? (
+        <div className="flex h-full items-center justify-center p-8">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="rounded-full bg-destructive/10 p-3">
+              <Trash className="h-6 w-6 text-destructive" />
+            </div>
+            <div>
+              <h3 className="font-medium text-destructive">Failed to Load Configuration</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{configError}</p>
+            </div>
+            <Button variant="outline" onClick={() => window.location.reload()} className="mt-2">
+              Retry
+            </Button>
+          </div>
+        </div>
+      ) : isDemo ? (
+        <div className="flex h-full items-center justify-center p-8">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="rounded-full bg-muted/50 p-3">
+              <Loader2 className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="font-medium">Read-Only Conversation</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Settings are not available for demo conversations. Create a new conversation to
+                configure settings.
+              </p>
+            </div>
           </div>
         </div>
       ) : (
