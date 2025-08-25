@@ -73,13 +73,10 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       ) : isDemo ? (
         <div className="flex h-full items-center justify-center p-8">
           <div className="flex flex-col items-center gap-4 text-center">
-            <div className="rounded-full bg-muted/50 p-3">
-              <Loader2 className="h-6 w-6 text-muted-foreground" />
-            </div>
             <div>
               <h3 className="font-medium">Read-Only Conversation</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Settings are not available for demo conversations. Create a new conversation to
+                Chat settings are not available for demo conversations. Create a new conversation to
                 configure settings.
               </p>
             </div>
