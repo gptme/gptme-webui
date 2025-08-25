@@ -8,6 +8,30 @@ import type { ChatConfig } from '@/types/api';
 import { useEffect } from 'react';
 import { ToolFormat } from '@/types/api';
 
+const chatConfigToFormValues = (config: ChatConfig | null): FormSchema => ({
+  chat: {
+    model: config?.chat.model || '',
+    tools: config?.chat.tools?.map((tool) => ({ name: tool })) || [],
+    tool_format: config?.chat.tool_format || ToolFormat.MARKDOWN,
+    stream: config?.chat.stream ?? true,
+    interactive: config?.chat.interactive ?? false,
+    workspace: config?.chat.workspace || '',
+    env: config?.env ? Object.entries(config.env).map(([key, value]) => ({ key, value })) : [],
+  },
+  mcp: {
+    enabled: config?.mcp?.enabled ?? false,
+    auto_start: config?.mcp?.auto_start ?? false,
+    servers:
+      config?.mcp?.servers?.map((server) => ({
+        name: server.name || '',
+        enabled: server.enabled ?? false,
+        command: server.command || '',
+        args: server.args?.join(', ') || '',
+        env: server.env ? Object.entries(server.env).map(([key, value]) => ({ key, value })) : [],
+      })) || [],
+  },
+});
+
 export const useConversationSettings = (conversationId: string) => {
   const api = useApi();
   const conversation$ = conversations$.get(conversationId);
@@ -15,22 +39,7 @@ export const useConversationSettings = (conversationId: string) => {
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      chat: {
-        model: '',
-        tools: [],
-        tool_format: ToolFormat.MARKDOWN,
-        stream: true,
-        interactive: false,
-        workspace: '',
-        env: [],
-      },
-      mcp: {
-        enabled: false,
-        auto_start: false,
-        servers: [],
-      },
-    },
+    defaultValues: chatConfigToFormValues(chatConfig),
   });
 
   const toolFields = useFieldArray({
@@ -48,39 +57,11 @@ export const useConversationSettings = (conversationId: string) => {
     name: 'mcp.servers',
   });
 
-  // Reset form when chatConfig loads or changes
+  // Reset form when chatConfig loads or changes, or when conversation changes
+  // Note: We intentionally exclude 'form' from dependencies to prevent multiple resets
   useEffect(() => {
-    if (chatConfig) {
-      console.log('Resetting form with chatConfig:', chatConfig);
-      form.reset({
-        chat: {
-          model: chatConfig.chat.model || '',
-          tools: chatConfig.chat.tools?.map((tool) => ({ name: tool })) || [],
-          tool_format: chatConfig.chat.tool_format || ToolFormat.MARKDOWN,
-          stream: chatConfig.chat.stream ?? true,
-          interactive: chatConfig.chat.interactive ?? false,
-          workspace: chatConfig.chat.workspace || '',
-          env: chatConfig.env
-            ? Object.entries(chatConfig.env).map(([key, value]) => ({ key, value }))
-            : [],
-        },
-        mcp: {
-          enabled: chatConfig.mcp?.enabled ?? false,
-          auto_start: chatConfig.mcp?.auto_start ?? false,
-          servers:
-            chatConfig.mcp?.servers?.map((server) => ({
-              name: server.name || '',
-              enabled: server.enabled ?? false,
-              command: server.command || '',
-              args: server.args?.join(', ') || '',
-              env: server.env
-                ? Object.entries(server.env).map(([key, value]) => ({ key, value }))
-                : [],
-            })) || [],
-        },
-      });
-    }
-  }, [chatConfig, form]);
+    form.reset(chatConfigToFormValues(chatConfig));
+  }, [chatConfig, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load the chat config if it's not already loaded
   useEffect(() => {

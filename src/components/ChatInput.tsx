@@ -3,17 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { useApi } from '@/contexts/ApiContext';
-import { ProviderIcon } from '@/components/ProviderIcon';
 import { Badge } from '@/components/ui/badge';
+import { ModelSelector } from '@/components/ModelSelector';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { type Observable } from '@legendapp/state';
@@ -23,7 +16,7 @@ import { selectedAgent$, selectedWorkspace$ } from '@/stores/sidebar';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { WorkspaceSelector } from '@/components/WorkspaceSelector';
 import type { WorkspaceProject, Agent } from '@/utils/workspaceUtils';
-import { useModels, type ModelInfo } from '@/hooks/useModels';
+import { useModels } from '@/hooks/useModels';
 
 export interface ChatOptions {
   model?: string;
@@ -50,12 +43,9 @@ interface ChatOptionsProps {
   setSelectedWorkspace: (workspace: string) => void;
   streamingEnabled: boolean;
   setStreamingEnabled: (enabled: boolean) => void;
-  models: ModelInfo[];
-  availableModels: string[];
   availableWorkspaces: WorkspaceProject[];
   isDisabled: boolean;
   showWorkspaceSelector: boolean;
-  modelsLoading: boolean;
   onAddWorkspace?: (path: string) => void;
 }
 
@@ -66,23 +56,22 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
   setSelectedWorkspace,
   streamingEnabled,
   setStreamingEnabled,
-  models,
-  availableModels,
   availableWorkspaces,
   isDisabled,
   showWorkspaceSelector,
-  modelsLoading,
   onAddWorkspace,
 }) => (
   <div className="space-y-8">
-    <ModelSelector
-      selectedModel={selectedModel}
-      setSelectedModel={setSelectedModel}
-      models={models}
-      availableModels={availableModels}
-      isDisabled={isDisabled}
-      isLoading={modelsLoading}
-    />
+    <div className="space-y-1">
+      <Label>Model</Label>
+      <ModelSelector
+        value={selectedModel}
+        onValueChange={setSelectedModel}
+        disabled={isDisabled}
+        showFormField={false}
+        placeholder="Select model"
+      />
+    </div>
 
     {showWorkspaceSelector && (
       <WorkspaceSelector
@@ -101,59 +90,6 @@ const ChatOptionsPanel: FC<ChatOptionsProps> = ({
       setStreamingEnabled={setStreamingEnabled}
       isDisabled={isDisabled}
     />
-  </div>
-);
-
-const ModelSelector: FC<{
-  selectedModel: string;
-  setSelectedModel: (model: string) => void;
-  models: ModelInfo[];
-  availableModels: string[];
-  isDisabled: boolean;
-  isLoading: boolean;
-}> = ({ selectedModel, setSelectedModel, models, availableModels, isDisabled, isLoading }) => (
-  <div className="space-y-1">
-    <Label htmlFor="model-select">Model</Label>
-    <Select
-      value={selectedModel}
-      onValueChange={setSelectedModel}
-      disabled={isDisabled || isLoading}
-    >
-      <SelectTrigger id="model-select">
-        <SelectValue placeholder={isLoading ? 'Loading models...' : 'Select model'} />
-      </SelectTrigger>
-      <SelectContent>
-        {isLoading ? (
-          <SelectItem value="" disabled>
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Loading models...</span>
-            </div>
-          </SelectItem>
-        ) : (
-          availableModels.map((modelFull) => {
-            const modelInfo = models.find((m) => m.id === modelFull);
-            return (
-              <SelectItem key={modelFull} value={modelFull}>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    {modelInfo?.provider && <ProviderIcon provider={modelInfo.provider} />}
-                    <span className="font-medium">{modelInfo?.model || modelFull}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    {modelInfo?.context && <span>{Math.round(modelInfo.context / 1000)}k ctx</span>}
-                    {modelInfo?.supports_vision && <span className="text-blue-600">👁️ vision</span>}
-                    {modelInfo?.supports_reasoning && (
-                      <span className="text-green-600">🧠 reasoning</span>
-                    )}
-                  </div>
-                </div>
-              </SelectItem>
-            );
-          })
-        )}
-      </SelectContent>
-    </Select>
   </div>
 );
 
@@ -279,23 +215,26 @@ export const ChatInput: FC<Props> = ({
   const sidebarSelectedAgent = use$(selectedAgent$);
 
   // Use dynamic models instead of static list
-  const {
-    models,
-    availableModels,
-    defaultModel: apiDefaultModel,
-    isLoading: modelsLoading,
-  } = useModels();
+  const { defaultModel: apiDefaultModel } = useModels();
+
+  // Get conversation config to read the actual model
+  const conversation$ = conversationId ? conversations$.get(conversationId) : null;
+  const conversationModel = conversation$?.chatConfig?.get()?.chat?.model;
 
   const [internalMessage, setInternalMessage] = useState('');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
-  const [selectedModel, setSelectedModel] = useState(defaultModel || apiDefaultModel || '');
+  const [selectedModel, setSelectedModel] = useState(
+    conversationModel || defaultModel || apiDefaultModel || ''
+  );
 
-  // Update selectedModel when apiDefaultModel changes
+  // Update selectedModel when conversation config changes or apiDefaultModel changes
   useEffect(() => {
-    if (!defaultModel && apiDefaultModel && !selectedModel) {
+    if (conversationModel) {
+      setSelectedModel(conversationModel);
+    } else if (!defaultModel && apiDefaultModel && !selectedModel) {
       setSelectedModel(apiDefaultModel);
     }
-  }, [defaultModel, apiDefaultModel, selectedModel]);
+  }, [conversationModel, defaultModel, apiDefaultModel, selectedModel]);
 
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>(
     // For new conversations, use the selected workspace from sidebar, otherwise default to '.'
@@ -442,12 +381,9 @@ export const ChatInput: FC<Props> = ({
                       setSelectedWorkspace={handleWorkspaceChange}
                       streamingEnabled={streamingEnabled}
                       setStreamingEnabled={setStreamingEnabled}
-                      models={models}
-                      availableModels={availableModels}
                       availableWorkspaces={availableWorkspaces}
                       isDisabled={isDisabled}
                       showWorkspaceSelector={!conversationId}
-                      modelsLoading={modelsLoading}
                       onAddWorkspace={(path: string) => {
                         console.log('[ChatInput] Adding new workspace:', path);
                         addCustomWorkspace(path);

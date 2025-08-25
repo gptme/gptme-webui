@@ -66,7 +66,19 @@ export function useConversation(conversationId: string) {
 
         // Load conversation data from API
         const data = await api.getConversation(conversationId);
-        updateConversation(conversationId, { data });
+
+        // Also load the chat config
+        try {
+          const chatConfig = await api.getChatConfig(conversationId);
+          updateConversation(conversationId, { data, chatConfig });
+        } catch (error) {
+          console.warn(
+            `[useConversation] Failed to load chat config for ${conversationId}:`,
+            error
+          );
+          // Still update with conversation data even if config fails
+          updateConversation(conversationId, { data });
+        }
 
         // Check number of connected conversations
         const connectedConvs = Array.from(conversations$.get().entries())
