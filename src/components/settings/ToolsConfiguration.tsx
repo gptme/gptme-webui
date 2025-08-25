@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   FormDescription,
   FormField,
@@ -16,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, X, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { type UseFieldArrayReturn, type UseFormReturn } from 'react-hook-form';
 import type { FormSchema } from '@/schemas/conversationSettings';
@@ -33,10 +34,15 @@ export const ToolsConfiguration = ({ form, toolFields, isSubmitting }: ToolsConf
   const [newToolName, setNewToolName] = useState('');
   const { fields, append, remove } = toolFields;
 
-  const handleAddTool = () => {
-    const trimmedName = newToolName.trim();
-    if (trimmedName) {
-      append({ name: trimmedName });
+  const basicTools = ['shell', 'ipython', 'browser', 'save', 'append', 'gh', 'chats', 'patch'];
+
+  const currentToolNames = fields.map((field) => field.name);
+  const availableBasicTools = basicTools.filter((tool) => !currentToolNames.includes(tool));
+
+  const handleAddTool = (toolName?: string) => {
+    const name = toolName || newToolName.trim();
+    if (name && !currentToolNames.includes(name)) {
+      append({ name });
       setNewToolName('');
     }
   };
@@ -90,44 +96,80 @@ export const ToolsConfiguration = ({ form, toolFields, isSubmitting }: ToolsConf
             </FormDescription>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="space-y-0">
-              {fields.map((field, index) => (
-                <div key={field.id} className="flex items-center space-x-2">
-                  <span className="flex-grow">{field.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(index)}
-                    disabled={isSubmitting}
-                    aria-label="Remove tool"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+            <div className="space-y-4">
+              {/* Current tools as badges */}
+              {fields.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {fields.map((field, index) => (
+                    <Badge key={field.id} variant="secondary" className="pr-1">
+                      <span className="mr-1">{field.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => remove(index)}
+                        disabled={isSubmitting}
+                        aria-label={`Remove ${field.name} tool`}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="my-2 flex items-center space-x-2">
-              <Input
-                placeholder="New tool name"
-                value={newToolName}
-                onChange={(e) => setNewToolName(e.target.value)}
-                disabled={isSubmitting}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTool();
+              )}
+
+              {/* Quick add buttons for basic tools */}
+              {availableBasicTools.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Quick add:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {availableBasicTools.map((tool) => (
+                      <Button
+                        key={tool}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddTool(tool)}
+                        disabled={isSubmitting}
+                        className="h-7 text-xs"
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        {tool}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom tool input */}
+              <div className="flex items-center space-x-2">
+                <Input
+                  placeholder="Custom tool name"
+                  value={newToolName}
+                  onChange={(e) => setNewToolName(e.target.value)}
+                  disabled={isSubmitting}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTool();
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleAddTool()}
+                  disabled={
+                    !newToolName.trim() ||
+                    isSubmitting ||
+                    currentToolNames.includes(newToolName.trim())
                   }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddTool}
-                disabled={!newToolName.trim() || isSubmitting}
-              >
-                Add Tool
-              </Button>
+                >
+                  Add
+                </Button>
+              </div>
             </div>
           </CollapsibleContent>
         </FormItem>
