@@ -178,24 +178,23 @@ export const ChatMessage: FC<Props> = ({
     () => `
         ${
           isUser$.get()
-            ? 'bg-[#EAF4FF] text-black dark:bg-[#2A3441] dark:text-white'
+            ? 'px-3 py-1.5 bg-[#EAF4FF] text-black dark:bg-[#2A3441] dark:text-white border'
             : isAssistant$.get()
-              ? 'bg-[#F8F9FA] dark:bg-card text-foreground'
+              ? 'text-foreground'
               : isSystem$.get()
-                ? 'font-mono border ' +
+                ? 'px-3 py-1.5 font-mono border rounded-lg ' +
                   (isError$.get()
                     ? 'bg-[#FFF2F2] text-red-600 dark:bg-[#440000] dark:text-red-300 border-red-400 dark:border-red-800'
                     : isSuccess$.get()
                       ? 'bg-[#F0FDF4] text-green-700 dark:bg-[#003300] dark:text-green-200 border-green-400 dark:border-green-800'
                       : 'bg-[#DDD] text-[#111] dark:bg-[#111] dark:text-gray-100 border-gray-200 dark:border-gray-800')
-                : 'bg-card'
+                : ''
         }
         ${(chainType$.get() === 'standalone' && 'rounded-lg') || ''}
         ${(chainType$.get() === 'start' && 'rounded-t-lg') || ''}
         ${(chainType$.get() === 'end' && 'rounded-b-lg') || ''}
         ${chainType$.get() === 'middle' && ''}
         ${(chainType$.get() !== 'start' && chainType$.get() !== 'standalone' && 'border-t-0') || ''}
-        border
     `
   );
   const wrapperClasses$ = useObservable(
@@ -220,26 +219,24 @@ export const ChatMessage: FC<Props> = ({
                 />
                 <div className="md:px-12">
                   <div className={messageClasses$.get()}>
-                    <div className="px-3 py-1.5">
-                      <Memo>
-                        {() => {
-                          const isEmptyAssistantMessage =
-                            message$.role.get() === 'assistant' && !message$.content.get();
+                    <Memo>
+                      {() => {
+                        const isEmptyAssistantMessage =
+                          message$.role.get() === 'assistant' && !message$.content.get();
 
-                          return (
-                            <div
-                              ref={contentRef}
-                              className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
-                            >
-                              {isEmptyAssistantMessage && (
-                                <span className="text-muted-foreground">Thinking...</span>
-                              )}
-                            </div>
-                          );
-                        }}
-                      </Memo>
-                      {renderFiles()}
-                    </div>
+                        return (
+                          <div
+                            ref={contentRef}
+                            className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
+                          >
+                            {isEmptyAssistantMessage && (
+                              <span className="text-muted-foreground">Thinking...</span>
+                            )}
+                          </div>
+                        );
+                      }}
+                    </Memo>
+                    {renderFiles()}
                   </div>
                 </div>
               </div>
