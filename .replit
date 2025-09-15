@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "python-3.11"]
 [agent]
 expertMode = true
 
@@ -17,6 +17,10 @@ author = "agent"
 task = "workflow.run"
 args = "Frontend Development Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "GPTME Backend Server"
+
 [[workflows.workflow]]
 name = "Frontend Development Server"
 author = "agent"
@@ -28,6 +32,18 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "GPTME Backend Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gptme-server --port 5700 --cors-origin='https://7f6ff8a1-1713-4a98-b07c-f60efde412fa-00-2wa8f9apyn8my.worf.replit.dev'"
+waitForPort = 5700
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [[ports]]
 localPort = 5000
