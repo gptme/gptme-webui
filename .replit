@@ -37,13 +37,13 @@ outputType = "webview"
 name = "GPTME Backend Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "gptme-server --port 5700 --cors-origin='https://7f6ff8a1-1713-4a98-b07c-f60efde412fa-00-2wa8f9apyn8my.worf.replit.dev'"
-waitForPort = 5700
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gptme-server --port 8000 --cors-origin='https://7f6ff8a1-1713-4a98-b07c-f60efde412fa-00-2wa8f9apyn8my.worf.replit.dev'"
+waitForPort = 8000
 
 [[ports]]
 localPort = 5000
@@ -52,6 +52,15 @@ externalPort = 80
 [[ports]]
 localPort = 5001
 externalPort = 3001
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
+exposeLocalhost = true
+
+[[ports]]
+localPort = 37869
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
