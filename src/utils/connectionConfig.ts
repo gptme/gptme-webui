@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = 'http://127.0.0.1:5700';
+const DEFAULT_API_URL = 'http://127.0.0.1:8000';
 
 export interface ConnectionConfig {
   baseUrl: string;
