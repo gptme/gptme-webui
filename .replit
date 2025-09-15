@@ -37,13 +37,13 @@ outputType = "webview"
 name = "GPTME Backend Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "gptme-server --port 8000 --cors-origin='https://7f6ff8a1-1713-4a98-b07c-f60efde412fa-00-2wa8f9apyn8my.worf.replit.dev,http://localhost:5000,http://127.0.0.1:5000'"
-waitForPort = 8000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gptme-server serve --host 0.0.0.0 --port 8000 --cors-origin='https://7f6ff8a1-1713-4a98-b07c-f60efde412fa-00-2wa8f9apyn8my.worf.replit.dev'"
+waitForPort = 8000
 
 [[ports]]
 localPort = 5000

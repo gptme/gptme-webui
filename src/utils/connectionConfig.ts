@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = 'http://127.0.0.1:8000';
+const DEFAULT_API_URL = 'https://7f6ff8a1-1713-4a98-b07c-f60efde412fa-00-2wa8f9apyn8my.worf.replit.dev:8000';
 
 export interface ConnectionConfig {
   baseUrl: string;
@@ -30,20 +30,20 @@ export function getConnectionConfigFromSources(hash?: string): ConnectionConfig 
   const storedBaseUrl = localStorage.getItem('gptme_baseUrl');
   const storedUserToken = localStorage.getItem('gptme_userToken');
 
-  // Check if stored baseUrl is using old port 5700 and update it to 8000
-  if (storedBaseUrl && storedBaseUrl.includes('127.0.0.1:5700')) {
-    const updatedUrl = storedBaseUrl.replace('127.0.0.1:5700', '127.0.0.1:8000');
+  // Check if stored baseUrl is using old localhost URLs and update to use Replit domain
+  if (storedBaseUrl && (storedBaseUrl.includes('127.0.0.1') || storedBaseUrl.includes('localhost'))) {
+    const updatedUrl = DEFAULT_API_URL;
     localStorage.setItem('gptme_baseUrl', updatedUrl);
-    console.log('[connectionConfig] Updated cached baseUrl from port 5700 to 8000');
+    console.log('[connectionConfig] Updated cached baseUrl from localhost to Replit domain');
   }
 
-  // Determine the final baseUrl with port correction
+  // Determine the final baseUrl with domain correction
   let finalBaseUrl = fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || DEFAULT_API_URL;
   
-  // Force correction of any URLs still pointing to port 5700
-  if (finalBaseUrl.includes('127.0.0.1:5700')) {
-    finalBaseUrl = finalBaseUrl.replace('127.0.0.1:5700', '127.0.0.1:8000');
-    console.log('[connectionConfig] Corrected baseUrl from port 5700 to 8000');
+  // Force correction of any URLs still pointing to localhost
+  if (finalBaseUrl.includes('127.0.0.1') || finalBaseUrl.includes('localhost')) {
+    finalBaseUrl = DEFAULT_API_URL;
+    console.log('[connectionConfig] Corrected baseUrl from localhost to Replit domain');
   }
 
   return {
