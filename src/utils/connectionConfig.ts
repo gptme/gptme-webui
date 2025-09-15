@@ -30,8 +30,24 @@ export function getConnectionConfigFromSources(hash?: string): ConnectionConfig 
   const storedBaseUrl = localStorage.getItem('gptme_baseUrl');
   const storedUserToken = localStorage.getItem('gptme_userToken');
 
+  // Check if stored baseUrl is using old port 5700 and update it to 8000
+  if (storedBaseUrl && storedBaseUrl.includes('127.0.0.1:5700')) {
+    const updatedUrl = storedBaseUrl.replace('127.0.0.1:5700', '127.0.0.1:8000');
+    localStorage.setItem('gptme_baseUrl', updatedUrl);
+    console.log('[connectionConfig] Updated cached baseUrl from port 5700 to 8000');
+  }
+
+  // Determine the final baseUrl with port correction
+  let finalBaseUrl = fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || DEFAULT_API_URL;
+  
+  // Force correction of any URLs still pointing to port 5700
+  if (finalBaseUrl.includes('127.0.0.1:5700')) {
+    finalBaseUrl = finalBaseUrl.replace('127.0.0.1:5700', '127.0.0.1:8000');
+    console.log('[connectionConfig] Corrected baseUrl from port 5700 to 8000');
+  }
+
   return {
-    baseUrl: fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || DEFAULT_API_URL,
+    baseUrl: finalBaseUrl,
     authToken: fragmentUserToken || storedUserToken || null,
     useAuthToken: Boolean(fragmentUserToken || storedUserToken),
   };
