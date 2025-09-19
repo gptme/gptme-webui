@@ -1,7 +1,7 @@
 import { type FC } from 'react';
 import { useParams } from 'react-router-dom';
 import { MenuBar } from '@/components/MenuBar';
-import { TaskManager } from '@/components/TaskManager';
+import MainLayout from '@/components/MainLayout';
 
 interface Props {
   className?: string;
@@ -13,7 +13,7 @@ const Tasks: FC<Props> = () => {
   return (
     <div className="flex h-screen flex-col">
       <MenuBar showRightSidebar={false} />
-      <TaskManager selectedTaskId={id} />
+      <MainLayout taskId={id} />
     </div>
   );
 };

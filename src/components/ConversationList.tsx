@@ -255,7 +255,7 @@ export const ConversationList: FC<Props> = ({
     <div
       ref={scrollContainerRef}
       data-testid="conversation-list"
-      className="h-full space-y-2 overflow-y-auto overflow-x-hidden p-3"
+      className="h-full space-y-2 overflow-y-auto overflow-x-hidden p-2"
     >
       {isLoading && (
         <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
