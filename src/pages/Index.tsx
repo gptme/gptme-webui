@@ -1,7 +1,7 @@
 import { type FC } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { MenuBar } from '@/components/MenuBar';
-import Conversations from '@/components/Conversations';
+import MainLayout from '@/components/MainLayout';
 
 interface Props {
   className?: string;
@@ -9,15 +9,11 @@ interface Props {
 
 const Index: FC<Props> = () => {
   const { id } = useParams<{ id?: string }>();
-  const location = useLocation();
-
-  // Determine the route for the Conversations component
-  const route = location.pathname.startsWith('/chat') ? '/chat' : '/';
 
   return (
     <div className="flex h-screen flex-col">
       <MenuBar showRightSidebar={!!id} />
-      <Conversations route={route} conversationId={id} />
+      <MainLayout conversationId={id} />
     </div>
   );
 };
