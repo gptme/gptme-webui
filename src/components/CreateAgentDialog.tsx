@@ -158,42 +158,6 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
               )}
             />
 
-            {/* Workspace Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4" />
-                  Workspace Configuration
-                </CardTitle>
-                <CardDescription>
-                  Configure the agent's workspace directory (auto-generated if not specified)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="path"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Workspace Path (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Auto-generated from agent name if not specified"
-                          {...field}
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        The directory where the agent will store itself. If not specified, will be
-                        auto-generated from the current directory and agent name.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
             {/* Advanced Options */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
               <CollapsibleTrigger asChild>
@@ -214,6 +178,42 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4">
+                {/* Workspace Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4" />
+                      Workspace Configuration
+                    </CardTitle>
+                    <CardDescription>
+                      Configure the agent's workspace directory (auto-generated if not specified)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="path"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Workspace Path (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Auto-generated from agent name if not specified"
+                              {...field}
+                              disabled={isLoading}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            The directory where the agent will store itself. If not specified, will
+                            be auto-generated from the current directory and agent name.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
                 {/* Template Repository Settings */}
                 <Card>
                   <CardHeader>
