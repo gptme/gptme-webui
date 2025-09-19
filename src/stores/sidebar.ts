@@ -40,7 +40,19 @@ export const toggleLeftSidebar = () => {
 };
 
 export const toggleLeftSidebarCollapsed = () => {
-  leftSidebarCollapsed$.set(!leftSidebarCollapsed$.get());
+  const currentlyCollapsed = leftSidebarCollapsed$.get();
+  leftSidebarCollapsed$.set(!currentlyCollapsed);
+
+  // Directly control the panel
+  if (leftPanelRef) {
+    if (!currentlyCollapsed) {
+      // Collapsing: set to collapsed size
+      leftPanelRef.collapse();
+    } else {
+      // Expanding: set to normal size
+      leftPanelRef.resize(20);
+    }
+  }
 };
 
 export const toggleRightSidebar = () => {

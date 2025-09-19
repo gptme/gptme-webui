@@ -29,6 +29,7 @@ import {
   leftSidebarVisible$,
   rightSidebarVisible$,
   rightSidebarActiveTab$,
+  leftSidebarCollapsed$,
   setLeftPanelRef,
   setRightPanelRef,
 } from '@/stores/sidebar';
@@ -419,9 +420,15 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
           minSize={15}
           maxSize={30}
           collapsible
-          collapsedSize={0}
-          onCollapse={() => leftSidebarVisible$.set(false)}
-          onExpand={() => leftSidebarVisible$.set(true)}
+          collapsedSize={5}
+          onCollapse={() => {
+            leftSidebarVisible$.set(false);
+            leftSidebarCollapsed$.set(true);
+          }}
+          onExpand={() => {
+            leftSidebarVisible$.set(true);
+            leftSidebarCollapsed$.set(false);
+          }}
         >
           <UnifiedSidebar
             conversations={allConversations}
