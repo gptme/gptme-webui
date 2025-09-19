@@ -1,4 +1,4 @@
-import { type CreateAgentResponse } from '@/components/CreateAgentDialog';
+import { type CreateAgentResponse, type CreateAgentRequest } from '@/components/CreateAgentDialog';
 import type {
   ApiError,
   ChatConfig,
@@ -782,14 +782,7 @@ export class ApiClient {
     });
   }
 
-  async createAgent(agentData: {
-    name: string;
-    template_repo: string;
-    template_branch: string;
-    path: string;
-    fork_command?: string;
-    project_config?: Record<string, unknown>;
-  }): Promise<CreateAgentResponse> {
+  async createAgent(agentData: CreateAgentRequest): Promise<CreateAgentResponse> {
     if (!this.isConnected) {
       throw new ApiClientError('Not connected to API');
     }
