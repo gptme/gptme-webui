@@ -29,15 +29,6 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { selectedAgent$ } from '@/stores/sidebar';
 
-// Utility function to convert agent name to filesystem-safe slug
-const slugifyName = (name: string): string => {
-  return name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[-\s]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-};
-
 export interface CreateAgentRequest {
   name: string;
   template_repo: string;
@@ -51,16 +42,13 @@ export interface CreateAgentResponse {
   status: string;
   message: string;
   initial_conversation_id: string;
+  agent_path: string;
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAgentCreated: (agent: CreateAgentRequest) => Promise<{
-    status: string;
-    message: string;
-    initial_conversation_id: string;
-  }>;
+  onAgentCreated: (agent: CreateAgentRequest) => Promise<CreateAgentResponse>;
 }
 
 const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) => {
@@ -106,7 +94,7 @@ const CreateAgentDialog: FC<Props> = ({ open, onOpenChange, onAgentCreated }) =>
       // Set selected agent
       selectedAgent$.set({
         name: data.name,
-        path: data.path || `./${slugifyName(data.name)}`,
+        path: response.agent_path,
         description: `Agent: ${data.name}`,
         conversationCount: 0,
         lastUsed: new Date().toISOString(),
