@@ -50,28 +50,47 @@ export const ConversationList: FC<Props> = ({
   useEffect(() => {
     if (observer.current) observer.current.disconnect();
 
+    // Only set up observer if we have content and can scroll
+    const container = scrollContainerRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+
+    if (!container || !sentinel || !hasNextPage) {
+      return;
+    }
+
     observer.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetching) {
-          console.log('[ConversationList] Loading more conversations...');
-          fetchNextPage();
+        const entry = entries[0];
+        if (entry.isIntersecting && hasNextPage && !isFetching) {
+          // Additional check: ensure we actually have scrollable content or are near the bottom
+          const containerHeight = container.clientHeight;
+          const scrollHeight = container.scrollHeight;
+          const scrollTop = container.scrollTop;
+
+          // Load if we have scrollable content and are near the bottom, OR if content doesn't fill container yet
+          const hasScrollableContent = scrollHeight > containerHeight;
+          const nearBottom = scrollTop + containerHeight >= scrollHeight - 100;
+
+          if (!hasScrollableContent || nearBottom) {
+            console.log('[ConversationList] Loading more conversations...');
+            fetchNextPage();
+          }
         }
       },
       {
-        root: scrollContainerRef.current,
+        root: container,
         threshold: 0.1,
-        rootMargin: '0px 0px 100px 0px', // Trigger loading before reaching the end
+        rootMargin: '0px 0px 50px 0px',
       }
     );
 
-    if (loadMoreSentinelRef.current) {
-      observer.current.observe(loadMoreSentinelRef.current);
-    }
+    observer.current.observe(sentinel);
 
     return () => {
       if (observer.current) observer.current.disconnect();
     };
-  }, [isFetching, hasNextPage, fetchNextPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasNextPage, fetchNextPage]); // isFetching intentionally excluded to prevent observer recreation
 
   if (!conversations) {
     return null;

@@ -1,33 +1,16 @@
-import {
-  PenSquare,
-  ChevronDown,
-  ChevronRight,
-  UserRoundPlusIcon,
-  MessageSquare,
-  Kanban,
-  Plus,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, UserRoundPlusIcon, PenSquare, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { AgentsList } from './AgentsList';
 import { WorkspaceList } from './WorkspaceList';
 import CreateAgentDialog, { type CreateAgentRequest } from './CreateAgentDialog';
 import { useApi } from '@/contexts/ApiContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { ConversationSummary } from '@/types/conversation';
 import type { Task } from '@/types/task';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Separator } from '@/components/ui/separator';
-import {
-  selectedWorkspace$,
-  selectedAgent$,
-  leftSidebarCollapsed$,
-  toggleLeftSidebarCollapsed,
-} from '@/stores/sidebar';
-import { Badge } from '@/components/ui/badge';
+import { selectedWorkspace$, selectedAgent$ } from '@/stores/sidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Clock, CheckCircle, XCircle, RefreshCw, GitBranch } from 'lucide-react';
 
@@ -120,9 +103,8 @@ export const UnifiedSidebar: FC<Props> = ({
   const { createAgent } = useApi();
   const selectedWorkspace = use$(selectedWorkspace$);
   const selectedAgent = use$(selectedAgent$);
-  const isCollapsed = use$(leftSidebarCollapsed$);
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Navigation state
   const currentSection = location.pathname.startsWith('/tasks') ? 'tasks' : 'chat';
@@ -155,18 +137,6 @@ export const UnifiedSidebar: FC<Props> = ({
     });
   }, [tasks]);
 
-  const handleNewConversation = () => {
-    navigate('/chat');
-  };
-
-  const handleNavigateToSection = (section: 'chat' | 'tasks') => {
-    if (section === 'chat') {
-      navigate('/chat');
-    } else {
-      navigate('/tasks');
-    }
-  };
-
   const handleAgentCreated = async (agentData: CreateAgentRequest) => {
     try {
       return await createAgent(agentData);
@@ -176,141 +146,33 @@ export const UnifiedSidebar: FC<Props> = ({
     }
   };
 
-  const activeTasks = tasks.filter((t) => t.status === 'active' && !t.archived);
+  const handleNewConversation = () => {
+    navigate('/chat');
+  };
 
-  // Collapsed view - icons only
-  if (isCollapsed) {
-    return (
-      <div className="flex h-full w-12 flex-col">
-        {/* Navigation Icons */}
-        <div className="flex-shrink-0 space-y-2 p-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={currentSection === 'chat' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleNavigateToSection('chat')}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Chat</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={currentSection === 'tasks' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="relative h-8 w-8"
-                  onClick={() => handleNavigateToSection('tasks')}
-                >
-                  <Kanban className="h-4 w-4" />
-                  {activeTasks.length > 0 && (
-                    <div className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                      {activeTasks.length}
-                    </div>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Tasks</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Collapse Button */}
-        <div className="flex-shrink-0 p-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={toggleLeftSidebarCollapsed}
-                >
-                  <PanelLeftOpen className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Expand sidebar</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
-        <CreateAgentDialog
-          open={showCreateAgentDialog}
-          onOpenChange={setShowCreateAgentDialog}
-          onAgentCreated={handleAgentCreated}
-        />
-      </div>
-    );
-  }
-
-  // Expanded view
+  // Content for the selected section only (navigation is handled by SidebarIcons)
   return (
     <div className="flex h-full flex-col">
-      {/* Navigation Sections */}
-      <div className="flex-shrink-0 space-y-2 p-2">
-        {/* Chat Section Header */}
-        <div
-          className={`flex cursor-pointer items-center gap-2 rounded-md p-2 transition-colors ${
-            currentSection === 'chat' ? 'bg-accent' : 'hover:bg-accent/50'
-          }`}
-          onClick={() => handleNavigateToSection('chat')}
-        >
-          <MessageSquare className="h-4 w-4" />
-          <span className="font-medium">Chat</span>
+      {/* Chats Section Header */}
+      {currentSection === 'chat' && (
+        <div className="flex items-center gap-2 border-b bg-background p-2">
+          <span className="ml-1 font-medium">Chats</span>
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNewConversation();
-            }}
-          >
-            <PenSquare className="h-3 w-3" />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleNewConversation}>
+            <PenSquare className="h-4 w-4" />
           </Button>
         </div>
-
-        {/* Tasks Section Header */}
-        <div
-          className={`flex cursor-pointer items-center gap-2 rounded-md p-2 transition-colors ${
-            currentSection === 'tasks' ? 'bg-accent' : 'hover:bg-accent/50'
-          }`}
-          onClick={() => handleNavigateToSection('tasks')}
-        >
-          <Kanban className="h-4 w-4" />
-          <span className="font-medium">Tasks</span>
+      )}
+      {/* Tasks Section Header */}
+      {currentSection === 'tasks' && (
+        <div className="flex items-center gap-2 border-b bg-background p-2">
+          <span className="ml-1 font-medium">Tasks</span>
           <div className="flex-1" />
-          {activeTasks.length > 0 && (
-            <Badge variant="secondary" className="h-5 text-xs">
-              {activeTasks.length}
-            </Badge>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateTask();
-            }}
-          >
-            <Plus className="h-3 w-3" />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCreateTask}>
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
-      </div>
-
-      <Separator />
+      )}
 
       {/* Content Lists - fills available space */}
       <div className="flex min-h-0 flex-1 flex-col">
@@ -333,33 +195,35 @@ export const UnifiedSidebar: FC<Props> = ({
 
           {/* Tasks Section */}
           {currentSection === 'tasks' && (
-            <div className="p-2">
-              {tasksError && onTasksRetry && (
-                <Card className="mb-4 border-red-200 bg-red-50">
-                  <CardContent className="p-3">
-                    <p className="text-sm text-red-700">Failed to load tasks</p>
-                    <Button size="sm" variant="outline" onClick={onTasksRetry} className="mt-2">
-                      Retry
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+            <div>
+              <div className="p-2">
+                {tasksError && onTasksRetry && (
+                  <Card className="mb-4 border-red-200 bg-red-50">
+                    <CardContent className="p-3">
+                      <p className="text-sm text-red-700">Failed to load tasks</p>
+                      <Button size="sm" variant="outline" onClick={onTasksRetry} className="mt-2">
+                        Retry
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {!tasksLoading && !tasksError && tasks.length === 0 && (
-                <div className="py-8 text-center">
-                  <GitBranch className="mx-auto mb-2 h-8 w-8 text-muted-foreground opacity-50" />
-                  <p className="text-sm text-muted-foreground">No tasks yet</p>
-                </div>
-              )}
+                {!tasksLoading && !tasksError && tasks.length === 0 && (
+                  <div className="py-8 text-center">
+                    <GitBranch className="mx-auto mb-2 h-8 w-8 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground">No tasks yet</p>
+                  </div>
+                )}
 
-              {sortedTasks.slice(0, 20).map((task) => (
-                <TaskListItem
-                  key={task.id}
-                  task={task}
-                  isSelected={selectedTaskId === task.id}
-                  onClick={() => onSelectTask(task)}
-                />
-              ))}
+                {sortedTasks.slice(0, 20).map((task) => (
+                  <TaskListItem
+                    key={task.id}
+                    task={task}
+                    isSelected={selectedTaskId === task.id}
+                    onClick={() => onSelectTask(task)}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -427,19 +291,6 @@ export const UnifiedSidebar: FC<Props> = ({
               </div>
             </CollapsibleContent>
           </Collapsible>
-        </div>
-
-        {/* Collapse Button at Bottom */}
-        <div className="flex-shrink-0 border-t p-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-full justify-start gap-2"
-            onClick={toggleLeftSidebarCollapsed}
-          >
-            <PanelLeftClose className="h-4 w-4" />
-            <span className="text-sm">Collapse</span>
-          </Button>
         </div>
       </div>
 

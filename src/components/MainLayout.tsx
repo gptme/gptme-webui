@@ -8,6 +8,7 @@ import { TaskDetails } from '@/components/TaskDetails';
 import { RightSidebar } from '@/components/RightSidebar';
 import { RightSidebarContent } from '@/components/RightSidebarContent';
 import { TaskCreationDialog } from '@/components/TaskCreationDialog';
+import { SidebarIcons } from '@/components/SidebarIcons';
 import { UnifiedSidebar } from '@/components/UnifiedSidebar';
 import { setDocumentTitle } from '@/utils/title';
 import { useQueryClient } from '@tanstack/react-query';
@@ -272,7 +273,7 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
       }
       if (selectedTaskId) {
         return (
-          <div className="flex flex-1 items-center justify-center text-muted-foreground">
+          <div className="flex h-full flex-1 items-center justify-center text-muted-foreground">
             <div className="text-center">
               <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
               <p className="mb-2 text-lg">Loading task details...</p>
@@ -281,7 +282,7 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
         );
       }
       return (
-        <div className="flex flex-1 items-center justify-center text-muted-foreground">
+        <div className="flex h-full flex-1 items-center justify-center text-muted-foreground">
           <div className="text-center">
             <GitBranch className="mx-auto mb-4 h-12 w-12 opacity-50" />
             <p className="mb-2 text-lg">No task selected</p>
@@ -313,7 +314,7 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
 
   if (isMobile) {
     return (
-      <div className="flex h-full flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* Mobile Layout */}
         <Sheet
           open={leftVisible}
@@ -414,7 +415,10 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
 
   // Desktop Layout
   return (
-    <div className="flex h-full">
+    <div className="flex min-h-0 flex-1">
+      {/* Fixed icon sidebar - always visible */}
+      <SidebarIcons tasks={tasks} />
+
       <ResizablePanelGroup direction="horizontal" className="h-full">
         <ResizablePanel
           ref={leftPanelRef}
@@ -422,7 +426,7 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
           minSize={15}
           maxSize={30}
           collapsible
-          collapsedSize={5}
+          collapsedSize={0}
           onCollapse={() => {
             leftSidebarVisible$.set(false);
             leftSidebarCollapsed$.set(true);
