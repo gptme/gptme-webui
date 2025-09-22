@@ -98,6 +98,8 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
   // Sidebar state
   const leftVisible = use$(leftSidebarVisible$);
   const rightVisible = use$(rightSidebarVisible$);
+  const rightActiveTab = use$(rightSidebarActiveTab$);
+  const currentConversation = conversation$.get();
 
   // Handle step parameter for auto-generation
   useEffect(() => {
@@ -359,7 +361,7 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
         {/* Right Sidebar - Sheet for mobile */}
         {currentSection === 'chat' && (
           <Sheet
-            open={rightVisible}
+            open={rightVisible && !!rightActiveTab && !!currentConversation}
             onOpenChange={(open) => {
               rightSidebarVisible$.set(open);
             }}
