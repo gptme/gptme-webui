@@ -155,7 +155,7 @@ export const UnifiedSidebar: FC<Props> = ({
     <div className="flex h-full flex-col">
       {/* Chats Section Header */}
       {currentSection === 'chat' && (
-        <div className="flex items-center gap-2 border-b bg-background p-2">
+        <div className="flex items-center gap-2 bg-background p-2">
           <span className="ml-1 font-medium">Chats</span>
           <div className="flex-1" />
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleNewConversation}>
@@ -165,7 +165,7 @@ export const UnifiedSidebar: FC<Props> = ({
       )}
       {/* Tasks Section Header */}
       {currentSection === 'tasks' && (
-        <div className="flex items-center gap-2 border-b bg-background p-2">
+        <div className="flex items-center gap-2 bg-background p-2">
           <span className="ml-1 font-medium">Tasks</span>
           <div className="flex-1" />
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCreateTask}>

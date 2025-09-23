@@ -223,14 +223,30 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
 
   // Update conversation$ when selected conversation changes
   useObserveEffect(selectedConversation$, ({ value: selectedConversation }) => {
-    conversation$.set(allConversations.find((conv) => conv.id === selectedConversation));
+    if (selectedConversation) {
+      const conversation = allConversations.find((conv) => conv.id === selectedConversation);
+      conversation$.set(conversation);
+
+      // If conversation not found and we have a selectedConversation,
+      // it might be loading - keep the current state
+      if (!conversation && selectedConversation) {
+        console.log(
+          `[MainLayout] Conversation ${selectedConversation} not found in allConversations yet`
+        );
+      }
+    } else {
+      conversation$.set(undefined);
+    }
   });
 
   useEffect(() => {
     const selectedId = selectedConversation$.get();
-    const selectedConversation = allConversations.find((conv) => conv.id === selectedId);
-    conversation$.set(selectedConversation);
-  }, [allConversations, conversation$]);
+    if (selectedId) {
+      const selectedConversation = allConversations.find((conv) => conv.id === selectedId);
+      conversation$.set(selectedConversation);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allConversations]); // conversation$ is an observable we're setting, not reading
 
   // Update document title
   useObserveEffect(conversation$, ({ value: conversation }) => {

@@ -5,11 +5,12 @@ test.describe('Connecting', () => {
     // Go to the app
     await page.goto('/');
 
-    // Click the left panel toggle button to show conversations
-    await page.getByTestId('toggle-conversations-sidebar').click();
+    // Wait a moment for the page to fully load
+    await page.waitForLoadState('networkidle');
 
-    // Should show demo conversations initially
-    await expect(page.getByText('Introduction to gptme')).toBeVisible();
+    // The sidebar should be visible by default in the new layout
+    // Check if we can see demo conversations (they should be visible by default)
+    await expect(page.getByText('Introduction to gptme')).toBeVisible({ timeout: 10000 });
 
     // Should show connection status
     const connectionButton = page.getByRole('button', { name: /Connect/i });
@@ -30,9 +31,8 @@ test.describe('Connecting', () => {
     // Wait for success toast to confirm API connection
     await expect(page.getByText('Connected to gptme server')).toBeVisible();
 
-    // Wait for conversations to load
-    // Should show both demo conversations and connected conversations
-    await page.getByTestId('toggle-conversations-sidebar').click();
+    // In the new layout, conversations should be visible by default
+    // No need to toggle sidebar, but ensure we're on chat section
     await expect(page.getByText('Introduction to gptme')).toBeVisible();
 
     // Wait for loading state to finish
@@ -73,11 +73,12 @@ test.describe('Connecting', () => {
     // Start with server unavailable
     await page.goto('/');
 
-    // Click the left panel toggle button to show conversations
-    await page.getByTestId('toggle-conversations-sidebar').click();
+    // Wait a moment for the page to fully load
+    await page.waitForLoadState('networkidle');
 
+    // In the new layout, conversations should be visible by default
     // Should still show demo conversations
-    await expect(page.getByText('Introduction to gptme')).toBeVisible();
+    await expect(page.getByText('Introduction to gptme')).toBeVisible({ timeout: 10000 });
 
     // Click connect button and try to connect to non-existent server
     const connectionButton = page.getByRole('button', { name: /Connect/i });
@@ -117,14 +118,20 @@ test.describe('Conversation Flow', () => {
   test('should be able to create a new conversation and send a message', async ({ page }) => {
     await page.goto('/');
 
+    // Wait for the page to load completely
+    await page.waitForLoadState('networkidle');
+
     const message = 'Hello. We are testing, just say exactly "Hello world" without anything else.';
+
+    // Make sure we can see the chat input
+    await expect(page.getByTestId('chat-input')).toBeVisible({ timeout: 10000 });
 
     // Type a message
     await page.getByTestId('chat-input').fill(message);
     await page.keyboard.press('Enter');
 
     // Wait for the new conversation page to load
-    await expect(page).toHaveURL(/\/chat\/.+$/);
+    await expect(page).toHaveURL(/\/chat\/.+$/, { timeout: 15000 });
 
     // Should show the message in the conversation
     // Look specifically for the user's message in a user message container
@@ -132,13 +139,13 @@ test.describe('Conversation Flow', () => {
       page.locator('.role-user', {
         hasText: message,
       })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15000 });
 
     // Should show the AI's response
     await expect(
       page.locator('.role-assistant', {
         hasText: 'Hello world',
       })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 30000 }); // AI response might take longer
   });
 });
