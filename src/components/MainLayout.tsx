@@ -91,6 +91,7 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
     } else if (taskId) {
       selectedTask$.set(taskId);
     } else {
+      // Explicitly clear both selected conversation and conversation state
       selectedConversation$.set('');
       selectedTask$.set('');
     }
@@ -177,9 +178,44 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
     }
   }, [isConnected, apiConversations, api]);
 
+  // Reactive computation for store conversations using Legend State
+  const storeConversations$ = useObservable(() => {
+    const storeConvs = Array.from(conversations$.get().entries())
+      .filter(([id, state]) => {
+        // Only include non-demo conversations that have actual data
+        const isDemoConv = demoItems.some((demo) => demo.id === id);
+        return !isDemoConv && state.data.log && state.data.log.length > 0;
+      })
+      .map(
+        ([id, state]): ConversationSummary => ({
+          id,
+          name: state.data.name || 'New conversation',
+          modified: state.lastMessage
+            ? new Date(state.lastMessage.timestamp || Date.now()).getTime()
+            : Date.now(),
+          messages: state.data.log?.length || 0,
+          workspace: state.data.workspace || '.',
+          readonly: false,
+        })
+      );
+    return storeConvs;
+  });
+
   const allConversations: ConversationSummary[] = useMemo(() => {
-    return [...demoItems, ...apiItems];
-  }, [demoItems, apiItems]);
+    const storeConvs = storeConversations$.get();
+
+    // Combine demo, API, and store conversations, deduplicating by ID
+    const conversationMap = new Map<string, ConversationSummary>();
+
+    // Add in order of preference: API items (most up-to-date), store items, demo items
+    [...apiItems, ...storeConvs, ...demoItems].forEach((conv) => {
+      if (!conversationMap.has(conv.id)) {
+        conversationMap.set(conv.id, conv);
+      }
+    });
+
+    return Array.from(conversationMap.values());
+  }, [demoItems, apiItems, storeConversations$]);
 
   const handleSelectConversation = useCallback(
     (id: string) => {
@@ -221,19 +257,50 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
     [createTaskMutation, selectedTaskId, navigate]
   );
 
+  // Immediately clear conversation state when no conversationId is provided
+  if (!conversationId && !taskId) {
+    if (selectedConversation$.get() !== '' || conversation$.get() !== undefined) {
+      selectedConversation$.set('');
+      selectedTask$.set('');
+      conversation$.set(undefined);
+    }
+  }
+
   // Update conversation$ when selected conversation changes
   useObserveEffect(selectedConversation$, ({ value: selectedConversation }) => {
     if (selectedConversation) {
-      const conversation = allConversations.find((conv) => conv.id === selectedConversation);
-      conversation$.set(conversation);
+      let conversation = allConversations.find((conv) => conv.id === selectedConversation);
 
-      // If conversation not found and we have a selectedConversation,
-      // it might be loading - keep the current state
-      if (!conversation && selectedConversation) {
-        console.log(
-          `[MainLayout] Conversation ${selectedConversation} not found in allConversations yet`
-        );
+      // If not found in allConversations, check the conversations store directly
+      if (!conversation) {
+        const storeConversation = conversations$.get(selectedConversation)?.get();
+
+        if (storeConversation) {
+          // Create conversation summary even if no messages yet - let ConversationContent handle loading
+          conversation = {
+            id: selectedConversation,
+            name: storeConversation.data.name || 'New conversation',
+            modified: storeConversation.lastMessage
+              ? new Date(storeConversation.lastMessage.timestamp || Date.now()).getTime()
+              : Date.now(),
+            messages: storeConversation.data.log?.length || 0,
+            workspace: storeConversation.data.workspace || '.',
+            readonly: false,
+          };
+        } else {
+          // Even if not in store yet, create a minimal conversation to trigger ConversationContent loading
+          conversation = {
+            id: selectedConversation,
+            name: 'Loading...',
+            modified: Date.now(),
+            messages: 0,
+            workspace: '.',
+            readonly: false,
+          };
+        }
       }
+
+      conversation$.set(conversation);
     } else {
       conversation$.set(undefined);
     }
@@ -244,6 +311,9 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
     if (selectedId) {
       const selectedConversation = allConversations.find((conv) => conv.id === selectedId);
       conversation$.set(selectedConversation);
+    } else {
+      // Ensure conversation is cleared when no conversation is selected
+      conversation$.set(undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allConversations]); // conversation$ is an observable we're setting, not reading

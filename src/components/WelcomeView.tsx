@@ -26,29 +26,23 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
     if (!message.trim() || !isConnected) return;
 
     setIsSubmitting(true);
-    try {
-      // Create a new conversation with a timestamp-based ID
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const conversationId = `chat-${timestamp}`;
 
-      // Create the conversation with the initial message and config
-      await api.createConversation(conversationId, [{ role: 'user', content: message }], {
-        chat: {
-          model: options?.model,
-          stream: options?.stream,
-          workspace: options?.workspace || '.',
-        },
+    try {
+      // Create conversation with immediate placeholder and get ID
+      const conversationId = await api.createConversationWithPlaceholder(message, {
+        model: options?.model,
+        stream: options?.stream,
+        workspace: options?.workspace || '.',
       });
 
-      // Navigate to the new conversation with step flag
-      navigate(`/chat/${conversationId}?step=true`);
+      // Navigate immediately - stepping will be triggered automatically by the API
+      navigate(`/chat/${conversationId}`);
 
       // Invalidate conversations query to refresh the list
       await queryClient.invalidateQueries({
         queryKey: ['conversations', connectionConfig.baseUrl, isConnected$.get()],
       });
 
-      // Show success message
       toast.success('Conversation started successfully!');
     } catch (error) {
       console.error('Failed to create conversation:', error);
@@ -59,33 +53,29 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
   };
 
   return (
-    <div className="flex h-full flex-col items-center justify-center">
-      <div className="mx-auto w-full max-w-2xl space-y-8 px-4">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold">How can I help you today?</h1>
-          <p className="mt-2 text-muted-foreground">
-            I can help you write code, debug issues, and learn new concepts.
-          </p>
-        </div>
+    <div className="mx-auto flex h-full w-full flex-col items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold">How can I help you today?</h1>
+        <p className="mt-2 text-muted-foreground">
+          I can help you write code, debug issues, and learn new concepts.
+        </p>
+      </div>
 
-        <div className="space-y-4">
-          <div>
-            <ChatInput
-              onSend={handleSend}
-              autoFocus$={autoFocus$}
-              hasSession$={hasSession$}
-              value={inputValue}
-              onChange={setInputValue}
-            />
-          </div>
-        </div>
+      <div className="my-4 w-full max-w-xl px-4">
+        <ChatInput
+          onSend={handleSend}
+          autoFocus$={autoFocus$}
+          hasSession$={hasSession$}
+          value={inputValue}
+          onChange={setInputValue}
+        />
+      </div>
 
-        <ExamplesSection onExampleSelect={setInputValue} disabled={isSubmitting} />
-
-        <div className="flex justify-center">
+      <div>
+        <div className="flex justify-center space-x-4">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onToggleHistory}
             className="text-muted-foreground"
@@ -93,6 +83,7 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
             <History className="mr-2 h-4 w-4" />
             Show history
           </Button>
+          <ExamplesSection onExampleSelect={setInputValue} disabled={isSubmitting} />
         </div>
       </div>
     </div>

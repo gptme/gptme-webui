@@ -30,9 +30,9 @@ export const SidebarIcons: FC<Props> = ({ tasks }) => {
   const activeTasks = tasks.filter((t) => t.status === 'active' && !t.archived);
 
   return (
-    <div className="flex h-full w-12 flex-col border-r bg-background">
+    <div className="flex h-full w-11 flex-col border-r bg-background">
       {/* Navigation Icons */}
-      <div className="flex-shrink-0 space-y-2 p-2">
+      <div className="flex-shrink-0 space-y-2 p-1">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -75,7 +75,7 @@ export const SidebarIcons: FC<Props> = ({ tasks }) => {
       <div className="flex-1" />
 
       {/* Toggle Button */}
-      <div className="flex-shrink-0 p-2">
+      <div className="flex-shrink-0 p-1">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>

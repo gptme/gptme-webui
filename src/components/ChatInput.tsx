@@ -367,7 +367,7 @@ export const ChatInput: FC<Props> = ({
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
-      <div className="mx-auto flex max-w-2xl flex-col">
+      <div className="flex flex-col">
         <div className="flex">
           <Computed>
             {() => (

@@ -49,9 +49,6 @@ export const ExamplesSection: React.FC<ExamplesSectionProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Get the initial 4 examples for the main display
-  const quickExamples = getExamples('welcome-suggestions', 'mixed', 4);
-
   const handleExampleClick = (example: string) => {
     onExampleSelect(example);
     setIsModalOpen(false);
@@ -59,26 +56,6 @@ export const ExamplesSection: React.FC<ExamplesSectionProps> = ({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-center text-sm text-muted-foreground">
-        Here are some examples to get you started:
-      </h2>
-
-      {/* Quick Examples Grid */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {quickExamples.map((example) => (
-          <Button
-            key={example}
-            variant="outline"
-            size="sm"
-            className="h-10 text-xs hover:bg-muted/50"
-            onClick={() => handleExampleClick(example)}
-            disabled={disabled}
-          >
-            {example}
-          </Button>
-        ))}
-      </div>
-
       {/* More Examples Button */}
       <div className="flex justify-center">
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -90,7 +67,7 @@ export const ExamplesSection: React.FC<ExamplesSectionProps> = ({
               disabled={disabled}
             >
               <Sparkles className="mr-2 h-4 w-4" />
-              More examples
+              Examples
               <ChevronRight className="ml-1 h-3 w-3" />
             </Button>
           </DialogTrigger>

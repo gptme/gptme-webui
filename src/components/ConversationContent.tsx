@@ -242,7 +242,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
         <div className="mb-40" />
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/80 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 mx-auto max-w-2xl bg-gradient-to-t from-background via-background/80 to-transparent">
         <ChatInput
           conversationId={conversationId}
           onSend={handleSendMessage}

@@ -10,6 +10,7 @@ import type { ConversationSummary, Message, ToolUse } from '@/types/conversation
 import { getApiBaseUrl } from '@/utils/connectionConfig';
 import { type Observable } from '@legendapp/state';
 import { observable } from '@legendapp/state';
+import { initConversation } from '@/stores/conversations';
 
 // Add DOM types
 type RequestInit = globalThis.RequestInit;
@@ -576,6 +577,65 @@ export class ApiClient {
       console.error('Create conversation error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Create a conversation with immediate placeholder and background sync.
+   * This ensures instant navigation while handling server sync transparently.
+   */
+  async createConversationWithPlaceholder(
+    userMessage: string,
+    options?: {
+      model?: string;
+      stream?: boolean;
+      workspace?: string;
+    }
+  ): Promise<string> {
+    // Generate conversation ID immediately
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const conversationId = `chat-${timestamp}`;
+
+    // Create user message
+    const message: Message = {
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Create placeholder conversation in store immediately
+    initConversation(conversationId, {
+      id: conversationId,
+      name: 'New conversation',
+      log: [message],
+      logfile: conversationId,
+      branches: {},
+      workspace: options?.workspace || '.',
+    });
+
+    // Handle server-side creation and auto-step in background
+    this.createConversation(conversationId, [message], {
+      chat: {
+        model: options?.model,
+        stream: options?.stream,
+        workspace: options?.workspace || '.',
+      },
+    })
+      .then(() => {
+        // Auto-trigger generation now that the conversation is ready
+        this.step(conversationId, options?.model, options?.stream).catch((stepError) => {
+          console.error(`[ApiClient] Auto-step failed for ${conversationId}:`, stepError);
+        });
+      })
+      .catch((error) => {
+        console.error(
+          `[ApiClient] Background conversation creation failed for ${conversationId}:`,
+          error
+        );
+        // The placeholder conversation remains functional even if server sync fails
+      });
+
+    // Return ID immediately for navigation
+    return conversationId;
   }
 
   async sendMessage(logfile: string, message: Message, branch: string = 'main'): Promise<void> {

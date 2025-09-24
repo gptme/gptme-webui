@@ -64,20 +64,35 @@ export function useConversation(conversationId: string) {
           return;
         }
 
-        // Load conversation data from API
-        const data = await api.getConversation(conversationId);
+        // Check if conversation already has data (e.g., from placeholder)
+        const existingConversation = conversations$.get(conversationId);
+        const hasExistingMessages =
+          existingConversation && existingConversation.data.log.length > 0;
 
-        // Also load the chat config
-        try {
-          const chatConfig = await api.getChatConfig(conversationId);
-          updateConversation(conversationId, { data, chatConfig });
-        } catch (error) {
-          console.warn(
-            `[useConversation] Failed to load chat config for ${conversationId}:`,
-            error
-          );
-          // Still update with conversation data even if config fails
-          updateConversation(conversationId, { data });
+        if (!hasExistingMessages) {
+          // Only load from API if we don't already have conversation data
+          try {
+            const data = await api.getConversation(conversationId);
+
+            // Also load the chat config
+            try {
+              const chatConfig = await api.getChatConfig(conversationId);
+              updateConversation(conversationId, { data, chatConfig });
+            } catch (error) {
+              console.warn(
+                `[useConversation] Failed to load chat config for ${conversationId}:`,
+                error
+              );
+              // Still update with conversation data even if config fails
+              updateConversation(conversationId, { data });
+            }
+          } catch (error) {
+            console.warn(
+              `[useConversation] Failed to load conversation ${conversationId} from API:`,
+              error
+            );
+            // Don't overwrite existing placeholder data if API call fails
+          }
         }
 
         // Check number of connected conversations
