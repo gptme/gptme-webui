@@ -65,9 +65,7 @@ export function useConversation(conversationId: string) {
         }
 
         // Check if conversation already has data (e.g., from placeholder)
-        const existingConversation = conversations$.get(conversationId);
-        const hasExistingMessages =
-          existingConversation && existingConversation.data.log.length > 0;
+        const hasExistingMessages = conversation$?.data.log.get()?.length > 0;
 
         if (!hasExistingMessages) {
           // Only load from API if we don't already have conversation data

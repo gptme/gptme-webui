@@ -47,7 +47,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
   const isLoading = isLoadingConfig || (!chatConfig && !configError && !isDemo);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {isLoading ? (
         <div className="flex h-full items-center justify-center p-8">
           <div className="flex flex-col items-center gap-4">
@@ -85,7 +85,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
       ) : (
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
-            <div className="flex-1 space-y-8 overflow-y-auto p-4 pb-24">
+            <div className="flex-1 space-y-8 overflow-y-auto p-4 pb-12">
               <h3 className="mt-4 text-lg font-medium">Chat Settings</h3>
 
               {/* Conversation Name Field */}
@@ -226,7 +226,7 @@ export const ConversationSettings: FC<ConversationSettingsProps> = ({ conversati
             </div>
 
             {/* Submit Button */}
-            <div className="sticky bottom-0 mt-auto border-t bg-background p-4">
+            <div className="flex-shrink-0 border-t bg-background p-4">
               <Button
                 type="submit"
                 disabled={!isDirty || isSubmitting}

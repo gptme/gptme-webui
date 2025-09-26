@@ -51,7 +51,7 @@ export const ToolsConfiguration = ({ form, toolFields, isSubmitting }: ToolsConf
 
       {/* Tools listing */}
       <div className="space-y-4">
-        <FormDescription>List of tools that the agent can use.</FormDescription>
+        <FormDescription>Tools that the agent can use.</FormDescription>
 
         {/* Current tools as badges */}
         {fields.length > 0 && (

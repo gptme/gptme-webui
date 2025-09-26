@@ -33,5 +33,5 @@ export const RightSidebarContent: FC<Props> = ({ conversationId, activeTab }) =>
     }
   };
 
-  return <div className="h-full overflow-auto border-l bg-background">{renderContent()}</div>;
+  return <div className="h-full border-l bg-background">{renderContent()}</div>;
 };
