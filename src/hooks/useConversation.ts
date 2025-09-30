@@ -65,8 +65,11 @@ export function useConversation(conversationId: string) {
         }
 
         // Check if conversation already has data (e.g., from placeholder)
-        const hasExistingMessages = conversation$?.data.log.get()?.length > 0;
-
+        const hasExistingMessages = conversation$?.data.log.peek()?.length > 0;
+        console.log('[useConversation] Loading conversation', {
+          conversationId,
+          hasExistingMessages,
+        });
         if (!hasExistingMessages) {
           // Only load from API if we don't already have conversation data
           try {
@@ -76,6 +79,7 @@ export function useConversation(conversationId: string) {
             try {
               const chatConfig = await api.getChatConfig(conversationId);
               updateConversation(conversationId, { data, chatConfig });
+              console.log(`[useConversation] Loaded conversation and config for ${conversationId}`);
             } catch (error) {
               console.warn(
                 `[useConversation] Failed to load chat config for ${conversationId}:`,
@@ -124,21 +128,56 @@ export function useConversation(conversationId: string) {
             // Add empty message placeholder if needed
             const messages$ = conversation$?.data.log;
             const lastMessage$ = messages$?.[messages$.length - 1];
-            if (lastMessage$.role.get() !== 'assistant' || lastMessage$.content.get() !== '') {
+            console.log(
+              '[useConversation] MessageStart - messages count:',
+              messages$?.length,
+              'lastMessage role:',
+              lastMessage$?.role?.get(),
+              'content:',
+              JSON.stringify(lastMessage$?.content?.get())
+            );
+            if (
+              !lastMessage$ ||
+              lastMessage$.role.get() !== 'assistant' ||
+              lastMessage$.content.get() !== ''
+            ) {
               const streamingMessage: StreamingMessage = {
                 role: 'assistant',
                 content: '',
                 timestamp: new Date().toISOString(),
                 isComplete: false,
               };
+              console.log('[useConversation] Adding streaming message placeholder');
               addMessage(conversationId, streamingMessage);
+              console.log(
+                '[useConversation] Placeholder added, new messages count:',
+                conversation$?.data.log.length
+              );
+            } else {
+              console.log('[useConversation] Reusing existing empty assistant message');
             }
           },
           onToken: (token) => {
+            console.log('[useConversation] Received token:', token);
             const messages$ = conversation$?.data.log;
             const lastMessage$ = messages$?.[messages$.length - 1];
-            if (lastMessage$?.role.get() === 'assistant') {
+            console.log(
+              '[useConversation] Token handler - lastMessage role:',
+              lastMessage$?.role?.get(),
+              'content length:',
+              lastMessage$?.content?.get()?.length
+            );
+            if (lastMessage$?.role?.get() === 'assistant') {
               lastMessage$.content.set((prev) => prev + token);
+              console.log(
+                '[useConversation] Token appended, new content length:',
+                lastMessage$.content.get().length
+              );
+            } else {
+              console.warn(
+                '[useConversation] No assistant message to append token to. Last message role:',
+                lastMessage$?.role?.get()
+              );
             }
           },
           onMessageComplete: (message) => {
@@ -261,9 +300,10 @@ export function useConversation(conversationId: string) {
               updateConversationName(conversationId, config.chat.name);
             }
           },
+          onConnected: () => {
+            setConnected(conversationId, true);
+          },
         });
-
-        setConnected(conversationId, true);
       } catch (error) {
         console.error('Error loading conversation:', error);
         toast({
