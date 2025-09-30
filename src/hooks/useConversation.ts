@@ -158,21 +158,10 @@ export function useConversation(conversationId: string) {
             }
           },
           onToken: (token) => {
-            console.log('[useConversation] Received token:', token);
             const messages$ = conversation$?.data.log;
             const lastMessage$ = messages$?.[messages$.length - 1];
-            console.log(
-              '[useConversation] Token handler - lastMessage role:',
-              lastMessage$?.role?.get(),
-              'content length:',
-              lastMessage$?.content?.get()?.length
-            );
             if (lastMessage$?.role?.get() === 'assistant') {
               lastMessage$.content.set((prev) => prev + token);
-              console.log(
-                '[useConversation] Token appended, new content length:',
-                lastMessage$.content.get().length
-              );
             } else {
               console.warn(
                 '[useConversation] No assistant message to append token to. Last message role:',
