@@ -260,6 +260,7 @@ export class ApiClient {
       onInterrupted: () => void;
       onError: (error: string) => void;
       onConfigChanged?: (config: ChatConfig, changedFields: string[]) => void;
+      onConnected?: () => void;
     }
   ): void {
     // Close any existing event stream for this conversation
@@ -291,6 +292,13 @@ export class ApiClient {
      * We only do this for SSE connections, all other requests use headers.
      */
     const url = new URL(`${this.baseUrl}/api/v2/conversations/${conversationId}/events`);
+
+    // Pass existing session_id if available to reuse the session
+    const existingSessionId = this.sessions$.get(conversationId).get();
+    if (existingSessionId) {
+      url.searchParams.set('session_id', existingSessionId);
+      console.log(`[ApiClient] Reusing existing session ID for SSE: ${existingSessionId}`);
+    }
 
     if (this.authHeader) {
       // Extract token from "Bearer <token>"
@@ -394,6 +402,8 @@ export class ApiClient {
             this.sessions$.set(conversationId, data.session_id);
             // Clear the session ID timeout
             clearTimeout(sessionIdTimeout);
+            // Notify that connection is established
+            callbacks.onConnected?.();
             break;
 
           case 'interrupted':
@@ -565,9 +575,18 @@ export class ApiClient {
         body: JSON.stringify(request),
       });
 
-      // Store the session ID
-      this.sessions$.set(logfile, response.session_id);
-      console.log(`[ApiClient] Stored session ID from createConversation: ${response.session_id}`);
+      // Store the session ID only if not already set by SSE
+      const existingSessionId = this.sessions$.get(logfile).get();
+      if (!existingSessionId) {
+        this.sessions$.set(logfile, response.session_id);
+        console.log(
+          `[ApiClient] Stored session ID from createConversation: ${response.session_id}`
+        );
+      } else {
+        console.log(
+          `[ApiClient] Session ID already exists from SSE, not overwriting: ${existingSessionId}`
+        );
+      }
 
       return response;
     } catch (error) {
