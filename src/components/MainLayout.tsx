@@ -86,14 +86,18 @@ const MainLayout: FC<Props> = ({ conversationId, taskId }) => {
     });
 
     // Handle initial conversation/task selection
-    if (conversationId) {
+    if (conversationId && selectedConversation$.get() !== conversationId) {
       selectedConversation$.set(conversationId);
-    } else if (taskId) {
+    } else if (taskId && selectedTask$.get() !== taskId) {
       selectedTask$.set(taskId);
-    } else {
-      // Explicitly clear both selected conversation and conversation state
-      selectedConversation$.set('');
-      selectedTask$.set('');
+    } else if (!conversationId && !taskId) {
+      // Only clear if they're not already empty
+      if (selectedConversation$.get() !== '') {
+        selectedConversation$.set('');
+      }
+      if (selectedTask$.get() !== '') {
+        selectedTask$.set('');
+      }
     }
   }, [conversationId, taskId]);
 
