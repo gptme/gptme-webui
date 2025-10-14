@@ -39,8 +39,12 @@ export function MarkdownPreviewTabs({ content, language = 'markdown' }: Markdown
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex bg-gray-50 dark:bg-gray-900 border-b">
+      <div className="flex bg-gray-50 dark:bg-gray-900 border-b" role="tablist">
         <button
+          role="tab"
+          aria-selected={activeTab === 'preview'}
+          aria-controls="preview-panel"
+          id="preview-tab"
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === 'preview'
               ? 'border-b-2 border-blue-500 bg-white dark:bg-gray-800'
@@ -51,6 +55,10 @@ export function MarkdownPreviewTabs({ content, language = 'markdown' }: Markdown
           👁️ Preview
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'code'}
+          aria-controls="code-panel"
+          id="code-tab"
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === 'code'
               ? 'border-b-2 border-blue-500 bg-white dark:bg-gray-800'
@@ -64,15 +72,17 @@ export function MarkdownPreviewTabs({ content, language = 'markdown' }: Markdown
 
       <div className="flex-1 overflow-auto">
         {activeTab === 'code' && (
-          <CodeDisplay
-            code={content}
-            language={language}
-            maxHeight="none"
-          />
+          <div role="tabpanel" id="code-panel" aria-labelledby="code-tab">
+            <CodeDisplay
+              code={content}
+              language={language}
+              maxHeight="none"
+            />
+          </div>
         )}
         
         {activeTab === 'preview' && (
-          <>
+          <div role="tabpanel" id="preview-panel" aria-labelledby="preview-tab">
             {renderError ? (
               <div className="p-4">
                 <div className="rounded-md bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
@@ -85,7 +95,7 @@ export function MarkdownPreviewTabs({ content, language = 'markdown' }: Markdown
                 className="prose prose-sm dark:prose-invert max-w-none p-4"
               />
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

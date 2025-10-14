@@ -7,6 +7,16 @@ import type { FileType, FilePreview } from '@/types/workspace';
 import { CodeDisplay } from '@/components/CodeDisplay';
 import { MarkdownPreviewTabs } from './MarkdownPreviewTabs';
 
+// Helper function to check if a file is a markdown file
+function isMarkdownFileType(file: FileType): boolean {
+  const fileName = file.name.toLowerCase();
+  return (
+    fileName.endsWith('.md') ||
+    fileName.endsWith('.markdown') ||
+    file.mime_type === 'text/markdown'
+  );
+}
+
 interface FilePreviewProps {
   file: FileType;
   conversationId: string;
@@ -53,7 +63,7 @@ export function FilePreview({ file, conversationId }: FilePreviewProps) {
   }
 
   // Check if this is a markdown file
-  const isMarkdownFile = file.name.toLowerCase().endsWith('.md') || file.name.toLowerCase().endsWith('.markdown') || file.mime_type === 'text/markdown';
+  const isMarkdownFile = isMarkdownFileType(file);
 
   switch (preview.type) {
     case 'text':
