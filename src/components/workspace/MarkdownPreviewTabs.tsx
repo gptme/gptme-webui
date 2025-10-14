@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { getCodeBlockEmoji } from '@/utils/markdownUtils';
 import * as smd from '@/utils/smd';
@@ -38,8 +37,8 @@ export function MarkdownPreviewTabs({ content, language = 'markdown' }: Markdown
   }, [content, activeTab]);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex bg-gray-50 dark:bg-gray-900 border-b" role="tablist">
+    <div className="flex h-full flex-col">
+      <div className="flex border-b bg-gray-50 dark:bg-gray-900" role="tablist">
         <button
           role="tab"
           aria-selected={activeTab === 'preview'}
@@ -73,14 +72,10 @@ export function MarkdownPreviewTabs({ content, language = 'markdown' }: Markdown
       <div className="flex-1 overflow-auto">
         {activeTab === 'code' && (
           <div role="tabpanel" id="code-panel" aria-labelledby="code-tab">
-            <CodeDisplay
-              code={content}
-              language={language}
-              maxHeight="none"
-            />
+            <CodeDisplay code={content} language={language} maxHeight="none" />
           </div>
         )}
-        
+
         {activeTab === 'preview' && (
           <div role="tabpanel" id="preview-panel" aria-labelledby="preview-tab">
             {renderError ? (
@@ -90,10 +85,7 @@ export function MarkdownPreviewTabs({ content, language = 'markdown' }: Markdown
                 </div>
               </div>
             ) : (
-              <div
-                ref={previewRef}
-                className="prose prose-sm dark:prose-invert max-w-none p-4"
-              />
+              <div ref={previewRef} className="prose prose-sm dark:prose-invert max-w-none p-4" />
             )}
           </div>
         )}

@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,9 +10,7 @@ import { MarkdownPreviewTabs } from './MarkdownPreviewTabs';
 function isMarkdownFileType(file: FileType): boolean {
   const fileName = file.name.toLowerCase();
   return (
-    fileName.endsWith('.md') ||
-    fileName.endsWith('.markdown') ||
-    file.mime_type === 'text/markdown'
+    fileName.endsWith('.md') || fileName.endsWith('.markdown') || file.mime_type === 'text/markdown'
   );
 }
 
