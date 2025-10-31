@@ -9,6 +9,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import Index from './pages/Index';
 import Tasks from './pages/Tasks';
 import Workspace from './pages/Workspace';
+import { CommandPalette } from './components/CommandPalette';
 import type { FC } from 'react';
 
 const queryClient = new QueryClient({
@@ -56,6 +57,7 @@ const App: FC = () => {
                   <Route path="/tasks/:id" element={<Tasks />} />
                   <Route path="/workspace/:id" element={<Workspace />} />
                 </Routes>
+                <CommandPalette />
                 <Toaster />
                 <Sonner />
               </BrowserRouter>
