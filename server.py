@@ -29,7 +29,7 @@ class SPAHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         if not os.path.exists(path):
             # Check if this looks like an asset request
             is_asset = any(self.path.endswith(ext) for ext in 
-                          ['.js', '.css', '.png', '.jpg', '.svg', '.ico', '.woff', '.woff2'])
+                          ['.js', '.css', '.png', '.jpg', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.otf', '.json', '.webp', '.gif'])
             
             if not is_asset:
                 # Serve index.html for SPA routes
