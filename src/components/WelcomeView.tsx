@@ -46,44 +46,38 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
       toast.success('Conversation started successfully!');
     } catch (error) {
       console.error('Failed to create conversation:', error);
-      
+
       // Parse error message and provide specific user feedback
       const errorMessage = error instanceof Error ? error.message : String(error);
       const lowerMessage = errorMessage.toLowerCase();
-      
-      if (lowerMessage.includes('duplicate') || 
-          lowerMessage.includes('already exists') || 
-          lowerMessage.includes('conflict')) {
+
+      if (
+        lowerMessage.includes('duplicate') ||
+        lowerMessage.includes('already exists') ||
+        lowerMessage.includes('conflict')
+      ) {
         toast.error(
           'A conversation with this name already exists. Please try a different starting message.',
           {
             duration: 5000,
           }
         );
-      } else if (lowerMessage.includes('network') || 
-                 lowerMessage.includes('fetch') || 
-                 error instanceof TypeError) {
-        toast.error(
-          'Unable to connect to server. Please check your connection and try again.',
-          {
-            duration: 5000,
-          }
-        );
-      } else if (lowerMessage.includes('unauthorized') || 
-                 lowerMessage.includes('forbidden')) {
-        toast.error(
-          'Authentication failed. Please check your credentials.',
-          {
-            duration: 5000,
-          }
-        );
+      } else if (
+        lowerMessage.includes('network') ||
+        lowerMessage.includes('fetch') ||
+        error instanceof TypeError
+      ) {
+        toast.error('Unable to connect to server. Please check your connection and try again.', {
+          duration: 5000,
+        });
+      } else if (lowerMessage.includes('unauthorized') || lowerMessage.includes('forbidden')) {
+        toast.error('Authentication failed. Please check your credentials.', {
+          duration: 5000,
+        });
       } else {
-        toast.error(
-          `Failed to create conversation: ${errorMessage}`,
-          {
-            duration: 5000,
-          }
-        );
+        toast.error(`Failed to create conversation: ${errorMessage}`, {
+          duration: 5000,
+        });
       }
     } finally {
       setIsSubmitting(false);
