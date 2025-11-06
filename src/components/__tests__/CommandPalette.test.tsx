@@ -35,7 +35,7 @@ jest.mock('../ui/command', () => ({
 
 // Mock useNavigate
 const mockNavigate = jest.fn();
-jest.mock('react-router-dom', async () => {
+jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
   return {
     ...actual,
