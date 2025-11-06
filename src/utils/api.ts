@@ -631,29 +631,19 @@ export class ApiClient {
       workspace: options?.workspace || '.',
     });
 
-    // Handle server-side creation and auto-step in background
-    this.createConversation(conversationId, [message], {
+    // Await server-side creation and auto-step to propagate errors properly
+    await this.createConversation(conversationId, [message], {
       chat: {
         model: options?.model,
         stream: options?.stream,
         workspace: options?.workspace || '.',
       },
-    })
-      .then(() => {
-        // Auto-trigger generation now that the conversation is ready
-        this.step(conversationId, options?.model, options?.stream).catch((stepError) => {
-          console.error(`[ApiClient] Auto-step failed for ${conversationId}:`, stepError);
-        });
-      })
-      .catch((error) => {
-        console.error(
-          `[ApiClient] Background conversation creation failed for ${conversationId}:`,
-          error
-        );
-        // The placeholder conversation remains functional even if server sync fails
-      });
+    });
+    
+    // Auto-trigger generation now that the conversation is ready
+    await this.step(conversationId, options?.model, options?.stream);
 
-    // Return ID immediately for navigation
+    // Return ID only after operations complete successfully
     return conversationId;
   }
 
