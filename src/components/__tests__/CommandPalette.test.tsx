@@ -2,6 +2,37 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { CommandPalette } from '../CommandPalette';
 
+// Mock UI command components
+jest.mock('../ui/command', () => ({
+  CommandDialog: ({ children, open }: any) => open ? <div data-testid="command-dialog">{children}</div> : null,
+  CommandInput: ({ placeholder, value, onValueChange }: any) => (
+    <input
+      data-testid="command-input"
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onValueChange?.(e.target.value)}
+    />
+  ),
+  CommandList: ({ children }: any) => <div data-testid="command-list">{children}</div>,
+  CommandEmpty: ({ children }: any) => <div data-testid="command-empty">{children}</div>,
+  CommandGroup: ({ children, heading }: any) => (
+    <div data-testid="command-group">
+      {heading && <div data-testid="command-group-heading">{heading}</div>}
+      {children}
+    </div>
+  ),
+  CommandItem: ({ children, onSelect, value }: any) => (
+    <div
+      data-testid="command-item"
+      data-value={value}
+      onClick={() => onSelect?.()}
+    >
+      {children}
+    </div>
+  ),
+  CommandSeparator: () => <div data-testid="command-separator" />,
+}));
+
 // Mock useNavigate
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', async () => {
