@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, UserRoundPlusIcon, PenSquare, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, UserRoundPlusIcon, PenSquare, Plus, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { AgentsList } from './AgentsList';
@@ -114,6 +114,10 @@ export const UnifiedSidebar: FC<Props> = ({
   const [workspacesCollapsed, setWorkspacesCollapsed] = useState(true);
   const [showCreateAgentDialog, setShowCreateAgentDialog] = useState(false);
 
+  // Filter state for tasks
+  const [selectedTargetTypes, setSelectedTargetTypes] = useState<Set<string>>(new Set(['all']));
+  const [showFilters, setShowFilters] = useState(false);
+
   // Filter conversations based on selected workspace and agent
   const filteredConversations = useMemo(() => {
     let filtered = conversations;
@@ -129,13 +133,20 @@ export const UnifiedSidebar: FC<Props> = ({
     return filtered;
   }, [conversations, selectedWorkspace, selectedAgent]);
 
-  // Filter tasks - show active/pending first
+  // Filter and sort tasks
   const sortedTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => {
+    // Filter by target type
+    let filtered = tasks;
+    if (!selectedTargetTypes.has('all')) {
+      filtered = tasks.filter(task => selectedTargetTypes.has(task.target_type));
+    }
+
+    // Sort by status
+    return [...filtered].sort((a, b) => {
       const statusOrder = { active: 0, pending: 1, failed: 2, completed: 3 };
       return statusOrder[a.status] - statusOrder[b.status];
     });
-  }, [tasks]);
+  }, [tasks, selectedTargetTypes]);
 
   const handleAgentCreated = async (agentData: CreateAgentRequest) => {
     try {
@@ -165,13 +176,63 @@ export const UnifiedSidebar: FC<Props> = ({
       )}
       {/* Tasks Section Header */}
       {currentSection === 'tasks' && (
-        <div className="flex items-center gap-2 bg-background p-2">
-          <span className="ml-1 font-medium">Tasks</span>
-          <div className="flex-1" />
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCreateTask}>
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+        <>
+          <div className="flex items-center gap-2 bg-background p-2">
+            <span className="ml-1 font-medium">Tasks</span>
+            <div className="flex-1" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6" 
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCreateTask}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Task Filters */}
+          {showFilters && (
+            <div className="border-b bg-muted/30 p-2">
+              <div className="flex flex-wrap gap-1">
+                {(['all', 'pr', 'email', 'tweet', 'stdout'] as const).map((type) => {
+                  const isSelected = selectedTargetTypes.has(type);
+                  return (
+                    <Button
+                      key={type}
+                      variant={isSelected ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const newTypes = new Set(selectedTargetTypes);
+                        if (type === 'all') {
+                          setSelectedTargetTypes(new Set(['all']));
+                        } else {
+                          newTypes.delete('all');
+                          if (isSelected) {
+                            newTypes.delete(type);
+                            if (newTypes.size === 0) {
+                              setSelectedTargetTypes(new Set(['all']));
+                            } else {
+                              setSelectedTargetTypes(newTypes);
+                            }
+                          } else {
+                            newTypes.add(type);
+                            setSelectedTargetTypes(newTypes);
+                          }
+                        }
+                      }}
+                    >
+                      {type === 'all' ? 'All' : type === 'pr' ? 'PR' : type.charAt(0).toUpperCase() + type.slice(1)}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Content Lists - fills available space */}
