@@ -15,6 +15,7 @@ export const GitHubSettings = ({ className }: GitHubSettingsProps) => {
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [hasStoredToken, setHasStoredToken] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
@@ -43,6 +44,7 @@ export const GitHubSettings = ({ className }: GitHubSettingsProps) => {
       // Placeholder: Store in localStorage (NOT SECURE - for development only)
       localStorage.setItem(GITHUB_TOKEN_KEY, token);
       setHasStoredToken(true);
+      setIsEditing(false);
       setToken('');
       setSaveStatus('success');
 
@@ -60,6 +62,7 @@ export const GitHubSettings = ({ className }: GitHubSettingsProps) => {
     // TODO: Replace with API call to clear token from backend
     localStorage.removeItem(GITHUB_TOKEN_KEY);
     setHasStoredToken(false);
+    setIsEditing(false);
     setToken('');
     setSaveStatus('idle');
   };
@@ -86,7 +89,7 @@ export const GitHubSettings = ({ className }: GitHubSettingsProps) => {
           with the <code className="rounded bg-muted px-1">repo</code> scope.
         </p>
 
-        {hasStoredToken ? (
+        {hasStoredToken && !isEditing ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950">
               <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -98,7 +101,7 @@ export const GitHubSettings = ({ className }: GitHubSettingsProps) => {
               <Button variant="outline" size="sm" onClick={handleClear}>
                 Remove Token
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setHasStoredToken(false)}>
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                 Update Token
               </Button>
             </div>
@@ -131,6 +134,18 @@ export const GitHubSettings = ({ className }: GitHubSettingsProps) => {
                 <Button onClick={handleSave} disabled={!token.trim() || isSaving}>
                   {isSaving ? 'Saving...' : 'Save'}
                 </Button>
+                {isEditing && hasStoredToken && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setToken('');
+                      setSaveStatus('idle');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
               </div>
             </div>
 
