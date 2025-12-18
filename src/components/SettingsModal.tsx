@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Settings, Volume2, Palette, Info, FileText, ExternalLink } from 'lucide-react';
+import { Settings, Volume2, Palette, Info, FileText, ExternalLink, Key } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
+import { GitHubSettings } from '@/components/settings/GitHubSettings';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +21,7 @@ interface SettingsModalProps {
   children?: React.ReactNode;
 }
 
-type SettingsCategory = 'appearance' | 'audio' | 'content' | 'about';
+type SettingsCategory = 'appearance' | 'audio' | 'content' | 'integrations' | 'about';
 
 const categories = [
   {
@@ -40,6 +41,12 @@ const categories = [
     label: 'Content',
     icon: FileText,
     description: 'Message and code display options',
+  },
+  {
+    id: 'integrations' as const,
+    label: 'Integrations',
+    icon: Key,
+    description: 'GitHub and other service connections',
   },
   {
     id: 'about' as const,
@@ -149,6 +156,19 @@ export const SettingsModal = forwardRef<HTMLButtonElement, SettingsModalProps>(
                   onCheckedChange={(checked) => updateSettings({ blocksDefaultOpen: checked })}
                 />
               </div>
+            </div>
+          );
+
+        case 'integrations':
+          return (
+            <div className="space-y-6">
+              <div>
+                <h3 className="mb-1 text-lg font-medium">Integrations</h3>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Connect external services to enhance your agents
+                </p>
+              </div>
+              <GitHubSettings />
             </div>
           );
 
