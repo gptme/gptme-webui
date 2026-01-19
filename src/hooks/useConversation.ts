@@ -382,13 +382,15 @@ export function useConversation(conversationId: string) {
       } catch (error) {
         console.error(`Error confirming tool (attempt ${attempt}):`, error);
 
-        // Check if it's the specific "Tool not found" 404 error
-        const is404ToolNotFound =
+        // Check if it's a 404 error (either "Tool not found" or "Session ID not found")
+        // Session ID may not be available yet during initial SSE connection
+        const is404Error =
           error instanceof Error &&
-          error.message.includes('Tool not found') &&
+          (error.message.includes('Tool not found') ||
+            error.message.includes('Session ID not found')) &&
           error.message.includes('404');
 
-        if (is404ToolNotFound && attempt < 3) {
+        if (is404Error && attempt < 3) {
           console.log(`Retrying tool confirmation in 500ms (attempt ${attempt + 1}/3)`);
           // Small delay to let any server-side initialization complete
           await new Promise((resolve) => setTimeout(resolve, 500));
