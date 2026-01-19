@@ -4,7 +4,8 @@ import { CommandPalette } from '../CommandPalette';
 
 // Mock UI command components
 jest.mock('../ui/command', () => ({
-  CommandDialog: ({ children, open }: any) => open ? <div data-testid="command-dialog">{children}</div> : null,
+  CommandDialog: ({ children, open }: any) =>
+    open ? <div data-testid="command-dialog">{children}</div> : null,
   CommandInput: ({ placeholder, value, onValueChange }: any) => (
     <input
       data-testid="command-input"
@@ -22,11 +23,7 @@ jest.mock('../ui/command', () => ({
     </div>
   ),
   CommandItem: ({ children, onSelect, value }: any) => (
-    <div
-      data-testid="command-item"
-      data-value={value}
-      onClick={() => onSelect?.()}
-    >
+    <div data-testid="command-item" data-value={value} onClick={() => onSelect?.()}>
       {children}
     </div>
   ),

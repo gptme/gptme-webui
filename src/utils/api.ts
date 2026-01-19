@@ -639,7 +639,7 @@ export class ApiClient {
         workspace: options?.workspace || '.',
       },
     });
-    
+
     // Auto-trigger generation now that the conversation is ready
     await this.step(conversationId, options?.model, options?.stream);
 

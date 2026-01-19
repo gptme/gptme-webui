@@ -1,4 +1,11 @@
-import { ChevronDown, ChevronRight, UserRoundPlusIcon, PenSquare, Plus, Filter } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  UserRoundPlusIcon,
+  PenSquare,
+  Plus,
+  Filter,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConversationList } from './ConversationList';
 import { AgentsList } from './AgentsList';
@@ -138,7 +145,7 @@ export const UnifiedSidebar: FC<Props> = ({
     // Filter by target type
     let filtered = tasks;
     if (!selectedTargetTypes.has('all')) {
-      filtered = tasks.filter(task => selectedTargetTypes.has(task.target_type));
+      filtered = tasks.filter((task) => selectedTargetTypes.has(task.target_type));
     }
 
     // Sort by status
@@ -180,10 +187,10 @@ export const UnifiedSidebar: FC<Props> = ({
           <div className="flex items-center gap-2 bg-background p-2">
             <span className="ml-1 font-medium">Tasks</span>
             <div className="flex-1" />
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className="h-4 w-4" />
@@ -225,7 +232,11 @@ export const UnifiedSidebar: FC<Props> = ({
                         }
                       }}
                     >
-                      {type === 'all' ? 'All' : type === 'pr' ? 'PR' : type.charAt(0).toUpperCase() + type.slice(1)}
+                      {type === 'all'
+                        ? 'All'
+                        : type === 'pr'
+                          ? 'PR'
+                          : type.charAt(0).toUpperCase() + type.slice(1)}
                     </Button>
                   );
                 })}

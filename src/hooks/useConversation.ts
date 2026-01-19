@@ -19,6 +19,7 @@ import {
 } from '@/stores/conversations';
 import { playChime } from '@/utils/audio';
 import { notifyGenerationComplete, notifyToolConfirmation } from '@/utils/notifications';
+import { ApiClientError } from '@/utils/api';
 
 const MAX_CONNECTED_CONVERSATIONS = 3;
 
@@ -384,11 +385,12 @@ export function useConversation(conversationId: string) {
 
         // Check if it's a 404 error (either "Tool not found" or "Session ID not found")
         // Session ID may not be available yet during initial SSE connection
+        // ApiClientError has status property, not in message string
         const is404Error =
-          error instanceof Error &&
+          ApiClientError.isApiError(error) &&
+          error.status === 404 &&
           (error.message.includes('Tool not found') ||
-            error.message.includes('Session ID not found')) &&
-          error.message.includes('404');
+            error.message.includes('Session ID not found'));
 
         if (is404Error && attempt < 3) {
           console.log(`Retrying tool confirmation in 500ms (attempt ${attempt + 1}/3)`);
