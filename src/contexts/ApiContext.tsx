@@ -1,10 +1,14 @@
 import { createApiClient } from '@/utils/api';
 import type { ApiClient } from '@/utils/api';
-import { getConnectionConfigFromSources, type ConnectionConfig } from '@/utils/connectionConfig';
+import {
+  getConnectionConfigFromSources,
+  processConnectionFromHash,
+  type ConnectionConfig,
+} from '@/utils/connectionConfig';
 import { type Observable, observable } from '@legendapp/state';
 import { use$, useObserveEffect } from '@legendapp/state/react';
 import type { QueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import { isTauriEnvironment } from '@/utils/tauri';
@@ -14,6 +18,7 @@ interface ApiContextType {
   isConnecting$: Observable<boolean>;
   isConnected$: Observable<boolean>;
   isAutoConnecting$: Observable<boolean>;
+  isExchangingAuthCode: boolean;
   connectionConfig: ConnectionConfig;
   updateConfig: (config: Partial<ConnectionConfig>) => void;
   connect: (config?: Partial<ConnectionConfig>) => Promise<void>;
@@ -37,8 +42,21 @@ interface ApiContextType {
 
 const ApiContext = createContext<ApiContextType | null>(null);
 
+// Check if hash contains auth code (sync check)
+function hasAuthCodeInHash(hash: string): boolean {
+  const params = new URLSearchParams(hash);
+  return Boolean(params.get('code') && params.get('exchangeUrl'));
+}
+
+// Initial sync config (may be incomplete if auth code present)
+const initialHash = window.location.hash.substring(1);
+const needsAuthCodeExchange = hasAuthCodeInHash(initialHash);
+
 const connectionConfig$ = observable(
-  getConnectionConfigFromSources(window.location.hash.substring(1))
+  // If auth code is present, start with default config - it will be updated after exchange
+  needsAuthCodeExchange
+    ? getConnectionConfigFromSources() // Get from storage/defaults, not hash
+    : getConnectionConfigFromSources(initialHash)
 );
 
 let api = createApiClient(
@@ -88,6 +106,8 @@ export function ApiProvider({
   children: ReactNode;
   queryClient: QueryClient;
 }) {
+  const [isExchangingAuthCode, setIsExchangingAuthCode] = useState(needsAuthCodeExchange);
+
   // Connect to API
   const connect = useCallback(
     async (config?: Partial<ConnectionConfig>) => {
@@ -227,8 +247,49 @@ export function ApiProvider({
     [queryClient]
   );
 
-  // Attempt initial connection
+  // Handle auth code exchange on mount
   useEffect(() => {
+    const handleAuthCodeExchange = async () => {
+      if (!needsAuthCodeExchange) {
+        return;
+      }
+
+      console.log('[ApiContext] Auth code detected, starting exchange...');
+      setIsExchangingAuthCode(true);
+
+      try {
+        const config = await processConnectionFromHash(initialHash);
+        console.log('[ApiContext] Auth code exchange successful, updating config');
+
+        // Update the config with exchanged values
+        updateConfig(config);
+
+        // Connect with the new config
+        await connect(config);
+      } catch (error) {
+        console.error('[ApiContext] Auth code exchange failed:', error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to authenticate. The link may have expired.';
+        toast.error(message);
+      } finally {
+        setIsExchangingAuthCode(false);
+      }
+    };
+
+    void handleAuthCodeExchange();
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Attempt initial connection (skip if auth code exchange is happening)
+  useEffect(() => {
+    if (needsAuthCodeExchange) {
+      // Auth code exchange will handle connection
+      return;
+    }
+
     const attemptInitialConnection = async () => {
       console.log('[ApiContext] Attempting initial connection');
 
@@ -265,6 +326,7 @@ export function ApiProvider({
         isConnecting$,
         isConnected$: api.isConnected$,
         isAutoConnecting$,
+        isExchangingAuthCode,
         connectionConfig,
         updateConfig,
         connect,

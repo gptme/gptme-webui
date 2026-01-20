@@ -6,10 +6,55 @@ export interface ConnectionConfig {
   useAuthToken: boolean;
 }
 
+export interface AuthCodeExchangeResult {
+  userToken: string;
+  instanceUrl: string;
+  instanceId: string;
+}
+
+/**
+ * Exchange an auth code for a user token via the fleet-operator.
+ * This implements the secure auth code flow where tokens are never exposed in URLs.
+ */
+export async function exchangeAuthCode(
+  code: string,
+  exchangeUrl: string
+): Promise<AuthCodeExchangeResult> {
+  const response = await fetch(exchangeUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.hint || error.error || `Auth code exchange failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Check if URL hash contains auth code flow parameters.
+ * Returns the code and exchange URL if present.
+ */
+function getAuthCodeParams(hash?: string): { code: string; exchangeUrl: string } | null {
+  const params = new URLSearchParams(hash || '');
+  const code = params.get('code');
+  const exchangeUrl = params.get('exchangeUrl');
+
+  if (code && exchangeUrl) {
+    return { code, exchangeUrl };
+  }
+  return null;
+}
+
 export function getConnectionConfigFromSources(hash?: string): ConnectionConfig {
   const params = new URLSearchParams(hash || '');
 
-  // Get values from fragment
+  // Get values from fragment (legacy direct token flow)
   const fragmentBaseUrl = params.get('baseUrl');
   const fragmentUserToken = params.get('userToken');
 
@@ -35,6 +80,50 @@ export function getConnectionConfigFromSources(hash?: string): ConnectionConfig 
     authToken: fragmentUserToken || storedUserToken || null,
     useAuthToken: Boolean(fragmentUserToken || storedUserToken),
   };
+}
+
+/**
+ * Process URL hash for connection configuration.
+ * Handles both legacy direct token flow and new auth code exchange flow.
+ *
+ * @returns ConnectionConfig after processing (may involve async exchange)
+ */
+export async function processConnectionFromHash(hash?: string): Promise<ConnectionConfig> {
+  const authCodeParams = getAuthCodeParams(hash);
+
+  if (authCodeParams) {
+    // Auth code flow: exchange code for token
+    console.log('[ConnectionConfig] Auth code flow detected, exchanging code...');
+
+    try {
+      const result = await exchangeAuthCode(authCodeParams.code, authCodeParams.exchangeUrl);
+
+      // Save exchanged values to localStorage
+      localStorage.setItem('gptme_baseUrl', result.instanceUrl);
+      localStorage.setItem('gptme_userToken', result.userToken);
+
+      // Clean fragment from URL
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+
+      console.log('[ConnectionConfig] Auth code exchanged successfully');
+
+      return {
+        baseUrl: result.instanceUrl,
+        authToken: result.userToken,
+        useAuthToken: true,
+      };
+    } catch (error) {
+      console.error('[ConnectionConfig] Auth code exchange failed:', error);
+      // Fall back to stored/default config on exchange failure
+      // The user will see an error and can try again
+      throw error;
+    }
+  }
+
+  // Legacy flow: direct token in hash or from storage
+  return getConnectionConfigFromSources(hash);
 }
 
 /**
