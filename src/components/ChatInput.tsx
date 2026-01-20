@@ -17,6 +17,8 @@ import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { WorkspaceSelector } from '@/components/WorkspaceSelector';
 import type { WorkspaceProject, Agent } from '@/utils/workspaceUtils';
 import { useModels } from '@/hooks/useModels';
+import { useFileAutocomplete } from '@/hooks/useFileAutocomplete';
+import { FileAutocomplete } from '@/components/FileAutocomplete';
 
 export interface ChatOptions {
   model?: string;
@@ -282,6 +284,12 @@ export const ChatInput: FC<Props> = ({
   // Get available workspaces using the reusable hook
   const { workspaces: availableWorkspaces, addCustomWorkspace } = useWorkspaces(false); // Don't fetch, just subscribe to cache changes
 
+  // File autocomplete for @ mentions
+  const fileAutocomplete = useFileAutocomplete({
+    conversationId,
+    enabled: isConnected && !isReadOnly,
+  });
+
   const message = value !== undefined ? value : internalMessage;
   const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
 
@@ -353,12 +361,31 @@ export const ChatInput: FC<Props> = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    // Handle file autocomplete keyboard navigation first
+    if (fileAutocomplete.state.isOpen) {
+      const handled = fileAutocomplete.handleKeyDown(e);
+      if (handled) {
+        // If Tab or Enter was pressed with a selection, apply it
+        if ((e.key === 'Tab' || e.key === 'Enter') && fileAutocomplete.state.files[fileAutocomplete.state.selectedIndex]) {
+          const newValue = fileAutocomplete.selectFile(fileAutocomplete.state.files[fileAutocomplete.state.selectedIndex]);
+          setMessage(newValue);
+        }
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
+
+      // If autocomplete is open, close it first
+      if (fileAutocomplete.state.isOpen) {
+        fileAutocomplete.close();
+        return;
+      }
 
       // If generating, interrupt
       if (isGenerating && onInterrupt) {
@@ -372,10 +399,14 @@ export const ChatInput: FC<Props> = ({
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value);
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart || 0;
+    setMessage(newValue);
     // Auto-adjust height
     e.target.style.height = 'auto';
     e.target.style.height = `${Math.min(e.target.scrollHeight, 400)}px`;
+    // Update file autocomplete
+    fileAutocomplete.handleInputChange(newValue, cursorPos);
   };
 
   return (
@@ -385,6 +416,18 @@ export const ChatInput: FC<Props> = ({
           <Computed>
             {() => (
               <div className="relative flex flex-1">
+                {/* File autocomplete dropdown */}
+                <FileAutocomplete
+                  files={fileAutocomplete.state.files}
+                  selectedIndex={fileAutocomplete.state.selectedIndex}
+                  onSelect={(file) => {
+                    const newValue = fileAutocomplete.selectFile(file);
+                    setMessage(newValue);
+                  }}
+                  onHover={fileAutocomplete.setSelectedIndex}
+                  isOpen={fileAutocomplete.state.isOpen}
+                  query={fileAutocomplete.state.query}
+                />
                 <Textarea
                   ref={textareaRef}
                   value={message}
