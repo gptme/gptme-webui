@@ -291,10 +291,6 @@ export const ChatInput: FC<Props> = ({
   const autoFocus = use$(autoFocus$);
   const conversation = conversationId ? use$(conversations$.get(conversationId)) : undefined;
   const isGenerating = conversation?.isGenerating || !!conversation?.executingTool;
-  // Note: hasSession$ prop kept for backwards compatibility but no longer used for disabling input
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _hasSession = use$(hasSession$);
-
   const placeholder = isReadOnly
     ? 'This is a demo conversation (read-only)'
     : !isConnected
