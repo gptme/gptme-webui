@@ -88,11 +88,17 @@ const updateConfig = (newConfig: Partial<ConnectionConfig>) => {
     const updated = { ...prev, ...newConfig };
 
     // Update localStorage
-    localStorage.setItem('gptme_baseUrl', updated.baseUrl);
-    if (updated.authToken && updated.useAuthToken) {
-      localStorage.setItem('gptme_userToken', updated.authToken);
-    } else {
-      localStorage.removeItem('gptme_userToken');
+    // Wrap in try/catch for private browsing mode or disabled storage
+    try {
+      localStorage.setItem('gptme_baseUrl', updated.baseUrl);
+      if (updated.authToken && updated.useAuthToken) {
+        localStorage.setItem('gptme_userToken', updated.authToken);
+      } else {
+        localStorage.removeItem('gptme_userToken');
+      }
+    } catch {
+      // localStorage unavailable (private browsing, storage disabled, etc.)
+      console.warn('[ApiContext] localStorage unavailable, config will not persist');
     }
 
     return updated;
@@ -310,6 +316,13 @@ export function ApiProvider({
 
     void attemptInitialConnection();
   }, [connect, autoConnect]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAutoConnect();
+    };
+  }, []);
 
   // Reconnect on config change
   useObserveEffect(connectionConfig$, async ({ value }) => {

@@ -59,11 +59,17 @@ export function getConnectionConfigFromSources(hash?: string): ConnectionConfig 
   const fragmentUserToken = params.get('userToken');
 
   // Save fragment values to localStorage if present
-  if (fragmentBaseUrl) {
-    localStorage.setItem('gptme_baseUrl', fragmentBaseUrl);
-  }
-  if (fragmentUserToken) {
-    localStorage.setItem('gptme_userToken', fragmentUserToken);
+  // Wrap in try/catch for private browsing mode or disabled storage
+  try {
+    if (fragmentBaseUrl) {
+      localStorage.setItem('gptme_baseUrl', fragmentBaseUrl);
+    }
+    if (fragmentUserToken) {
+      localStorage.setItem('gptme_userToken', fragmentUserToken);
+    }
+  } catch {
+    // localStorage unavailable (private browsing, storage disabled, etc.)
+    console.warn('[ConnectionConfig] localStorage unavailable, config will not persist');
   }
 
   // Clean fragment from URL if parameters were found
@@ -71,9 +77,15 @@ export function getConnectionConfigFromSources(hash?: string): ConnectionConfig 
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
-  // Get stored values
-  const storedBaseUrl = localStorage.getItem('gptme_baseUrl');
-  const storedUserToken = localStorage.getItem('gptme_userToken');
+  // Get stored values with fallback for unavailable localStorage
+  let storedBaseUrl: string | null = null;
+  let storedUserToken: string | null = null;
+  try {
+    storedBaseUrl = localStorage.getItem('gptme_baseUrl');
+    storedUserToken = localStorage.getItem('gptme_userToken');
+  } catch {
+    // localStorage unavailable
+  }
 
   return {
     baseUrl: fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || DEFAULT_API_URL,
@@ -99,8 +111,14 @@ export async function processConnectionFromHash(hash?: string): Promise<Connecti
       const result = await exchangeAuthCode(authCodeParams.code, authCodeParams.exchangeUrl);
 
       // Save exchanged values to localStorage
-      localStorage.setItem('gptme_baseUrl', result.instanceUrl);
-      localStorage.setItem('gptme_userToken', result.userToken);
+      // Wrap in try/catch for private browsing mode or disabled storage
+      try {
+        localStorage.setItem('gptme_baseUrl', result.instanceUrl);
+        localStorage.setItem('gptme_userToken', result.userToken);
+      } catch {
+        // localStorage unavailable (private browsing, storage disabled, etc.)
+        console.warn('[ConnectionConfig] localStorage unavailable, config will not persist');
+      }
 
       // Clean fragment from URL
       if (typeof window !== 'undefined') {
