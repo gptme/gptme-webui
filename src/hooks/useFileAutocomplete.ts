@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useWorkspaceApi } from '@/utils/workspaceApi';
 import type { FileType } from '@/types/workspace';
 
@@ -91,7 +91,7 @@ export function useFileAutocomplete({
   const handleInputChange = useCallback(
     async (value: string, cursorPos: number) => {
       currentValue.current = value;
-      
+
       if (!enabled || !conversationId) {
         setState(prev => ({ ...prev, isOpen: false }));
         return;
@@ -114,7 +114,7 @@ export function useFileAutocomplete({
 
       // Fetch files and filter by query
       const files = await flattenFiles();
-      const filtered = files.filter(f => 
+      const filtered = files.filter(f =>
         f.name.toLowerCase().includes(trigger.query.toLowerCase()) ||
         f.path.toLowerCase().includes(trigger.query.toLowerCase())
       );
@@ -148,8 +148,8 @@ export function useFileAutocomplete({
           e.preventDefault();
           setState(prev => ({
             ...prev,
-            selectedIndex: prev.selectedIndex === 0 
-              ? prev.files.length - 1 
+            selectedIndex: prev.selectedIndex === 0
+              ? prev.files.length - 1
               : prev.selectedIndex - 1,
           }));
           return true;
@@ -179,7 +179,7 @@ export function useFileAutocomplete({
     (file: FileType): string => {
       const value = currentValue.current;
       const trigger = findTrigger(value, state.cursorPosition);
-      
+
       if (!trigger) return value;
 
       // Replace @query with @path
@@ -188,7 +188,7 @@ export function useFileAutocomplete({
       const newValue = `${before}@${file.path}${after}`;
 
       setState(prev => ({ ...prev, isOpen: false, query: '', files: [] }));
-      
+
       return newValue;
     },
     [findTrigger, state.cursorPosition]
