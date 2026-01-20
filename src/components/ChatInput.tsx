@@ -221,8 +221,26 @@ export const ChatInput: FC<Props> = ({
   const conversation$ = conversationId ? conversations$.get(conversationId) : null;
   const conversationModel = conversation$?.chatConfig?.get()?.chat?.model;
 
-  const [internalMessage, setInternalMessage] = useState('');
+  // Initialize message from localStorage for persistence across page reloads
+  const storageKey = conversationId ? `gptme-draft-${conversationId}` : 'gptme-draft-new';
+  const [internalMessage, setInternalMessage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(storageKey) || '';
+    }
+    return '';
+  });
   const [streamingEnabled, setStreamingEnabled] = useState(true);
+
+  // Persist message to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (internalMessage) {
+        localStorage.setItem(storageKey, internalMessage);
+      } else {
+        localStorage.removeItem(storageKey);
+      }
+    }
+  }, [internalMessage, storageKey]);
 
   // Track if user has explicitly selected a model (temporary override)
   const [hasExplicitModelSelection, setHasExplicitModelSelection] = useState(false);
@@ -273,17 +291,19 @@ export const ChatInput: FC<Props> = ({
   const autoFocus = use$(autoFocus$);
   const conversation = conversationId ? use$(conversations$.get(conversationId)) : undefined;
   const isGenerating = conversation?.isGenerating || !!conversation?.executingTool;
-  const hasSession = use$(hasSession$);
+  // Note: hasSession$ prop kept for backwards compatibility but no longer used for disabling input
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _hasSession = use$(hasSession$);
 
   const placeholder = isReadOnly
     ? 'This is a demo conversation (read-only)'
     : !isConnected
       ? 'Connect to gptme to send messages'
-      : !hasSession
-        ? 'Waiting for chat session to be established...'
-        : "What's on your mind...";
+      : "What's on your mind...";
 
-  const isDisabled = isReadOnly || !isConnected || !hasSession;
+  // Don't disable input while waiting for session - let users type
+  // Session will be established by the time they finish typing
+  const isDisabled = isReadOnly || !isConnected;
 
   // Focus the textarea when autoFocus is true and component is interactive
   useEffect(() => {
