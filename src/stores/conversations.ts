@@ -30,6 +30,9 @@ export interface ConversationState {
   showInitialSystem: boolean;
   // The chat config
   chatConfig: ChatConfig | null;
+  // Whether this conversation needs initial step after connecting
+  // Used to fix race condition where step() was called before event subscription
+  needsInitialStep: boolean;
 }
 
 // Central store for all conversations
@@ -50,6 +53,7 @@ export function updateConversation(id: string, update: Partial<ConversationState
       executingTool: null,
       showInitialSystem: false,
       chatConfig: null,
+      needsInitialStep: false,
     });
   }
   mergeIntoObservable(conversations$.get(id), update);
@@ -83,7 +87,7 @@ export function setExecutingTool(id: string, toolId: string | null, tooluse: Too
 }
 
 // Initialize a new conversation in the store
-export function initConversation(id: string, data?: ConversationResponse) {
+export function initConversation(id: string, data?: ConversationResponse, options?: { needsInitialStep?: boolean }) {
   const initial: ConversationState = {
     data: data || {
       id,
@@ -99,8 +103,13 @@ export function initConversation(id: string, data?: ConversationResponse) {
     executingTool: null,
     showInitialSystem: false,
     chatConfig: null,
+    needsInitialStep: options?.needsInitialStep ?? false,
   };
   conversations$.set(id, initial);
+}
+
+export function setNeedsInitialStep(id: string, needsInitialStep: boolean) {
+  updateConversation(id, { needsInitialStep });
 }
 
 // Update conversation data in the store

@@ -16,6 +16,7 @@ import {
   initConversation,
   selectedConversation$,
   updateConversationName,
+  setNeedsInitialStep,
 } from '@/stores/conversations';
 import { playChime } from '@/utils/audio';
 import { notifyGenerationComplete, notifyToolConfirmation } from '@/utils/notifications';
@@ -292,6 +293,18 @@ export function useConversation(conversationId: string) {
           },
           onConnected: () => {
             setConnected(conversationId, true);
+            
+            // Check if this conversation needs initial step (was created from WelcomeView)
+            // This fixes the race condition where step() was called before subscription
+            const needsStep = conversation$?.needsInitialStep?.get();
+            if (needsStep) {
+              console.log('[useConversation] Triggering initial step after subscription');
+              setNeedsInitialStep(conversationId, false);
+              // Use the api from context to trigger step
+              api.step(conversationId).catch((error) => {
+                console.error('[useConversation] Error triggering initial step:', error);
+              });
+            }
           },
         });
       } catch (error) {

@@ -622,6 +622,9 @@ export class ApiClient {
     };
 
     // Create placeholder conversation in store immediately
+    // Set needsInitialStep flag so useConversation triggers step() after subscribing
+    // This fixes the race condition where tokens were missed because step() was called
+    // before the chat page mounted and subscribed to events
     initConversation(conversationId, {
       id: conversationId,
       name: 'New conversation',
@@ -629,9 +632,9 @@ export class ApiClient {
       logfile: conversationId,
       branches: {},
       workspace: options?.workspace || '.',
-    });
+    }, { needsInitialStep: true });
 
-    // Await server-side creation and auto-step to propagate errors properly
+    // Await server-side creation to propagate errors properly
     await this.createConversation(conversationId, [message], {
       chat: {
         model: options?.model,
@@ -640,10 +643,11 @@ export class ApiClient {
       },
     });
 
-    // Auto-trigger generation now that the conversation is ready
-    await this.step(conversationId, options?.model, options?.stream);
+    // NOTE: step() is NOT called here anymore!
+    // The useConversation hook will call step() after subscribing to events,
+    // which fixes the race condition where first tokens were missed.
 
-    // Return ID only after operations complete successfully
+    // Return ID immediately after server creation
     return conversationId;
   }
 
