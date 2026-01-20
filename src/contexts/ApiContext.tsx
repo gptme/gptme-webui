@@ -11,8 +11,6 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
-import { isTauriEnvironment } from '@/utils/tauri';
-
 interface ApiContextType {
   api: ApiClient;
   isConnecting$: Observable<boolean>;
@@ -298,24 +296,13 @@ export function ApiProvider({
 
     const attemptInitialConnection = async () => {
       console.log('[ApiContext] Attempting initial connection');
-
-      // In Tauri environment, use autoconnect for better UX
-      if (isTauriEnvironment()) {
-        console.log('[ApiContext] Tauri environment detected, starting auto-connect');
-        await autoConnect(true);
-      } else {
-        // In web environment, try once and let user manually connect if needed
-        try {
-          await connect();
-        } catch (error) {
-          console.error('Initial connection attempt failed:', error);
-          // Don't show toast for initial connection failure in web environment
-        }
-      }
+      // Use autoConnect for all environments - enables launching webui before server
+      // autoConnect will retry with exponential backoff until successful or max attempts reached
+      await autoConnect(true);
     };
 
     void attemptInitialConnection();
-  }, [connect, autoConnect]);
+  }, [autoConnect]);
 
   // Cleanup on unmount
   useEffect(() => {
