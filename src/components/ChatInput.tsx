@@ -230,13 +230,12 @@ export const ChatInput: FC<Props> = ({
   const [streamingEnabled, setStreamingEnabled] = useState(true);
 
   // Persist message to localStorage when it changes
+  // Note: We only save non-empty messages, we don't clear on empty.
+  // This ensures drafts persist until a new message is typed, preventing
+  // data loss if send fails (the draft would already be cleared otherwise).
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (internalMessage) {
-        localStorage.setItem(storageKey, internalMessage);
-      } else {
-        localStorage.removeItem(storageKey);
-      }
+    if (typeof window !== 'undefined' && internalMessage) {
+      localStorage.setItem(storageKey, internalMessage);
     }
   }, [internalMessage, storageKey]);
 
