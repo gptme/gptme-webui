@@ -249,7 +249,6 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
             onSend={handleSendMessage}
             onInterrupt={interruptGeneration}
             isReadOnly={isReadOnly}
-            hasSession$={hasSession$}
             defaultModel={defaultModel || undefined}
             autoFocus$={shouldFocus$}
           />

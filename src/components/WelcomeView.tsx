@@ -20,7 +20,6 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
 
   // Create observables that ChatInput expects
   const autoFocus$ = observable(true);
-  const hasSession$ = observable(true); // Always true for welcome view
 
   const handleSend = async (message: string, options?: ChatOptions) => {
     if (!message.trim() || !isConnected) return;
@@ -97,7 +96,6 @@ export const WelcomeView = ({ onToggleHistory }: { onToggleHistory: () => void }
         <ChatInput
           onSend={handleSend}
           autoFocus$={autoFocus$}
-          hasSession$={hasSession$}
           value={inputValue}
           onChange={setInputValue}
         />

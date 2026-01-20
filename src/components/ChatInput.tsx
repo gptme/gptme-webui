@@ -31,7 +31,6 @@ interface Props {
   isReadOnly?: boolean;
   defaultModel?: string;
   autoFocus$: Observable<boolean>;
-  hasSession$: Observable<boolean>;
   value?: string;
   onChange?: (value: string) => void;
 }
@@ -206,7 +205,6 @@ export const ChatInput: FC<Props> = ({
   isReadOnly,
   defaultModel = '',
   autoFocus$,
-  hasSession$,
   value,
   onChange,
 }) => {
