@@ -37,26 +37,36 @@ jobs:
     - name: Build
       run: npm run build
 
+    # E2E tests require API key (not available on fork PRs due to GitHub security)
     - name: Start gptme-server in background
+      id: start-server
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
-        # pipx install gptme[server]
+        if [ -z "$ANTHROPIC_API_KEY" ]; then
+          echo "⚠️ No API key available (fork PR), skipping e2e tests"
+          echo "server_started=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
         pipx install "gptme[server] @ git+https://github.com/gptme/gptme.git"
-        gptme-server --cors-origin="http://localhost:5701" &  # run in background
-        sleep 3  # sleep so we get initial logs
+        gptme-server --cors-origin="http://localhost:5701" &
+        sleep 3
+        echo "server_started=true" >> $GITHUB_OUTPUT
 
     - name: Install Playwright browsers
+      if: steps.start-server.outputs.server_started == 'true'
       run: npx playwright install --with-deps chromium
 
     - name: Check that server is up
+      if: steps.start-server.outputs.server_started == 'true'
       run: curl --retry 2 --retry-delay 5 --retry-connrefused -sSfL http://localhost:5700/api
 
     - name: Run e2e tests
+      if: steps.start-server.outputs.server_started == 'true'
       run: npm run test:e2e
 
     - name: Upload test results
-      if: always()
+      if: always() && steps.start-server.outputs.server_started == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: playwright-report
