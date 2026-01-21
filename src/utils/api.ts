@@ -11,7 +11,6 @@ import { getApiBaseUrl } from '@/utils/connectionConfig';
 import { type Observable } from '@legendapp/state';
 import { observable } from '@legendapp/state';
 import { initConversation } from '@/stores/conversations';
-import { toast } from 'sonner';
 
 // Add DOM types
 type RequestInit = globalThis.RequestInit;
