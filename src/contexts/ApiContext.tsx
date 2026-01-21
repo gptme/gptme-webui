@@ -41,9 +41,10 @@ interface ApiContextType {
 const ApiContext = createContext<ApiContextType | null>(null);
 
 // Check if hash contains auth code (sync check)
+// Note: exchangeUrl is derived from configuration, only code is needed in URL
 function hasAuthCodeInHash(hash: string): boolean {
   const params = new URLSearchParams(hash);
-  return Boolean(params.get('code') && params.get('exchangeUrl'));
+  return Boolean(params.get('code'));
 }
 
 // Initial sync config (may be incomplete if auth code present)

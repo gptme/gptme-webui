@@ -1,5 +1,9 @@
 const DEFAULT_API_URL = 'http://127.0.0.1:5700';
 
+// Fleet operator URL for auth code exchange
+// Configure via VITE_FLEET_OPERATOR_URL environment variable
+const FLEET_OPERATOR_URL = import.meta.env.VITE_FLEET_OPERATOR_URL || 'https://fleet.gptme.ai';
+
 export interface ConnectionConfig {
   baseUrl: string;
   authToken: string | null;
@@ -38,17 +42,24 @@ export async function exchangeAuthCode(
 
 /**
  * Check if URL hash contains auth code flow parameters.
- * Returns the code and exchange URL if present.
+ * Returns the code if present. Exchange URL is derived from configuration.
  */
-function getAuthCodeParams(hash?: string): { code: string; exchangeUrl: string } | null {
+function getAuthCodeParams(hash?: string): { code: string } | null {
   const params = new URLSearchParams(hash || '');
   const code = params.get('code');
-  const exchangeUrl = params.get('exchangeUrl');
 
-  if (code && exchangeUrl) {
-    return { code, exchangeUrl };
+  if (code) {
+    return { code };
   }
   return null;
+}
+
+/**
+ * Get the exchange URL for auth code flow.
+ * Derives from VITE_FLEET_OPERATOR_URL environment variable.
+ */
+function getExchangeUrl(): string {
+  return `${FLEET_OPERATOR_URL}/api/v1/operator/auth/exchange`;
 }
 
 export function getConnectionConfigFromSources(hash?: string): ConnectionConfig {
@@ -108,7 +119,8 @@ export async function processConnectionFromHash(hash?: string): Promise<Connecti
     console.log('[ConnectionConfig] Auth code flow detected, exchanging code...');
 
     try {
-      const result = await exchangeAuthCode(authCodeParams.code, authCodeParams.exchangeUrl);
+      const exchangeUrl = getExchangeUrl();
+      const result = await exchangeAuthCode(authCodeParams.code, exchangeUrl);
 
       // Save exchanged values to localStorage
       // Wrap in try/catch for private browsing mode or disabled storage
