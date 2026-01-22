@@ -1,4 +1,4 @@
-import { Send, Loader2, Settings, X, Bot, Folder } from 'lucide-react';
+import { Send, Loader2, Settings, X, Bot, Folder, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
@@ -132,29 +132,44 @@ const OptionsButton: FC<{ isDisabled: boolean; children: React.ReactNode }> = ({
   </Popover>
 );
 
-const SubmitButton: FC<{ isGenerating: boolean; isDisabled: boolean }> = ({
+const SubmitButton: FC<{ isGenerating: boolean; isDisabled: boolean; hasText: boolean }> = ({
   isGenerating,
   isDisabled,
-}) => (
-  <Button
-    type="submit"
-    className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors ${
-      isGenerating
-        ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
-        : 'h-8 w-8 bg-green-600 text-green-100'
-    }`}
-    disabled={isDisabled}
-  >
-    {isGenerating ? (
-      <div className="flex items-center gap-2">
-        <span>Stop</span>
-        <Loader2 className="h-3 w-3 animate-spin" />
-      </div>
-    ) : (
-      <Send className="h-3 w-3" />
-    )}
-  </Button>
-);
+  hasText,
+}) => {
+  // When generating: show "Queue" if there's text, "Stop" if not
+  // When not generating: show "Send"
+  const showQueue = isGenerating && hasText;
+  const showStop = isGenerating && !hasText;
+
+  return (
+    <Button
+      type="submit"
+      className={`absolute bottom-2 right-2 rounded-full p-1 transition-colors ${
+        showStop
+          ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
+          : showQueue
+            ? 'bg-blue-600 p-3 hover:bg-blue-700 text-white'
+            : 'h-8 w-8 bg-green-600 text-green-100'
+      }`}
+      disabled={isDisabled}
+    >
+      {showStop ? (
+        <div className="flex items-center gap-2">
+          <span>Stop</span>
+          <Loader2 className="h-3 w-3 animate-spin" />
+        </div>
+      ) : showQueue ? (
+        <div className="flex items-center gap-2">
+          <Clock className="h-3 w-3" />
+          <span>Queue</span>
+        </div>
+      ) : (
+        <Send className="h-3 w-3" />
+      )}
+    </Button>
+  );
+};
 
 const WorkspaceBadge: FC<{ workspace: string; onRemove: () => void }> = ({
   workspace,
@@ -199,6 +214,31 @@ const AgentBadge: FC<{ agent: Agent; onRemove: () => void }> = ({ agent, onRemov
     </Button>
   </Badge>
 );
+
+const QueuedMessageBadge: FC<{ message: string; onClear: () => void }> = ({ message, onClear }) => {
+  // Truncate long messages for display
+  const displayMessage = message.length > 30 ? message.slice(0, 30) + '...' : message;
+
+  return (
+    <Badge variant="outline" className="flex items-center gap-1.5 pr-1 border-blue-500 bg-blue-50 dark:bg-blue-950">
+      <div className="flex items-center gap-1.5">
+        <Clock className="h-3 w-3 text-blue-600" />
+        <span className="text-xs text-blue-700 dark:text-blue-300" title={message}>
+          Queued: {displayMessage}
+        </span>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onClear}
+        className="h-4 w-4 p-0 hover:bg-destructive/20"
+        title="Clear queued message"
+      >
+        <X className="h-2.5 w-2.5" />
+      </Button>
+    </Badge>
+  );
+};
 
 export const ChatInput: FC<Props> = ({
   conversationId,
@@ -293,6 +333,9 @@ export const ChatInput: FC<Props> = ({
   const message = value !== undefined ? value : internalMessage;
   const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
 
+  // Queued message state - stores message to send when generation completes
+  const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
+
   const autoFocus = use$(autoFocus$);
   const conversation = conversationId ? use$(conversations$.get(conversationId)) : undefined;
   const isGenerating = conversation?.isGenerating || !!conversation?.executingTool;
@@ -316,6 +359,24 @@ export const ChatInput: FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocus, isReadOnly, isConnected]);
 
+  // Track previous isGenerating state to detect when generation completes
+  const wasGenerating = useRef(false);
+
+  // Send queued message when generation completes
+  useEffect(() => {
+    // Detect transition from generating to not generating
+    if (wasGenerating.current && !isGenerating && queuedMessage) {
+      console.log('[ChatInput] Generation completed, sending queued message');
+      onSend(queuedMessage, {
+        model: effectiveModel === 'default' ? undefined : effectiveModel,
+        stream: streamingEnabled,
+        workspace: selectedWorkspace || undefined,
+      });
+      setQueuedMessage(null);
+    }
+    wasGenerating.current = isGenerating;
+  }, [isGenerating, queuedMessage, onSend, effectiveModel, streamingEnabled, selectedWorkspace]);
+
   // Update workspace when sidebar selection changes (only for new conversations)
   useEffect(() => {
     if (!conversationId && sidebarSelectedWorkspace) {
@@ -338,13 +399,29 @@ export const ChatInput: FC<Props> = ({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (isGenerating && onInterrupt) {
-      console.log('[ChatInput] Interrupting generation...', { isGenerating });
-      try {
-        await onInterrupt();
-        console.log('[ChatInput] Generation interrupted successfully', { isGenerating });
-      } catch (error) {
-        console.error('[ChatInput] Error interrupting generation:', error);
+    if (isGenerating) {
+      // If there's a message, queue it instead of interrupting
+      if (message.trim()) {
+        console.log('[ChatInput] Queueing message for after generation completes');
+        setQueuedMessage(message);
+        setMessage('');
+        // Clear localStorage draft since we're queueing it
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(storageKey);
+        }
+        // Reset textarea height
+        if (textareaRef.current) {
+          textareaRef.current.style.height = '';
+        }
+      } else if (onInterrupt) {
+        // No message text, so interrupt
+        console.log('[ChatInput] Interrupting generation...', { isGenerating });
+        try {
+          await onInterrupt();
+          console.log('[ChatInput] Generation interrupted successfully', { isGenerating });
+        } catch (error) {
+          console.error('[ChatInput] Error interrupting generation:', error);
+        }
       }
     } else if (message.trim()) {
       onSend(message, {
@@ -411,7 +488,13 @@ export const ChatInput: FC<Props> = ({
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-2">
+        {/* Show queued message indicator */}
+        {queuedMessage && (
+          <div className="flex items-center">
+            <QueuedMessageBadge message={queuedMessage} onClear={() => setQueuedMessage(null)} />
+          </div>
+        )}
         <div className="flex">
           <Computed>
             {() => (
@@ -484,7 +567,7 @@ export const ChatInput: FC<Props> = ({
                     )}
                 </div>
 
-                <SubmitButton isGenerating={isGenerating} isDisabled={isDisabled} />
+                <SubmitButton isGenerating={isGenerating} isDisabled={isDisabled} hasText={!!message.trim()} />
               </div>
             )}
           </Computed>
