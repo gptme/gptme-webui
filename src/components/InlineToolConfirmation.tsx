@@ -220,6 +220,10 @@ export function InlineToolConfirmation({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => onAuto(999999)}>
+                          Auto-accept all
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onAuto(5)}>
                           Auto-confirm 5x
                         </DropdownMenuItem>
