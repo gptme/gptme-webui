@@ -149,7 +149,7 @@ const SubmitButton: FC<{ isGenerating: boolean; isDisabled: boolean; hasText: bo
         showStop
           ? 'animate-[pulse_1s_ease-in-out_infinite] bg-red-600 p-3 hover:bg-red-700'
           : showQueue
-            ? 'bg-blue-600 p-3 hover:bg-blue-700 text-white'
+            ? 'bg-blue-600 p-3 text-white hover:bg-blue-700'
             : 'h-8 w-8 bg-green-600 text-green-100'
       }`}
       disabled={isDisabled}
@@ -220,7 +220,10 @@ const QueuedMessageBadge: FC<{ message: string; onClear: () => void }> = ({ mess
   const displayMessage = message.length > 30 ? message.slice(0, 30) + '...' : message;
 
   return (
-    <Badge variant="outline" className="flex items-center gap-1.5 pr-1 border-blue-500 bg-blue-50 dark:bg-blue-950">
+    <Badge
+      variant="outline"
+      className="flex items-center gap-1.5 border-blue-500 bg-blue-50 pr-1 dark:bg-blue-950"
+    >
       <div className="flex items-center gap-1.5">
         <Clock className="h-3 w-3 text-blue-600" />
         <span className="text-xs text-blue-700 dark:text-blue-300" title={message}>
@@ -333,8 +336,13 @@ export const ChatInput: FC<Props> = ({
   const message = value !== undefined ? value : internalMessage;
   const setMessage = value !== undefined ? onChange || (() => {}) : setInternalMessage;
 
-  // Queued message state - stores message to send when generation completes
-  const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
+  // Queued message state - stores message and options to send when generation completes
+  // Options are captured at queue time to prevent changes during generation from affecting the send
+  interface QueuedMessage {
+    text: string;
+    options: ChatOptions;
+  }
+  const [queuedMessage, setQueuedMessage] = useState<QueuedMessage | null>(null);
 
   const autoFocus = use$(autoFocus$);
   const conversation = conversationId ? use$(conversations$.get(conversationId)) : undefined;
@@ -367,15 +375,12 @@ export const ChatInput: FC<Props> = ({
     // Detect transition from generating to not generating
     if (wasGenerating.current && !isGenerating && queuedMessage) {
       console.log('[ChatInput] Generation completed, sending queued message');
-      onSend(queuedMessage, {
-        model: effectiveModel === 'default' ? undefined : effectiveModel,
-        stream: streamingEnabled,
-        workspace: selectedWorkspace || undefined,
-      });
+      // Use options captured at queue time, not current options
+      onSend(queuedMessage.text, queuedMessage.options);
       setQueuedMessage(null);
     }
     wasGenerating.current = isGenerating;
-  }, [isGenerating, queuedMessage, onSend, effectiveModel, streamingEnabled, selectedWorkspace]);
+  }, [isGenerating, queuedMessage, onSend]);
 
   // Update workspace when sidebar selection changes (only for new conversations)
   useEffect(() => {
@@ -403,7 +408,15 @@ export const ChatInput: FC<Props> = ({
       // If there's a message, queue it instead of interrupting
       if (message.trim()) {
         console.log('[ChatInput] Queueing message for after generation completes');
-        setQueuedMessage(message);
+        // Capture options at queue time to preserve user's intent
+        setQueuedMessage({
+          text: message,
+          options: {
+            model: effectiveModel === 'default' ? undefined : effectiveModel,
+            stream: streamingEnabled,
+            workspace: selectedWorkspace || undefined,
+          },
+        });
         setMessage('');
         // Clear localStorage draft since we're queueing it
         if (typeof window !== 'undefined') {
@@ -443,8 +456,13 @@ export const ChatInput: FC<Props> = ({
       const handled = fileAutocomplete.handleKeyDown(e);
       if (handled) {
         // If Tab or Enter was pressed with a selection, apply it
-        if ((e.key === 'Tab' || e.key === 'Enter') && fileAutocomplete.state.files[fileAutocomplete.state.selectedIndex]) {
-          const newValue = fileAutocomplete.selectFile(fileAutocomplete.state.files[fileAutocomplete.state.selectedIndex]);
+        if (
+          (e.key === 'Tab' || e.key === 'Enter') &&
+          fileAutocomplete.state.files[fileAutocomplete.state.selectedIndex]
+        ) {
+          const newValue = fileAutocomplete.selectFile(
+            fileAutocomplete.state.files[fileAutocomplete.state.selectedIndex]
+          );
           setMessage(newValue);
         }
         return;
@@ -492,7 +510,10 @@ export const ChatInput: FC<Props> = ({
         {/* Show queued message indicator */}
         {queuedMessage && (
           <div className="flex items-center">
-            <QueuedMessageBadge message={queuedMessage} onClear={() => setQueuedMessage(null)} />
+            <QueuedMessageBadge
+              message={queuedMessage.text}
+              onClear={() => setQueuedMessage(null)}
+            />
           </div>
         )}
         <div className="flex">
@@ -567,7 +588,11 @@ export const ChatInput: FC<Props> = ({
                     )}
                 </div>
 
-                <SubmitButton isGenerating={isGenerating} isDisabled={isDisabled} hasText={!!message.trim()} />
+                <SubmitButton
+                  isGenerating={isGenerating}
+                  isDisabled={isDisabled}
+                  hasText={!!message.trim()}
+                />
               </div>
             )}
           </Computed>
