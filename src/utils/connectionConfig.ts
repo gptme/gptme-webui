@@ -1,3 +1,11 @@
+import {
+  addServer,
+  setActiveServer,
+  getActiveServer,
+  updateServer,
+  serverRegistry$,
+} from '@/stores/servers';
+
 const DEFAULT_API_URL = 'http://127.0.0.1:5700';
 
 // Fleet operator URL for auth code exchange
@@ -62,6 +70,49 @@ function getExchangeUrl(): string {
   return `${FLEET_OPERATOR_URL}/api/v1/operator/auth/exchange`;
 }
 
+/**
+ * Normalize a URL for comparison (remove trailing slashes)
+ */
+function normalizeUrl(url: string): string {
+  return url.replace(/\/+$/, '');
+}
+
+/**
+ * Add or update server in registry from connection params.
+ * Returns the server ID.
+ */
+function registerServerFromParams(baseUrl: string, authToken: string | null): string {
+  const normalizedUrl = normalizeUrl(baseUrl);
+
+  // Check if server already exists
+  const registry = serverRegistry$.get();
+  const existingServer = registry.servers.find((s) => normalizeUrl(s.baseUrl) === normalizedUrl);
+
+  if (existingServer) {
+    // Update existing server's auth token if provided
+    if (authToken) {
+      updateServer(existingServer.id, {
+        authToken,
+        useAuthToken: true,
+      });
+    }
+    return existingServer.id;
+  }
+
+  // Add new server
+  const isLocal = baseUrl.includes('127.0.0.1') || baseUrl.includes('localhost');
+  const serverName = isLocal ? 'Local Server' : 'Remote Server';
+
+  const newServer = addServer({
+    name: serverName,
+    baseUrl: normalizedUrl,
+    authToken,
+    useAuthToken: Boolean(authToken),
+  });
+
+  return newServer.id;
+}
+
 export function getConnectionConfigFromSources(hash?: string): ConnectionConfig {
   const params = new URLSearchParams(hash || '');
 
@@ -69,39 +120,33 @@ export function getConnectionConfigFromSources(hash?: string): ConnectionConfig 
   const fragmentBaseUrl = params.get('baseUrl');
   const fragmentUserToken = params.get('userToken');
 
-  // Save fragment values to localStorage if present
-  // Wrap in try/catch for private browsing mode or disabled storage
-  try {
-    if (fragmentBaseUrl) {
-      localStorage.setItem('gptme_baseUrl', fragmentBaseUrl);
+  // If fragment params present, register server and set as active
+  if (fragmentBaseUrl || fragmentUserToken) {
+    const baseUrl = fragmentBaseUrl || getActiveServer()?.baseUrl || DEFAULT_API_URL;
+    const serverId = registerServerFromParams(baseUrl, fragmentUserToken);
+    setActiveServer(serverId);
+
+    // Clean fragment from URL
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-    if (fragmentUserToken) {
-      localStorage.setItem('gptme_userToken', fragmentUserToken);
-    }
-  } catch {
-    // localStorage unavailable (private browsing, storage disabled, etc.)
-    console.warn('[ConnectionConfig] localStorage unavailable, config will not persist');
   }
 
-  // Clean fragment from URL if parameters were found
-  if ((fragmentBaseUrl || fragmentUserToken) && typeof window !== 'undefined') {
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  // Return config from active server
+  const activeServer = getActiveServer();
+  if (activeServer) {
+    return {
+      baseUrl: activeServer.baseUrl,
+      authToken: activeServer.authToken,
+      useAuthToken: activeServer.useAuthToken,
+    };
   }
 
-  // Get stored values with fallback for unavailable localStorage
-  let storedBaseUrl: string | null = null;
-  let storedUserToken: string | null = null;
-  try {
-    storedBaseUrl = localStorage.getItem('gptme_baseUrl');
-    storedUserToken = localStorage.getItem('gptme_userToken');
-  } catch {
-    // localStorage unavailable
-  }
-
+  // Fallback to defaults
   return {
-    baseUrl: fragmentBaseUrl || storedBaseUrl || import.meta.env.VITE_API_URL || DEFAULT_API_URL,
-    authToken: fragmentUserToken || storedUserToken || null,
-    useAuthToken: Boolean(fragmentUserToken || storedUserToken),
+    baseUrl: import.meta.env.VITE_API_URL || DEFAULT_API_URL,
+    authToken: null,
+    useAuthToken: false,
   };
 }
 
@@ -122,15 +167,9 @@ export async function processConnectionFromHash(hash?: string): Promise<Connecti
       const exchangeUrl = getExchangeUrl();
       const result = await exchangeAuthCode(authCodeParams.code, exchangeUrl);
 
-      // Save exchanged values to localStorage
-      // Wrap in try/catch for private browsing mode or disabled storage
-      try {
-        localStorage.setItem('gptme_baseUrl', result.instanceUrl);
-        localStorage.setItem('gptme_userToken', result.userToken);
-      } catch {
-        // localStorage unavailable (private browsing, storage disabled, etc.)
-        console.warn('[ConnectionConfig] localStorage unavailable, config will not persist');
-      }
+      // Register server with exchanged credentials and set as active
+      const serverId = registerServerFromParams(result.instanceUrl, result.userToken);
+      setActiveServer(serverId);
 
       // Clean fragment from URL
       if (typeof window !== 'undefined') {
@@ -146,27 +185,46 @@ export async function processConnectionFromHash(hash?: string): Promise<Connecti
       };
     } catch (error) {
       console.error('[ConnectionConfig] Auth code exchange failed:', error);
-      // Fall back to stored/default config on exchange failure
-      // The user will see an error and can try again
-      throw error;
+      // Fall back to active server config on exchange failure
+      const activeServer = getActiveServer();
+      if (activeServer) {
+        return {
+          baseUrl: activeServer.baseUrl,
+          authToken: activeServer.authToken,
+          useAuthToken: activeServer.useAuthToken,
+        };
+      }
+
+      // Ultimate fallback
+      return {
+        baseUrl: import.meta.env.VITE_API_URL || DEFAULT_API_URL,
+        authToken: null,
+        useAuthToken: false,
+      };
     }
   }
 
-  // Legacy flow: direct token in hash or from storage
+  // No auth code, use sync path
   return getConnectionConfigFromSources(hash);
 }
 
 /**
- * Get the current API base URL from the same sources as the main API client
+ * Get the current API base URL from active server config.
+ * Used by API utilities for making requests.
  */
 export function getApiBaseUrl(): string {
-  return getConnectionConfigFromSources().baseUrl;
+  const activeServer = getActiveServer();
+  return activeServer?.baseUrl || import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 }
 
 /**
- * Get the current auth header from the same sources as the main API client
+ * Get the auth header value if authentication is enabled.
+ * Returns null if no auth token is configured or auth is disabled.
  */
 export function getAuthHeader(): string | null {
-  const config = getConnectionConfigFromSources();
-  return config.useAuthToken && config.authToken ? `Bearer ${config.authToken}` : null;
+  const activeServer = getActiveServer();
+  if (activeServer?.useAuthToken && activeServer?.authToken) {
+    return `Bearer ${activeServer.authToken}`;
+  }
+  return null;
 }
