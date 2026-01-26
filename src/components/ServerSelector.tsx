@@ -34,6 +34,7 @@ import {
   getActiveServer,
   setActiveServer,
   addServer,
+  removeServer,
   serverUrlExists,
 } from '@/stores/servers';
 import { useApi } from '@/contexts/ApiContext';
@@ -103,9 +104,13 @@ export const ServerSelector: FC = () => {
 
     setIsSubmitting(true);
 
+    // Save previous active server for rollback on error
+    const previousActiveServerId = registry.activeServerId;
+    let newServer: ReturnType<typeof addServer> | null = null;
+
     try {
       // Add the server
-      const newServer = addServer({
+      newServer = addServer({
         name: formState.name.trim(),
         baseUrl: formState.baseUrl.trim(),
         authToken: formState.useAuthToken ? formState.authToken : null,
@@ -126,6 +131,14 @@ export const ServerSelector: FC = () => {
     } catch (error) {
       console.error('Failed to add server:', error);
       toast.error('Failed to connect to the new server');
+
+      // Roll back: remove the newly added server and restore previous active
+      if (newServer) {
+        removeServer(newServer.id);
+      }
+      if (previousActiveServerId) {
+        setActiveServer(previousActiveServerId);
+      }
     } finally {
       setIsSubmitting(false);
     }

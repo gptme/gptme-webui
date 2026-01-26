@@ -180,9 +180,27 @@ export function removeServer(serverId: string): void {
 }
 
 /**
+ * Normalize URL for comparison (trim trailing slashes, lowercase)
+ */
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Remove trailing slash from pathname
+    parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+    return parsed.toString().toLowerCase();
+  } catch {
+    // If URL parsing fails, just normalize trailing slashes
+    return url.replace(/\/+$/, '').toLowerCase();
+  }
+}
+
+/**
  * Check if a server URL already exists (for duplicate prevention)
  */
 export function serverUrlExists(baseUrl: string, excludeId?: string): boolean {
   const registry = serverRegistry$.get();
-  return registry.servers.some((s) => s.baseUrl === baseUrl && s.id !== excludeId);
+  const normalizedUrl = normalizeUrl(baseUrl);
+  return registry.servers.some(
+    (s) => normalizeUrl(s.baseUrl) === normalizedUrl && s.id !== excludeId
+  );
 }
