@@ -6,7 +6,7 @@ import {
   type ConnectionConfig,
 } from '@/utils/connectionConfig';
 import { type Observable, observable } from '@legendapp/state';
-import { use$, useObserveEffect } from '@legendapp/state/react';
+import { use$ } from '@legendapp/state/react';
 import type { QueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -310,11 +310,9 @@ export function ApiProvider({
     };
   }, []);
 
-  // Reconnect on config change
-  useObserveEffect(connectionConfig$, async ({ value }) => {
-    console.log('[ApiContext] Reconnecting on config change', value);
-    await connect(value);
-  });
+  // Note: No automatic reconnection on config change.
+  // Server switching is explicitly handled by ServerSelector and ServerConfiguration
+  // components, which call connect() after updating the config.
 
   const connectionConfig = use$(connectionConfig$);
 
