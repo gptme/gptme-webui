@@ -218,10 +218,7 @@ export function ApiProvider({
             type: 'active',
           });
 
-          // Only show success toast if not the initial attempt
-          if (!isInitialAttempt) {
-            toast.success('Connected to gptme server');
-          }
+          toast.success('Connected to gptme server');
           return;
         }
       } catch (error) {
