@@ -86,19 +86,9 @@ const updateConfig = (newConfig: Partial<ConnectionConfig>) => {
   connectionConfig$.set((prev) => {
     const updated = { ...prev, ...newConfig };
 
-    // Update localStorage
-    // Wrap in try/catch for private browsing mode or disabled storage
-    try {
-      localStorage.setItem('gptme_baseUrl', updated.baseUrl);
-      if (updated.authToken && updated.useAuthToken) {
-        localStorage.setItem('gptme_userToken', updated.authToken);
-      } else {
-        localStorage.removeItem('gptme_userToken');
-      }
-    } catch {
-      // localStorage unavailable (private browsing, storage disabled, etc.)
-      console.warn('[ApiContext] localStorage unavailable, config will not persist');
-    }
+    // Note: Not persisting to legacy localStorage keys anymore
+    // Server configuration is now managed by the server registry store
+    // (see src/stores/servers.ts)
 
     return updated;
   });
