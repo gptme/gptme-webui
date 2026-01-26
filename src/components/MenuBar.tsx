@@ -1,4 +1,5 @@
 import { ConnectionButton } from './ConnectionButton';
+import { ServerSelector } from './ServerSelector';
 import { SettingsModal } from './SettingsModal';
 import { Button } from './ui/button';
 import { PanelRightClose, PanelRightOpen, User } from 'lucide-react';
@@ -29,7 +30,10 @@ export const MenuBar: FC<MenuBarProps> = ({ showRightSidebar = false }) => {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Server Selector - allows switching between configured servers */}
+          <ServerSelector />
+          {/* Connection Button - shows connection status and allows manual reconnect */}
           <ConnectionButton />
           {import.meta.env.VITE_EMBEDDED_MODE === 'true' && (
             <TooltipProvider>
