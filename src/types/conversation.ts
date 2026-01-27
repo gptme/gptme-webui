@@ -5,6 +5,7 @@ export interface Message {
   content: string;
   timestamp?: string;
   files?: string[];
+  hide?: boolean;
 }
 
 export interface StreamingMessage extends Message {
