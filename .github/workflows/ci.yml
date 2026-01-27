@@ -37,7 +37,20 @@ jobs:
     - name: Build
       run: npm run build
 
+    # E2E tests require API keys which aren't available for fork PRs
+    # See: https://github.com/gptme/gptme-webui/issues/119
+    - name: Check if API keys available for e2e tests
+      id: secrets-check
+      run: |
+        if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+          echo "available=true" >> $GITHUB_OUTPUT
+        else
+          echo "available=false" >> $GITHUB_OUTPUT
+          echo "::notice::Skipping e2e tests - API keys not available (likely a fork PR)"
+        fi
+
     - name: Start gptme-server in background
+      if: steps.secrets-check.outputs.available == 'true'
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
@@ -47,16 +60,19 @@ jobs:
         sleep 3  # sleep so we get initial logs
 
     - name: Install Playwright browsers
+      if: steps.secrets-check.outputs.available == 'true'
       run: npx playwright install --with-deps chromium
 
     - name: Check that server is up
+      if: steps.secrets-check.outputs.available == 'true'
       run: curl --retry 2 --retry-delay 5 --retry-connrefused -sSfL http://localhost:5700/api
 
     - name: Run e2e tests
+      if: steps.secrets-check.outputs.available == 'true'
       run: npm run test:e2e
 
     - name: Upload test results
-      if: always()
+      if: always() && steps.secrets-check.outputs.available == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: playwright-report
