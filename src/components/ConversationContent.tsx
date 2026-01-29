@@ -185,16 +185,12 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
               return <div key={`${index}-${message?.timestamp}`} />;
             }
 
-            // Get the previous and next messages for spacing context
-            const previousMessage$ = index > 0 ? conversation$.data.log[index - 1] : undefined;
-            const nextMessage$ = conversation$.data.log[index + 1];
-
             return (
               <ChatMessage
                 key={`${index}-${msg$.timestamp.get()}`}
                 message$={msg$}
-                previousMessage$={previousMessage$}
-                nextMessage$={nextMessage$}
+                log$={conversation$.data.log}
+                currentIndex={index}
                 conversationId={conversationId}
               />
             );

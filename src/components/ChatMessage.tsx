@@ -11,17 +11,12 @@ import { customRenderer, type CustomRenderer } from '@/utils/markdownRenderer';
 
 interface Props {
   message$: Observable<Message | StreamingMessage>;
-  previousMessage$?: Observable<Message | undefined>;
-  nextMessage$?: Observable<Message | undefined>;
+  log$: Observable<(Message | StreamingMessage)[]>;
+  currentIndex: number;
   conversationId: string;
 }
 
-export const ChatMessage: FC<Props> = ({
-  message$,
-  previousMessage$,
-  nextMessage$,
-  conversationId,
-}) => {
+export const ChatMessage: FC<Props> = ({ message$, log$, currentIndex, conversationId }) => {
   const { connectionConfig } = useApi();
   const { settings } = useSettings();
 
@@ -208,7 +203,7 @@ export const ChatMessage: FC<Props> = ({
     );
   });
 
-  const chainType$ = useMessageChainType(message$, previousMessage$, nextMessage$);
+  const chainType$ = useMessageChainType(message$, log$, currentIndex);
   const messageClasses$ = useObservable(
     () => `
         ${

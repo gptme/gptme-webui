@@ -1,37 +1,48 @@
 import type { Message } from '@/types/conversation';
-import { type Observable } from '@legendapp/state';
+import type { Observable } from '@legendapp/state';
 import { useObservable } from '@legendapp/state/react';
 
 export const isNonUserMessage = (role?: string) => role === 'assistant' || role === 'system';
 
-// Helper to check if a message should be considered for chain calculations
-// Hidden messages are treated as non-existent for chain purposes
+// Helper to check if a message should be visible for chain calculations
 const isVisibleForChain = (message: Message | undefined): boolean => {
   if (!message) return false;
-  // Messages with hide=true should not affect chain calculations
   if (message.hide) return false;
   return true;
 };
 
+// Find the previous visible message in the log
+const findPrevVisibleMessage = (log: Message[], currentIndex: number): Message | undefined => {
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    if (isVisibleForChain(log[i])) return log[i];
+  }
+  return undefined;
+};
+
+// Find the next visible message in the log
+const findNextVisibleMessage = (log: Message[], currentIndex: number): Message | undefined => {
+  for (let i = currentIndex + 1; i < log.length; i++) {
+    if (isVisibleForChain(log[i])) return log[i];
+  }
+  return undefined;
+};
+
 export const useMessageChainType = (
   message$: Observable<Message>,
-  previousMessage$: Observable<Message | undefined> | undefined,
-  nextMessage$: Observable<Message | undefined> | undefined
+  log$: Observable<Message[]>,
+  currentIndex: number
 ) => {
   const messageChainType$ = useObservable(() => {
     try {
       const message = message$.get();
       if (!message) return 'standalone';
 
-      const previousMessage = previousMessage$?.get();
-      const nextMessage = nextMessage$?.get();
+      const log = log$.get() || [];
+      const prevVisibleMessage = findPrevVisibleMessage(log, currentIndex);
+      const nextVisibleMessage = findNextVisibleMessage(log, currentIndex);
 
-      // Treat hidden messages as non-existent for chain calculations
-      const prevVisible = isVisibleForChain(previousMessage);
-      const nextVisible = isVisibleForChain(nextMessage);
-
-      const isChainStart = !prevVisible || previousMessage?.role === 'user';
-      const isChainEnd = !nextVisible || nextMessage?.role === 'user';
+      const isChainStart = !prevVisibleMessage || prevVisibleMessage.role === 'user';
+      const isChainEnd = !nextVisibleMessage || nextVisibleMessage.role === 'user';
       const isPartOfChain = isNonUserMessage(message.role);
 
       if (!isPartOfChain) return 'standalone';
@@ -43,6 +54,6 @@ export const useMessageChainType = (
       console.warn('Error calculating message chain type:', error);
       return 'standalone';
     }
-  }, [message$, previousMessage$, nextMessage$]);
+  }, [message$, log$, currentIndex]);
   return messageChainType$;
 };
