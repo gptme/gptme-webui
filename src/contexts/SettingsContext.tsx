@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 export interface Settings {
   chimeEnabled: boolean;
   blocksDefaultOpen: boolean;
-  verboseMode: boolean;
 }
 
 interface SettingsContextType {
@@ -15,7 +14,6 @@ interface SettingsContextType {
 const defaultSettings: Settings = {
   chimeEnabled: true,
   blocksDefaultOpen: true,
-  verboseMode: false,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

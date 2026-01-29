@@ -3,13 +3,14 @@ import { useRef, useEffect } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput, type ChatOptions } from './ChatInput';
 import { useConversation } from '@/hooks/useConversation';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
 import { InlineToolConfirmation } from './InlineToolConfirmation';
 import { InlineToolExecution } from './InlineToolExecution';
-import { For, useObservable, useObserveEffect } from '@legendapp/state/react';
+import { For, Memo, useObservable, useObserveEffect } from '@legendapp/state/react';
 import { getObservableIndex } from '@legendapp/state';
 import { useApi } from '@/contexts/ApiContext';
 import { useModels } from '@/hooks/useModels';
-import { useSettings } from '@/contexts/SettingsContext';
 
 interface Props {
   conversationId: string;
@@ -27,7 +28,6 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
   const { api } = useApi();
   const hasSession$ = useObservable<boolean>(false);
   const { defaultModel } = useModels();
-  const { settings } = useSettings();
 
   useObserveEffect(api.sessions$.get(conversationId), () => {
     if (!isReadOnly) {
@@ -78,6 +78,16 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
+
+  const showInitialSystem$ = useObservable<boolean>(false);
+
+  const hasInitialSystemMessages$ = useObservable(() => {
+    const log = conversation$.get()?.data.log;
+    if (!log || log.length === 0) {
+      return false;
+    }
+    return log[0].role === 'system';
+  });
 
   // Create a ref for the scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -165,6 +175,29 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
           }
         }}
       >
+        <Memo>
+          {() =>
+            hasInitialSystemMessages$.get() && (
+              <div className="flex w-full items-center bg-accent/50">
+                <div className="mx-auto flex max-w-3xl flex-1 items-center gap-2 p-4">
+                  <Checkbox
+                    id="showInitialSystem"
+                    checked={showInitialSystem$.get()}
+                    onCheckedChange={(checked) => {
+                      showInitialSystem$.set(checked === true);
+                    }}
+                  />
+                  <Label
+                    htmlFor="showInitialSystem"
+                    className="cursor-pointer text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Show initial system messages
+                  </Label>
+                </div>
+              </div>
+            )
+          }
+        </Memo>
         <For each={conversation$.data.log}>
           {(msg$) => {
             const index = getObservableIndex(msg$);
@@ -173,26 +206,13 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
             const isInitialSystem =
               msg$.role.get() === 'system' &&
               (firstNonSystemIndex === -1 || index < firstNonSystemIndex);
-            if (isInitialSystem && !settings.verboseMode) {
+            if (isInitialSystem && !showInitialSystem$.get()) {
               return <div key={`${index}-${msg$.timestamp.get()}`} />;
             }
 
-            // Hide messages with hide=true (e.g., auto-included lessons) unless verbose mode
-            // Use msg$.get()?.hide to access the raw value, which is more reliable
-            // than msg$.hide?.get() when the property might not be reactive yet
-            const message = msg$.get();
-            const shouldHide =
-              message?.hide ||
-              // Fallback: detect messages that should be hidden based on content patterns
-              // This handles cases where the server doesn't send hide:true in SSE events
-              (message?.role === 'system' &&
-                (message.content?.includes('<budget:') ||
-                  message.content?.includes('token_budget>') ||
-                  (message.content?.includes('# Relevant Lessons') &&
-                    message.content?.includes('*Matched by:'))));
-
-            if (shouldHide && !settings.verboseMode) {
-              return <div key={`${index}-${message?.timestamp}`} />;
+            // Hide messages with hide=true (e.g., auto-included lessons)
+            if (msg$.hide?.get()) {
+              return <div key={`${index}-${msg$.timestamp.get()}`} />;
             }
 
             // Get the previous and next messages for spacing context
