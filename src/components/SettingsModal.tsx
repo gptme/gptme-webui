@@ -149,6 +149,22 @@ export const SettingsModal = forwardRef<HTMLButtonElement, SettingsModalProps>(
                   onCheckedChange={(checked) => updateSettings({ blocksDefaultOpen: checked })}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="verbose-toggle" className="text-sm">
+                    Verbose mode
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Show system messages and hidden content (for debugging)
+                  </p>
+                </div>
+                <Switch
+                  id="verbose-toggle"
+                  checked={settings.verboseMode}
+                  onCheckedChange={(checked) => updateSettings({ verboseMode: checked })}
+                />
+              </div>
             </div>
           );
 

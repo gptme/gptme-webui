@@ -45,11 +45,26 @@ export const ChatMessage: FC<Props> = ({
     const previousContent = previousContent$.get();
     const newChars = value?.slice(previousContent.length);
     if (!newChars) return;
-    previousContent$.set(value || '');
     if (!contentRef.current) return;
     const parser = parser$.get();
     if (!parser) return;
+    // Only update previousContent AFTER successfully writing to parser
+    // This ensures we don't lose content if the parser isn't ready yet
     smd.parser_write(parser, newChars);
+    previousContent$.set(value || '');
+  });
+
+  // Process any unwritten content when the parser becomes available
+  // This handles the case where content arrived before the parser was ready
+  useObserveEffect(parser$, () => {
+    const parser = parser$.get();
+    if (!parser) return;
+    const content = message$.content.get() || '';
+    const previousContent = previousContent$.get();
+    const unwrittenContent = content.slice(previousContent.length);
+    if (!unwrittenContent) return;
+    smd.parser_write(parser, unwrittenContent);
+    previousContent$.set(content);
   });
 
   // End the parser when the message is complete
