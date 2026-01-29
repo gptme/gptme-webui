@@ -211,7 +211,9 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
             }
 
             // Hide messages with hide=true (e.g., auto-included lessons)
-            if (msg$.hide?.get()) {
+            // Use msg$.get()?.hide to access the raw value, which is more reliable
+            // than msg$.hide?.get() when the property might not be reactive yet
+            if (msg$.get()?.hide) {
               return <div key={`${index}-${msg$.timestamp.get()}`} />;
             }
 
