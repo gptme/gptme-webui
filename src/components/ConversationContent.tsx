@@ -181,17 +181,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
             // Use msg$.get()?.hide to access the raw value, which is more reliable
             // than msg$.hide?.get() when the property might not be reactive yet
             const message = msg$.get();
-            const shouldHide =
-              message?.hide ||
-              // Fallback: detect messages that should be hidden based on content patterns
-              // This handles cases where the server doesn't send hide:true in SSE events
-              (message?.role === 'system' &&
-                (message.content?.includes('<budget:') ||
-                  message.content?.includes('token_budget>') ||
-                  (message.content?.includes('# Relevant Lessons') &&
-                    message.content?.includes('*Matched by:'))));
-
-            if (shouldHide && !settings.verboseMode) {
+            if (message?.hide && !settings.verboseMode) {
               return <div key={`${index}-${message?.timestamp}`} />;
             }
 
