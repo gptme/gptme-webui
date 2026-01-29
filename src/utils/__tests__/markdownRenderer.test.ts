@@ -52,16 +52,16 @@ describe('renderThinkingBlocks', () => {
 
     // Output should be:
     // <div>
-    //   <p>
-    //     <details type="thinking" open="true">
-    //       <summary>💭 Thinking</summary>
-    //       <div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div>
-    //     </details>
-    //     some other text
-    //   </p>
+    //   <details type="thinking">
+    //     <summary>💭 Thinking</summary>
+    //     <div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div>
+    //   </details>
+    //   <p>some other text</p>
     // </div>
+    // Note: <details> is a block-level element, so when at start of document,
+    // it's not wrapped in <p>. The text after becomes its own paragraph.
     const expected =
-      '<p><details type="thinking"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details> some other text</p>';
+      '<details type="thinking"><summary>💭 Thinking</summary><div style="white-space: pre-wrap; padding-top: 0px; padding-bottom: 0.5rem;">This is a thinking block</div></details><p>some other text</p>';
 
     let div = parse(markdown);
     expect(div.innerHTML).toBe(expected);
