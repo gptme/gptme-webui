@@ -28,26 +28,44 @@ export const ChatMessage: FC<Props> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const renderer$ = useObservable<CustomRenderer | null>(null);
   const parser$ = useObservable<smd.Parser | null>(null);
+  const previousContent$ = useObservable('');
 
   // Initialize the renderer and parser once the contentRef is available
   useEffect(() => {
     if (!contentRef.current) return;
-    const renderer = customRenderer(contentRef.current, false, true, settings.blocksDefaultOpen);
+    // Reset DOM and parser state when re-initializing (e.g., settings change)
+    contentRef.current.innerHTML = '';
+    const renderer = customRenderer(
+      contentRef.current,
+      settings.verboseMode,
+      true,
+      settings.blocksDefaultOpen
+    );
     renderer$.set(ObservableHint.opaque(renderer));
     const parser = smd.parser(renderer);
     parser$.set(ObservableHint.opaque(parser));
+    // Re-parse full content to avoid losing pending state on re-init
+    const content = message$.content.get() || '';
+    previousContent$.set('');
+    if (content) {
+      smd.parser_write(parser, content);
+      previousContent$.set(content);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentRef.current, settings.blocksDefaultOpen]);
 
   // Send any new content to the parser
-  const previousContent$ = useObservable('');
   useObserveEffect(message$.content, ({ value }) => {
     const previousContent = previousContent$.get();
     const newChars = value?.slice(previousContent.length);
     if (!newChars) return;
-    if (!contentRef.current) return;
+    if (!contentRef.current) {
+      return;
+    }
     const parser = parser$.get();
-    if (!parser) return;
+    if (!parser) {
+      return;
+    }
     // Only update previousContent AFTER successfully writing to parser
     // This ensures we don't lose content if the parser isn't ready yet
     smd.parser_write(parser, newChars);
@@ -246,12 +264,11 @@ export const ChatMessage: FC<Props> = ({
                           return (
                             <div
                               ref={contentRef}
-                              className="chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)]"
-                            >
-                              {isEmptyAssistantMessage && (
-                                <span className="text-muted-foreground">Thinking...</span>
-                              )}
-                            </div>
+                              data-placeholder={isEmptyAssistantMessage ? 'Thinking...' : undefined}
+                              className={`chat-message prose prose-sm dark:prose-invert prose-pre:overflow-x-auto prose-pre:max-w-[calc(100vw-16rem)] ${
+                                isEmptyAssistantMessage ? 'chat-message-empty' : ''
+                              }`}
+                            ></div>
                           );
                         }}
                       </Memo>

@@ -71,6 +71,11 @@
   @apply py-1.5;
 }
 
+.chat-message-empty:empty::before {
+  content: attr(data-placeholder);
+  @apply text-muted-foreground;
+}
+
 .chat-message a {
   @apply text-blue-300;
 

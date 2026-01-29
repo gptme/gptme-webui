@@ -474,6 +474,54 @@ export function parser_write(p, chunk) {
             p.backticks_count = 0;
             p.pending = char;
             continue;
+          /* <thinking> and <think> tags - Handle opening tags at root */
+          case '<':
+            // Complete opening tag for <thinking>
+            if (p.pending === '<thinking' && char === '>') {
+              add_token(p, THINKING_BLOCK);
+              p.renderer.set_attr(p.renderer.data, TYPE, 'thinking');
+              p.thinking_tag_type = 'thinking';
+              add_token(p, THINKING_SUMMARY);
+              p.text = '💭 Thinking';
+              add_text(p);
+              end_token(p); // End THINKING_SUMMARY
+              add_token(p, THINKING_CONTENT);
+              p.thinking_state = 1; // Mark that we just entered thinking content
+              p.pending = '';
+              continue;
+            }
+
+            // Complete opening tag for <think>
+            if (p.pending === '<think' && char === '>') {
+              add_token(p, THINKING_BLOCK);
+              p.renderer.set_attr(p.renderer.data, TYPE, 'thinking');
+              p.thinking_tag_type = 'think';
+              add_token(p, THINKING_SUMMARY);
+              p.text = '💭 Thinking';
+              add_text(p);
+              end_token(p); // End THINKING_SUMMARY
+              add_token(p, THINKING_CONTENT);
+              p.thinking_state = 1; // Mark that we just entered thinking content
+              p.pending = '';
+              continue;
+            }
+
+            // Build opening tag character by character for <thinking>
+            if ('<thinking'.startsWith(p.pending) && p.pending.length < '<thinking'.length) {
+              if ('<thinking'[p.pending.length] === char) {
+                p.pending = pending_with_char;
+                continue;
+              }
+            }
+
+            // Build opening tag character by character for <think>
+            if ('<think'.startsWith(p.pending) && p.pending.length < '<think'.length) {
+              if ('<think'[p.pending.length] === char) {
+                p.pending = pending_with_char;
+                continue;
+              }
+            }
+            break;
           /* Heading */
           case '#':
             switch (char) {
