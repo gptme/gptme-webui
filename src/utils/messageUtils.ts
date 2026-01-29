@@ -4,6 +4,15 @@ import { useObservable } from '@legendapp/state/react';
 
 export const isNonUserMessage = (role?: string) => role === 'assistant' || role === 'system';
 
+// Helper to check if a message should be considered for chain calculations
+// Hidden messages are treated as non-existent for chain purposes
+const isVisibleForChain = (message: Message | undefined): boolean => {
+  if (!message) return false;
+  // Messages with hide=true should not affect chain calculations
+  if (message.hide) return false;
+  return true;
+};
+
 export const useMessageChainType = (
   message$: Observable<Message>,
   previousMessage$: Observable<Message | undefined> | undefined,
@@ -17,8 +26,12 @@ export const useMessageChainType = (
       const previousMessage = previousMessage$?.get();
       const nextMessage = nextMessage$?.get();
 
-      const isChainStart = !previousMessage || previousMessage.role === 'user';
-      const isChainEnd = !nextMessage || nextMessage.role === 'user';
+      // Treat hidden messages as non-existent for chain calculations
+      const prevVisible = isVisibleForChain(previousMessage);
+      const nextVisible = isVisibleForChain(nextMessage);
+
+      const isChainStart = !prevVisible || previousMessage?.role === 'user';
+      const isChainEnd = !nextVisible || nextMessage?.role === 'user';
       const isPartOfChain = isNonUserMessage(message.role);
 
       if (!isPartOfChain) return 'standalone';
