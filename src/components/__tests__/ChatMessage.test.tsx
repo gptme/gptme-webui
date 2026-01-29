@@ -25,36 +25,61 @@ describe('ChatMessage', () => {
   };
 
   it('renders user message', () => {
-    const message$ = observable<Message>({
+    const message: Message = {
       role: 'user',
       content: 'Hello!',
       timestamp: new Date().toISOString(),
-    });
+    };
+    const message$ = observable<Message>(message);
+    const log$ = observable<Message[]>([message]);
 
-    renderWithProviders(<ChatMessage message$={message$} conversationId={testConversationId} />);
+    renderWithProviders(
+      <ChatMessage
+        message$={message$}
+        log$={log$}
+        currentIndex={0}
+        conversationId={testConversationId}
+      />
+    );
     expect(screen.getByText('Hello!')).toBeInTheDocument();
   });
 
   it('renders assistant message', () => {
-    const message$ = observable<Message>({
+    const message: Message = {
       role: 'assistant',
       content: 'Hi there!',
       timestamp: new Date().toISOString(),
-    });
+    };
+    const message$ = observable<Message>(message);
+    const log$ = observable<Message[]>([message]);
 
-    renderWithProviders(<ChatMessage message$={message$} conversationId={testConversationId} />);
+    renderWithProviders(
+      <ChatMessage
+        message$={message$}
+        log$={log$}
+        currentIndex={0}
+        conversationId={testConversationId}
+      />
+    );
     expect(screen.getByText('Hi there!')).toBeInTheDocument();
   });
 
   it('renders system message with monospace font', () => {
-    const message$ = observable<Message>({
+    const message: Message = {
       role: 'system',
       content: 'System message',
       timestamp: new Date().toISOString(),
-    });
+    };
+    const message$ = observable<Message>(message);
+    const log$ = observable<Message[]>([message]);
 
     const { container } = renderWithProviders(
-      <ChatMessage message$={message$} conversationId={testConversationId} />
+      <ChatMessage
+        message$={message$}
+        log$={log$}
+        currentIndex={0}
+        conversationId={testConversationId}
+      />
     );
     const messageElement = container.querySelector('.font-mono');
     expect(messageElement).toBeInTheDocument();
