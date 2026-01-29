@@ -165,7 +165,7 @@ export const ConversationContent: FC<Props> = ({ conversationId, isReadOnly }) =
           }
         }}
       >
-        <For each={conversation$.data.log}>
+        <For each={conversation$.data.log} key={`log-${settings.verboseMode}`}>
           {(msg$) => {
             const index = getObservableIndex(msg$);
             // Hide all system messages before the first non-system message by default
