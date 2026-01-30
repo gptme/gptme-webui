@@ -1,11 +1,11 @@
 # gptme-webui
 
+> [!WARNING]
+> This repo is **ARCHIVED** and has been merged into the main [gptme](https://github.com/gptme/gptme) repo. All future development will happen there.
+
 [![CI](https://github.com/gptme/gptme-webui/actions/workflows/ci.yml/badge.svg)](https://github.com/gptme/gptme-webui/actions/workflows/ci.yml)
 
 A fancy web UI for [gptme][gptme], built with [lovable.dev](https://lovable.dev).
-
-> [!WARNING]
-> This repo has been merged into the main [gptme](https://github.com/gptme/gptme) repo and is archived. All future development will happen there.
 
 ## Features
 
