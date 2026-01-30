@@ -4,7 +4,8 @@
 
 A fancy web UI for [gptme][gptme], built with [lovable.dev](https://lovable.dev).
 
-An alternative to the minimal UI bundled with `gptme`.
+> [!WARNING]
+> This repo has been merged into the main [gptme](https://github.com/gptme/gptme) repo and is archived. All future development will happen there.
 
 ## Features
 
